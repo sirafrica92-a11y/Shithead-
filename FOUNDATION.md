@@ -6,6 +6,8 @@
 
 ## Read first
 
+**SOUL:** open `SOUL_START_HERE.md` first. **Claude / coding agents:** read `AGENTS.md` first. Both entry points refer to `docs/WORK_PACKETS.md` for the next bounded task and `docs/DECISION_LOG.md` for rule authority. The `docs/SCENARIO_MATRIX.md` is the explicit 2–6-seat behavioural oracle.
+
 1. `docs/RULES.md`: gameplay contract, with confirmed rules distinct from interpretations.
 2. `docs/TURN_ENGINE.md`: server-authoritative state-machine design and deterministic turn order.
 3. `docs/TEST_PLAN.md`: behavioural examples and fault/QA strategy.
@@ -13,7 +15,11 @@
 5. `docs/OPEN_DECISIONS.md`: details that must not be invented.
 6. `docs/SOUL_AND_CLAUDE.md`: roles, approval flow and handover.
 7. `docs/PROJECT_STATUS.md`: facts, progress, evidence and next action.
-8. `docs/source/OWNER_RULES_PART_1.md` and `docs/source/OWNER_RULES_PART_2.md`: original owner-authored requirements and scenario accounts, preserved for traceability.
+8. `docs/DECISION_LOG.md`: owner decisions and distinct open questions.
+9. `docs/WORK_PACKETS.md`: SOUL-led scoped tasks, prerequisites and evidence.
+10. `docs/SCENARIO_MATRIX.md`: 2–6-seat acceptance cases.
+11. `docs/FOUNDATION_QA.md`: scope of the documentation audit and remaining sign-off.
+12. `docs/source/OWNER_RULES_PART_1.md` and `docs/source/OWNER_RULES_PART_2.md`: structured, non-verbatim transcriptions of owner messages; inspect the original chat wording when exact wording matters.
 
 ## Design pillars
 
