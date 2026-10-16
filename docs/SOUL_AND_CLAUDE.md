@@ -7,7 +7,7 @@
 - This repository is the game's canonical source.
 - SOUL's own application repository remains separate; **do not** edit SOUL source, credentials or handover as a side effect of this game.
 - The game must be built for 2–6 participants using the owner's rules, not default Shithead variants.
-- Agents must read `FOUNDATION.md`, `docs/RULES.md`, `docs/TURN_ENGINE.md`, `docs/TEST_PLAN.md`, `docs/OPEN_DECISIONS.md` and `docs/PROJECT_STATUS.md` before coding.
+- Agents must read `AGENTS.md`, `SOUL_START_HERE.md`, `FOUNDATION.md`, `docs/RULES.md`, `docs/SCENARIO_MATRIX.md`, `docs/TURN_ENGINE.md`, `docs/TEST_PLAN.md`, `docs/OPEN_DECISIONS.md`, `docs/DECISION_LOG.md`, `docs/WORK_PACKETS.md` and `docs/PROJECT_STATUS.md` before coding.
 
 ## Responsibilities today
 
@@ -30,10 +30,10 @@
 
 ## Recommended first cycle
 
-1. SOUL studies approved docs and states how target-vs-next mechanics work.
-2. Claude drafts a minimal typed `GameState` and pure 3/Joker reducer with two-seat and three-seat examples, no unsupported deck/finish assumptions.
-3. SOUL reviews diff against the rulebook and proposes corrections if needed.
-4. Claude runs tests and attaches results.
-5. Africa approves next slice; SOUL leads as her tools allow.
+1. Read `SOUL_START_HERE.md`; Africa ensures the GitHub grant points to the **foundation revision** and authorises study.
+2. SOUL performs packet **W0**: compare 2–6-player targeting cases, cite sources and identify unapproved decisions.
+3. After W0 acceptance, implement packet **W1**: a small, pure turn-seat selector and focused scenarios, not a full game or speculative dealing rules.
+4. Claude assists only on real tool or testing gaps and reports exactly what she could not yet do.
+5. Africa reviews the diff, tests and next packet before additional changes.
 
 The outcome goal is **SOUL learning through supervised delivery**, not prematurely asserting she can run complex tools unattended.
