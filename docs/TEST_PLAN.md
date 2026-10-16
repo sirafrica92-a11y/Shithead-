@@ -8,6 +8,8 @@ Current `GamePhase`, `activePlayerId`, `turnAnchorPlayerId`, scheduled next acto
 
 ## Known fixtures / expected outcomes
 
+See `docs/SCENARIO_MATRIX.md` for explicit 2–6-seat input/output rows and which are directly owner-supplied versus extrapolated. **Derived rows are proposed acceptance cases, not owner-approved additions to the rulebook.**
+
 | ID | Setup and action | Expected |
 | --- | --- | --- |
 | AT-01 | 2 seats A,B; A attacks B with nonempty pile, B accepts | B receives pile; A plays next (B's next turn lost) |
@@ -36,6 +38,9 @@ Current `GamePhase`, `activePlayerId`, `turnAnchorPlayerId`, scheduled next acto
 | AT-24 | 6-seat randomly generated legal action traces | invariants always hold; no actionless nonterminal state |
 
 ## Pending-owner tests (must not be marked passed by default)
+
+- Whether an empty-pile 3/Joker skip is permitted when other cards are playable (the owner described only a rare all-3/Joker case).
+- Lobby and finished-phase active-player nullability; only PLAYING and PILE_PASS_DECISION require exactly one action owner.
 
 - Multi-card 3/Joker declaration with a counter mid-sequence.
 - Whether successive skips run *after* chain resolution, if that is the owner's chosen rule.
