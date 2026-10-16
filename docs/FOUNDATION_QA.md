@@ -11,7 +11,7 @@
 - Three-player targeting B vs C, four-player target B vs D, and scalable five/six-seat outcomes have explicit examples, each labelled as direct or derived.
 - FastAPI + WebSockets is the **last explicit** server stack instruction. React Native is the mobile target; browser-first was an assistant recommendation.
 - Optional Shit Face does not alter core rules.
-- Parts One and Two were originally paraphrased in the foundation; raw preserved wording is now also available under `docs/source/` for provenance.
+- Parts One and Two are preserved as structured **non-verbatim** transcriptions under `docs/source/`; exact original wording still resides in Africa's chat, not in this repository. Never call the transcriptions raw or verbatim.
 
 ## Engineering traps now flagged
 
