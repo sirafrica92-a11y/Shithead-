@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import os
 import secrets
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -14,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from server.app.lobby import RoomStore, Seat, broadcast, remember_request
 from server.app.persistence import token_digest
+from server.app.site_gate import COOKIE_NAME, cookie_allowed, install_test_gate
 from server.app.gameplay import apply_match_action, make_match, UndecidedStartTie
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
@@ -28,7 +30,9 @@ class JoinRoom(BaseModel):
 
 
 def create_app(*, db_path: str | Path | None = None) -> FastAPI:
-    app = FastAPI(title="Shithead local multiplayer lobby", version="0.1-w4")
+    app = FastAPI(title="Shithead private multiplayer preview", version="0.1-w4")
+    cloud = bool(os.getenv("RAILWAY_ENVIRONMENT_ID"))
+    install_test_gate(app, cloud=cloud)
     store = RoomStore(db_path=db_path)
     app.state.room_store = store
 
@@ -37,6 +41,10 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
         if room is None:
             raise HTTPException(status_code=404, detail="room not found")
         return room
+
+    @app.get("/health", include_in_schema=False)
+    async def health():
+        return {"status": "ok"}
 
     @app.get("/")
     async def home():
@@ -80,9 +88,16 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
 
     @app.websocket("/ws/{room_id}")
     async def room_socket(websocket: WebSocket, room_id: str):
+        # The private test password also gates WebSocket handshakes.
+        if not cookie_allowed(
+            websocket.cookies.get(COOKIE_NAME), app.state.test_gate_password
+        ):
+            await websocket.close(code=1008)
+            return
         # Same-origin browser access only; seat ownership still requires a token.
         origin = websocket.headers.get("origin")
-        if origin and urlsplit(origin).netloc != websocket.headers.get("host"):
+        if ((cloud and not origin) or
+                (origin and urlsplit(origin).netloc != websocket.headers.get("host"))):
             await websocket.close(code=1008)
             return
         room = await store.get(room_id)
@@ -240,5 +255,19 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
     return app
 
 
-# Persistent only in the CLI server; unit-test create_app() instances stay isolated.
-app = create_app(db_path=Path.home() / ".shithead" / "local_rooms.sqlite3")
+def default_db_path() -> Path:
+    """Use Railway's persistent volume, never the ephemeral deployment disk."""
+    volume = os.getenv("RAILWAY_VOLUME_MOUNT_PATH")
+    if os.getenv("RAILWAY_ENVIRONMENT_ID"):
+        if not volume:
+            raise RuntimeError(
+                "Attach a persistent Railway volume at /data before deploying."
+            )
+        return Path(volume) / "rooms.sqlite3"
+    custom = os.getenv("SHITHEAD_DB_PATH")
+    return Path(custom) if custom else Path.home() / ".shithead" / "local_rooms.sqlite3"
+
+
+# The local launcher and Railway each use one process / one SQLite writer.
+# Individual unit-test create_app() instances use their own isolated storage.
+app = create_app(db_path=default_db_path())
