@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from server.app.lobby import RoomStore, Seat, broadcast, remember_request
 from server.app.persistence import token_digest
-from server.app.gameplay import apply_match_action, make_match
+from server.app.gameplay import apply_match_action, make_match, UndecidedStartTie
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
 
@@ -177,9 +177,18 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
                                 changed = True
                             if (len(room.seats) == room.capacity
                                     and all(s.ready for s in room.seats)):
-                                room.match = make_match(room.capacity)
-                                room.version += 1
-                                changed = True
+                                try:
+                                    candidate = make_match(room.capacity)
+                                except UndecidedStartTie:
+                                    # No owner-approved fallback for an exact
+                                    # D-019 three-card tie: keep lobby recoverable.
+                                    seat.ready = False
+                                    room.version += 1
+                                    error = "starting_tie_unresolved"
+                                else:
+                                    room.match = candidate
+                                    room.version += 1
+                                    changed = True
                     elif room.match is None:
                         error = "wrong_phase"
                     else:
@@ -207,6 +216,8 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
                         "allowedActions": (["accept", "counter"] if room.match is not None and room.match.pending is not None else ["play", "power", "pickup", "flip"] if room.match is not None else ["ready"]),
                         "stateSnapshot": view,
                     })
+                    if changed:
+                        await broadcast(room, exclude=websocket)
                 elif changed:
                     await broadcast(room)
                 else:
