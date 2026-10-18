@@ -193,6 +193,33 @@ def apply_play(state: OrdinaryState, zone: str, indices: Sequence[int]) -> Ordin
     return _play_ordinary(state, player, zone, indices)
 
 
+
+def pick_up(state: OrdinaryState) -> OrdinaryState:
+    """Collect the pile and end the turn when no legal card can be played.
+
+    A player with only blind face-down cards must flip, not choose pickup.
+    A 3/Joker counts as an available W2 play and prevents forced pickup.
+    """
+    if state.pending_blind_power is not None:
+        raise IllegalPlay("resolve pending blind power before another action")
+    if len(state.finished) >= len(state.players) - 1 or state.current in state.finished:
+        raise IllegalPlay("match has ended or current seat is finished")
+    if not state.pile:
+        raise IllegalPlay("cannot collect an empty pile")
+    player = state.players[state.current]
+    zone = _zone(state, player)
+    if zone == "face_down":
+        raise IllegalPlay("face-down cards must be flipped")
+    if any(c.rank in (0, 3) or _legal_rank(state, c.rank)
+           for c in getattr(player, zone)):
+        raise IllegalPlay("a legal play exists; pickup is not forced")
+    return _settle(
+        replace(state, pile=(), locked=False),
+        replace(player, hand=player.hand + state.pile),
+        extra_turn=False,
+    )
+
+
 def can_play(state: OrdinaryState, zone: str, indices: Sequence[int]) -> bool:
     """Read-only legality check. An invalid request does not modify state."""
     try:
