@@ -1,4 +1,4 @@
-"""FastAPI W4 local-room prototype. Game actions remain W3 integration work."""
+"""FastAPI W4 local multiplayer prototype: lobby and live in-memory matches."""
 
 from __future__ import annotations
 
@@ -12,6 +12,9 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from server.app.lobby import RoomStore, Seat, broadcast, remember_request
+from server.app.gameplay import apply_match_action, make_match
+from server.app.rules.ordinary import IllegalPlay
+from server.app.rules.pile_pass import IllegalTransition
 
 
 class CreateRoom(BaseModel):
@@ -97,7 +100,7 @@ def create_app() -> FastAPI:
                     old_socket = seat.socket
                     seat.socket = websocket
                     room.version += 1
-                    view = room.public_view()
+                    view = room.view_for(i)
                     break
         if index is None:
             await websocket.close(code=1008)
@@ -123,11 +126,12 @@ def create_app() -> FastAPI:
 
                 if action.get("type") == "sync":
                     async with room.lock:
-                        view = room.public_view()
+                        view = room.view_for(index)
                     await websocket.send_json({**view, "you": index})
                     continue
 
-                if action.get("type") != "ready":
+                kind = action.get("type")
+                if kind not in ("ready", "game"):
                     await websocket.send_json({"type": "error", "reasonCode": "unknown_action"})
                     continue
 
@@ -135,7 +139,9 @@ def create_app() -> FastAPI:
                 expected = action.get("expected_version")
                 ready = action.get("ready")
                 if (not isinstance(request_id, str) or not 1 <= len(request_id) <= 64
-                        or type(expected) is not int or type(ready) is not bool):
+                        or type(expected) is not int
+                        or (kind == "ready" and type(ready) is not bool)
+                        or (kind == "game" and not isinstance(action.get("kind"), str))):
                     await websocket.send_json({"type": "error", "reasonCode": "invalid_action"})
                     continue
 
@@ -149,13 +155,38 @@ def create_app() -> FastAPI:
                         pass
                     elif expected != room.version:
                         error = "stale_version"
+                    elif kind == "ready":
+                        if room.match is not None:
+                            error = "wrong_phase"
+                        else:
+                            remember_request(seat, request_id)
+                            if seat.ready != ready:
+                                seat.ready = ready
+                                room.version += 1
+                                changed = True
+                            if (len(room.seats) == room.capacity
+                                    and all(s.ready for s in room.seats)):
+                                room.match = make_match(room.capacity)
+                                room.version += 1
+                                changed = True
+                    elif room.match is None:
+                        error = "wrong_phase"
                     else:
-                        remember_request(seat, request_id)
-                        if seat.ready != ready:
-                            seat.ready = ready
+                        try:
+                            next_match = apply_match_action(
+                                room.match, index, action["kind"],
+                                indices=action.get("indices"),
+                                index=action.get("index"),
+                                target=action.get("target"),
+                            )
+                        except (IllegalPlay, IllegalTransition, ValueError) as exc:
+                            error = "illegal_action"
+                        else:
+                            room.match = next_match
                             room.version += 1
+                            remember_request(seat, request_id)
                             changed = True
-                    view = room.public_view()
+                    view = room.view_for(index)
                 if error:
                     await websocket.send_json({
                         "type": "error", "reasonCode": error, "stateSnapshot": view
