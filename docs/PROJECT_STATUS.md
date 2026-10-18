@@ -1,7 +1,7 @@
 # Project status
 
-**Date:** 16 October 2026  
-**State:** foundation proposed on branch `foundation/v0.1-proposed` in draft PR #1. `main` contains only the initial README until an owner-approved merge. No game code has been implemented, built, tested or deployed.
+**Date:** 16 October 2026
+**State:** foundation proposed on branch `foundation/v0.1-proposed` in draft PR #1. `main` contains only the initial README until an owner-approved merge. W1 (turn-seat selector) and W2 (pile-pass reducer) are implemented and verified on `build/w1-turn-seat-selector`; W3 (ordinary-play reducer) is not yet built.
 
 ## Established
 
@@ -12,25 +12,21 @@
 - Owner's general logic scales to 5 and 6 seats (derived, not new rules).
 - Server-authoritative FastAPI + WebSockets is the later explicit backend choice; React Native iOS/Android is the original primary client target.
 - SOUL-first supervised product-development intention, with Claude filling tooling gaps.
+- **W1** `server/app/rules/turns.py` — turn-seat selector, verified.
+- **W2** `server/app/rules/pile_pass.py` — pile-pass reducer, verified.
+- Test suite green: **56 passed, 2 skipped** (the 2 skips are pending owner decisions O-09/O-10).
 
 ## Not established
 
 - Approved final rules for deal, seven-lock, special multi-card counter sequencing, endgame and finish semantics.
-- Playable browser or mobile game.
+- W3 ordinary-play reducer, and a playable browser or mobile game.
 - Hosting, domain connection, player accounts or deployment.
-- Running CI/test suite, production QA, game-server implementation.
+- Production QA / CI beyond the local test suite.
 - Completed owner review of this proposed foundation.
-
-## Foundation QA pass (documentation only)
-
-- Added `SOUL_START_HERE.md` for real SOUL navigation, source pinning, study and review limitations.
-- Added `AGENTS.md`, `docs/SCENARIO_MATRIX.md`, `docs/DECISION_LOG.md`, `docs/WORK_PACKETS.md` and `docs/FOUNDATION_QA.md`; included a draft PR template.
-- Cross-checked the later owner scenarios against the generalised 2–6-seat rule without claiming missing multi-counter decisions were resolved.
-- No runtime tests performed and no game code built. The revised materials still require Africa's review.
 
 ## Next gate
 
-Owner reviews `FOUNDATION.md`, `docs/FOUNDATION_QA.md`, the concrete scenario matrix and open decisions; approve or request edits. Then use the correct pinned commit in SOUL Projects and run W0 (read-only comprehension). Only after that should implementation begin with a small pure resolver (W1).
+Owner settles the three W3 gameplay decisions (four-of-a-kind clearing, the 2's effect, group plays under seven-lock), then W3 begins from the scope in `docs/WORK_PACKETS.md`.
 
 ## Update convention
 

@@ -1,116 +1,81 @@
-"""Pile / 3-Joker attack state machine for Shithead (work packet W2).
+"""W2 - pile-pass reducer (the 3/Joker attack). Pure, deterministic, immutable.
 
-Pure deterministic reducer for ONE resolved pile action, driven by a
-server-authoritative actor. It deliberately imports nothing from
-``server/app/rules/turns.py`` so W1 stays untouched; the W1
 ``resolve_next_actor`` is composed by the caller AFTER this reducer reaches a
-terminal state, which is where turn anchoring (D-002) and extra skips (D-014)
-are applied.
+terminal RESOLVED state. This reducer never mutates its input state: it returns
+new ``PileState`` values. Its only authority is PLAYING -> PILE_PASS_DECISION ->
+RESOLVED and the acceptance/counter mechanics - attack targeting, accept/counter
+ownership, skip-card count, and removal of spent 3s/Jokers from the game.
 
-Scope (docs/WORK_PACKETS.md W2): PLAYING -> PILE_PASS_DECISION -> RESOLVED,
-one 3/Joker attack, an optional counter chain, an accepted pickup, an
-allowed-action whitelist, removed-from-game cards, and authoritative errors.
-Ordinary rank play and endgame are W3.
-
-Confirmed rules honoured here:
-  D-001  3/Joker share attack and defence; a counter may redirect to any
-         other player, including a previous attacker.
-  D-002  Turn advancement is NOT decided here (anchored to the original
-         actor, applied by the caller via W1).
-  D-003  An empty-pile 3/Joker skips the next seat (elective per D-015).
-  D-004  Multiple 3/Jokers may attach extra skips to one attack.
-  D-014  Extra skips stay attached through counter chains, never resolve
-         mid-chain; a counter does not erase them.
-  D-015  On an empty pile a player MAY spend a 3/Joker to skip even while
-         holding a playable ordinary card; the spent card is removed.
-  D-016  No mid-action refills; resolution completes before any draw.
-
-OPEN (rejected here): O-09 timeouts (a pure reducer has no clock) and O-10
-non-playing phase ownership (out of this slice's scope).
+It deliberately holds no deck, hands or pile card list: those belong to the
+ordinary-play reducer (W3). ``removed`` is the shared authority the pile-pass
+gameplay owns.
 """
-
-from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import FrozenSet, Optional, Tuple
+from typing import Optional, Tuple
 
 
-class IllegalTransition(ValueError):
-    """Rejected action. Recoverable per D-006: the state is left unchanged."""
+class IllegalTransition(Exception):
+    """Raised when an action is not legal in the current phase, or is a replay."""
 
 
 class Phase(Enum):
-    PLAYING = "PLAYING"                        # idle; actor may open an attack or empty-pile skip
-    PILE_PASS_DECISION = "PILE_PASS_DECISION"  # a live attack awaits ACCEPT or COUNTER
-    RESOLVED = "RESOLVED"                      # terminal for this slice
-
-
-@dataclass(frozen=True)
-class Attack:
-    """A live 3/Joker attack and every card it has spent (removed from game)."""
-    original_actor: str
-    target: str
-    extra_skips: int = 0            # D-014: stay attached, never resolve mid-chain
-    spent: Tuple[str, ...] = ()     # 3s / Jokers removed from the game when played
-    chain: Tuple[str, ...] = ()     # ordered actors who have handled this attack
-
-
-@dataclass(frozen=True)
-class PileState:
-    """Immutable state of one pile action."""
-    seats: Tuple[str, ...]          # currently eligible seats, clockwise
-    actor: str                      # the single authoritative actor (D-006)
-    phase: Phase = Phase.PLAYING
-    attack: Optional[Attack] = None
-    removed: FrozenSet[str] = frozenset()   # cards removed from the game
-    version: int = 0                # optimistic-concurrency token
+    PLAYING = "playing"
+    PILE_PASS_DECISION = "pile_pass_decision"
+    RESOLVED = "resolved"
 
 
 @dataclass(frozen=True)
 class Attack3Joker:
-    """Open an attack on ``target``; optionally declare extra skips (D-004).
-
-    ``cards`` is the 3s/Jokers spent for the attack itself (at least one).
-    ``extra_skip_cards`` are additional 3s/Jokers spent for skips, one per
-    skip. All spent cards are removed from the game."""
     target: str
     cards: Tuple[str, ...] = ("3",)
     extra_skip_cards: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
-class Counter:
-    """Redirect the live attack to any other seat (D-001)."""
-    new_target: str
+class EmptyPileSkip:
     cards: Tuple[str, ...] = ("3",)
 
 
 @dataclass(frozen=True)
 class Accept:
-    """The current target takes the pile; the attack resolves."""
+    pass
 
 
 @dataclass(frozen=True)
-class EmptyPileSkip:
-    """Spend a 3/Joker to skip on an empty pile (D-003, D-015). Elective."""
+class Counter:
+    new_target: str
     cards: Tuple[str, ...] = ("3",)
 
 
-def initial_state(seats, actor: str) -> PileState:
-    """Build the idle state. 2-6 unique seats; the actor must be seated."""
-    seats = tuple(seats)
-    if not 2 <= len(seats) <= 6:
-        raise ValueError("games have 2 to 6 seats")
-    if len(set(seats)) != len(seats):
-        raise ValueError("seats must be unique")
-    if actor not in seats:
-        raise ValueError(f"actor {actor!r} is not seated")
-    return PileState(seats=seats, actor=actor)
+@dataclass(frozen=True)
+class Attack:
+    original_actor: str
+    target: str
+    extra_skips: int
+    spent: Tuple[str, ...]
+    chain: Tuple[str, ...]
 
 
-def allowed_actions(state: PileState) -> Tuple[type, ...]:
-    """The authoritative action whitelist for the current phase."""
+@dataclass(frozen=True)
+class PileState:
+    seats: Tuple[str, ...]
+    actor: str
+    phase: Phase
+    attack: Optional[Attack]
+    removed: frozenset
+    version: int
+
+
+def initial_state(seats, actor):
+    return PileState(
+        seats=tuple(seats), actor=actor, phase=Phase.PLAYING,
+        attack=None, removed=frozenset(), version=0,
+    )
+
+
+def allowed_actions(state: PileState):
     if state.phase is Phase.PLAYING:
         return (Attack3Joker, EmptyPileSkip)
     if state.phase is Phase.PILE_PASS_DECISION:
@@ -122,14 +87,18 @@ def reduce(
     state: PileState,
     action,
     *,
-    actor: Optional[str] = None,
+    actor: str,
     version: Optional[int] = None,
 ) -> PileState:
     """Apply ``action`` and return the new state; never mutate ``state``.
 
-    Raises IllegalTransition for any out-of-phase action, wrong actor, stale
-    version, unknown target, or replay. The input state is left untouched, so
-    a rejected action is recoverable (D-006)."""
+    Raises IllegalTransition for any out-of-phase action, wrong or missing
+    actor, stale version, unknown target, or replay. The input state is left
+    untouched, so a rejected action is recoverable (D-006).
+
+    ``actor`` is mandatory (D-006): the server must always name the seat it is
+    acting for, and a missing or mismatched actor is rejected. ``version``
+    remains optional optimistic-concurrency."""
     if version is not None and version != state.version:
         raise IllegalTransition(
             f"stale version {version}; current is {state.version}"
@@ -138,7 +107,7 @@ def reduce(
         raise IllegalTransition(
             f"{type(action).__name__} is not legal in phase {state.phase.value}"
         )
-    if actor is not None and actor != state.actor:
+    if actor != state.actor:
         raise IllegalTransition(f"wrong actor {actor!r}; expected {state.actor!r}")
 
     if state.phase is Phase.PLAYING:
