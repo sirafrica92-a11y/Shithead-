@@ -1,28 +1,54 @@
-# Project status
+# Shithead project status — W1–W4 local playable preview
 
-**Branch:** `build/w1-turn-seat-selector` (at commit `bd48ad9` + approved corrections)
-**Phase:** W1 and W2 complete and verified; W3 authorised, awaiting three owner rule rulings before the match reducer is built.
+Source of truth: owner rulebook in docs/RULES.md, docs/DECISION_LOG.md and
+docs/source/OWNER_RULES_PART_1.md / OWNER_RULES_PART_2.md.
 
-## Verified so far
+Canonical development branch: build/w1-turn-seat-selector.
+Preflight/recovery/rules fixes are proposed in the W4 completion pull request;
+check its merge status before claiming they are on the canonical branch.
 
-- **W1 — turn/seat selector:** `server/app/rules/turns.py` resolves the next actor for all 2–6 seat cases, anchored to the original actor; counter chains never move the anchor (D-002, D-014).
-- **W2 — pile-pass reducer:** `server/app/rules/pile_pass.py` is a pure, deterministic reducer covering attack, counter chains, accept, empty-pile skip and multi-skip, with mandatory actor validation on every action (wrong/missing actor rejected), stale-version rejection and structured errors.
-- **W1↔W2 composition:** `server/tests/test_w1_w2_composition.py` pins the seam where the match engine will thread the reducer's terminal state into `resolve_next_actor`.
+## Integrated milestones
 
-## Test suite
+- W1: pure turn-seat resolver, original actor anchors redirected attacks.
+- W2: pure 3/Joker pile-pass attack/counter/accept reducer.
+- W3: ordinary-play, 2/7/10, four-of-a-kind, zone and finishing reducer.
+- W4: FastAPI, private WebSockets, rooms for 2–6 seats, browser preview, live
+  moves and per-seat hidden-card snapshots.
 
-`python -m pytest server/tests -q` → **53 passed, 0 skipped** (verified against the current tree).
+## W4 completion patch
 
-## Awaiting the owner
+- D-019: starter by three-card ordered comparison; second player sets direction.
+  A residual exact tie after the third comparison is an explicit recoverable
+  owner-decision gate — never silently settled by seating order.
+- 3/Joker: atomic multi-card skip/attack and extra skips retained across W2
+  counter chains. Cards tracked by physical ID and conservation asserted.
+- Full-deck deterministic legal-action traces, every 2–6-player seat count.
+  Engine cannot promise every possible game strategy terminates; arbitrary bot
+  pickup cycles are allowed by the rules. Separately tests 2–6-player endgame
+  completion from card-conserving near-terminal fixtures.
+- Local SQLite restores rooms, seated players, matches and accepted-request
+  replay IDs after a restart. Only SHA-256 digests, not seat bearer tokens,
+  are saved in the database.
+- Browser remembers a token per tab for refresh/reconnection and renders
+  authoritative stale-action snapshots.
 
-Three rule gaps must be ruled on before the W3 match reducer is built. No rule has been guessed and no W3 work has started:
+## Remaining owner/product decisions
 
-1. Four-of-a-kind clear: does any four-of-a-kind clear the pile or only four 7s, and does the streak count consecutive pile cards or one player's cards?
-2. How a played 2 sets the next comparison, and whether a 2 counts toward a four-of-a-kind.
-3. Whether same-rank groups may be played under a seven-lock.
+- D-019 exact three-card tie has no approved tiebreaker (explicit error).
+- AFK, forfeit, timeout and spectator rules remain owner decisions.
+- Internet hosting, identity/security hardening, React Native mobile clients
+  and launch controls remain separate from the localhost preview.
+- Real multi-person browser playtesting, especially long 3/Joker chains and
+  third-card ties, must happen before any public deployment.
 
-## Working rules for this project
+## Run on Windows without PowerShell
 
-- Africa alone decides rules; OPEN items are never filled with conventional Shithead conventions.
-- Preserve completed milestones; no rewrites of W1/W2.
-- No code changes, commits, pushes or merges except through the Work → Repos approval flow with Africa's explicit approval.
+Use the canonical development branch after the repair PR is merged.
+Install Python 3.12+. In Command Prompt, once in the repo folder:
+
+    py -3 -m pip install -r requirements.txt
+
+Double-click "Start Shithead.bat". The app opens in a browser at
+http://127.0.0.1:8000. Keep the launcher window open to play.
+
+This starts localhost only and costs no hosting fees.

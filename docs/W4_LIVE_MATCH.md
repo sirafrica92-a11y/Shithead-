@@ -1,40 +1,47 @@
-# W4 second slice — in-memory card match preview
+# W4 browser-based Shithead — local preview
 
-This follows the **local lobby** slice. Server-authoritative gameplay runs
-only in RAM, localhost. Joining 2–6 seats and marking every seat ready starts
-a match. All seats see shared pile/face-up cards; only their authenticated
-socket receives their own hand and any blind-revealed 3/Joker.
+This is a live 2–6-player match server and browser prototype built with
+FastAPI and WebSockets. It is not a public deployment or production app.
 
-## Implemented
+## What works (in the completion PR)
 
-- 54 cards (2–4 seats) or 108 cards (5–6 seats), unique physical card IDs,
-  three cards dealt to each face-down, face-up and hand zone.
-- W3 ordinary play, pickup, face-down flips, 2/7/10, clears, refill and finishes.
-- W2 attack, counter, accept and empty-pile skip, with card ownership checks.
-- W1 turn resolution anchored to the original actor.
-- Ready → PLAYING; per-seat private views; indexed card actions; optimistic
-  room version, duplicate-request checks.
-- Web browser control panel for game actions. No outside accounts or billing.
+- 54/108 distinct physical cards dealt 3 face-down, 3 face-up and 3 in hand.
+- Owner D-019 start seat (lowest three ranks) and direction (lower adjacent
+  neighbour), except an unresolved exact third-card tie, which yields a
+  recoverable error instead of an invented rule.
+- Higher-or-equal ordinary play; grouping; special 2, 7, 10; four-of-a-kind;
+  hand refills; face-up/face-down; pickup; winner/loser logic.
+- Multi-card 3/Joker attacks, extra skips, redirects, acceptance and skipped
+  seats relative to the original actor.
+- Server-authoritative, versioned socket actions; private hand snapshots;
+  per-tab credentials; rejoin with existing seat and SQLite restart recovery.
+- Deterministic action-trace, conservation and endgame tests for seats 2–6.
 
-## Deliberate development gaps (NOT completed W4)
+## Run on Windows
 
-- Uses seat 0 and clockwise for match start, not D-019's lowest-card
-  starting-player/direction algorithm.
-- Attack/counter supports a single spent power per request, not all grouped
-  attack+extra-skip rules or fully merged blind-power counter paths.
-- No match persistence, AFK/forfeit policy, invitation security, authentication
-  beyond a development token, production rate limits or internet deployment.
-- No human-browser playtest, performance test, or complete automated full-match
-  simulation through all seat counts. Not ready for public play.
-- The W3 ordinary reducer and W1/W2 source remain unchanged.
+Install Python 3.12 or later and install requirements in Command Prompt:
 
-## Run on localhost
+    py -3 -m pip install -r requirements.txt
 
-```sh
-python -m pip install fastapi uvicorn httpx pytest
-python -m uvicorn server.app.main:app --host 127.0.0.1 --port 8000
-```
+Then double-click "Start Shithead.bat" or run "py -3 run_local.py".
 
-Visit http://127.0.0.1:8000. Use another browser window to join a second seat.
+Start a 2-player room, open a second browser tab, join with the same room
+code and another player name, and mark both players ready. Gameplay begins.
 
-Merge only after reviewing tests and owner approval. No hosting expense.
+SQLite data is saved in ~/.shithead/local_rooms.sqlite3 (Windows user home).
+Seat credentials are tab-specific; refreshing retains an existing seat. Data
+is stored locally, never uploaded to a hosting provider. Keep the original
+browser tab open so you can reconnect after server restart.
+
+## Product limitations
+
+- Remains localhost only (127.0.0.1). No cloud hosting, guest accounts,
+  matchmaking, mobile clients or paid services.
+- Exact three-card starting tie remains an owner decision, not guessed.
+- AFK, disconnect timeout/forfeit policy needs owner instruction. Disconnecting
+  leaves that seat occupied for a possible reconnect.
+- SQLite process is designed for a single local worker, not multi-worker
+  public matchmaking. A launch needs security and operational QA.
+- There is no substitute for two real humans testing the complete browser
+  experience; automated tests cover reducers, API/WebSocket, recovery and
+  representative legal traces, not every possible play.
