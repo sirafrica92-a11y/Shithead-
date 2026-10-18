@@ -28,7 +28,7 @@ def test_deal_card_conservation_and_private_views(n):
 def test_out_of_turn_action_is_rejected_without_state_change():
     match = make_match(2, seed=42)
     with pytest.raises(IllegalPlay):
-        apply_match_action(match, 1, "pickup")
+        apply_match_action(match, 1 - match.state.current, "pickup")
     assert_card_conservation(match)
 
 

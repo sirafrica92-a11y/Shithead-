@@ -112,6 +112,7 @@ function renderGame(g) {
 el("play-card").onclick=()=>sendGame("play",{indices:[...selection].sort((a,b)=>a-b)});
 el("use-power").onclick=()=>sendGame("power",{
   index:[...selection][0]??null,
+  indices:[...selection].sort((a,b)=>a-b),
   target:el("target").value===""?null:Number(el("target").value)
 });
 el("flip-card").onclick=()=>sendGame("flip",{index:[...selection][0]??0});
