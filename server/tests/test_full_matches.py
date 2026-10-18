@@ -20,11 +20,17 @@ def bot_step(match):
         return apply_match_action(match, actor, "flip", index=0)
     zone = "hand" if hand or st.deck else "face_up"
     cards = getattr(st.players[actor], zone)
-    for i in sorted(range(len(cards)),key=lambda i:(cards[i].rank in (0,3),cards[i].rank)):
-        if cards[i].rank in (0, 3):
-            continue
+    # Use the full same-rank group. This intentionally selects a different
+    # legal policy than the naive single-card bot (which may cycle forever).
+    candidates=sorted(
+        (rank for rank in {c.rank for c in cards} if rank not in (0,3)),
+        key=lambda rank: (-min(4,sum(c.rank==rank for c in cards)),
+                          rank != 10, rank),
+    )
+    for rank in candidates:
+        indices=[i for i,c in enumerate(cards) if c.rank==rank][:4]
         try:
-            return apply_match_action(match, actor, "play", indices=[i])
+            return apply_match_action(match, actor, "play", indices=indices)
         except IllegalPlay:
             pass
     for i,c in enumerate(cards):
@@ -48,4 +54,4 @@ def test_entire_match_ends_with_exactly_one_loser_and_no_lost_cards(players,seed
             assert len(set(match.state.finished))==players-1
             return
         match=bot_step(match)
-    pytest.fail(f"match stalled after 12000 turns (seats={players},seed={seed})")
+    pytest.fail(f"match stalled after 12000 turns (seats={players},seed={seed},finished={match.state.finished},pile={len(match.state.pile)},stock={len(match.state.deck)},hands={[len(p.hand) for p in match.state.players]})")
