@@ -28,7 +28,7 @@ def test_deal_card_conservation_and_private_views(n):
 def test_out_of_turn_action_is_rejected_without_state_change():
     match = make_match(2, seed=42)
     with pytest.raises(IllegalPlay):
-        apply_match_action(match, 1, "pickup")
+        apply_match_action(match, 1 - match.state.current, "pickup")
     assert_card_conservation(match)
 
 
@@ -36,18 +36,19 @@ def test_empty_pile_power_skips_next_player_and_removes_card():
     from dataclasses import replace
     from server.app.rules.ordinary import Card, PlayerState
     match = make_match(2, seed=5)
+    actor = match.state.current
     players = list(match.state.players)
-    original = players[0].hand[0]
-    player = players[0]
+    original = players[actor].hand[0]
+    player = players[actor]
     # Reconfigure the first player's card while preserving the physical card ID
-    players[0] = replace(player, hand=(replace(original, rank=3),) + player.hand[1:])
+    players[actor] = replace(player, hand=(replace(original, rank=3),) + player.hand[1:])
     # Conservation still checks IDs; this is a test fixture, not a live deck.
     match = replace(match, state=replace(match.state, players=tuple(players)))
-    updated = apply_match_action(match, 0, "power", index=0)
-    assert updated.state.current == 0
+    updated = apply_match_action(match, actor, "power", index=0)
+    assert updated.state.current == actor
     assert len(updated.power_removed) == 1
     assert updated.pending is None
-    assert len(updated.state.players[0].hand) == 3  # refilled from stock
+    assert len(updated.state.players[actor].hand) == 3  # refilled from stock
 
 
 def test_ordinary_action_consumes_owned_card_and_preserves_count():

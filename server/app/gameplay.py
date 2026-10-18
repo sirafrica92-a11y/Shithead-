@@ -1,9 +1,9 @@
 """W4 local, server-authoritative match composition.
 
 Uses frozen W1/W2 and the W3 ordinary reducer without changing their code.
-Development preview limits: one power card per attack/counter; seat 0 starts,
-clockwise. Canonical D-019 starting-seat/direction and grouped extra skips
-need owner-approved match integration before full W4 acceptance.
+Implements owner-approved D-019 starting seats and direction, grouped
+3/Joker attack skips (D-014), and exact physical-card conservation.
+A three-card comparison tie remains an explicit owner-decision gate.
 """
 from __future__ import annotations
 
@@ -31,6 +31,43 @@ class Match:
     pending: PileState | None = None
     power_removed: tuple[Card, ...] = ()
     power_actors: tuple[int, ...] = ()
+    start_seat: int = 0
+
+
+class UndecidedStartTie(IllegalPlay):
+    """Owner has not decided the D-019 tie beyond the third comparison."""
+
+
+def _three_lowest(player: PlayerState) -> tuple[int, int, int]:
+    """Compare starting cards: rank 2 low, normal ranks 3–A, unranked Joker last.
+
+    Jokers have no ordinary rank in D-012; this ordering is an implementation
+    assumption for the preview and is documented, not a new owner ruling.
+    """
+    ranks = sorted(99 if card.rank == 0 else card.rank for card in player.hand)
+    if len(ranks) != 3:
+        raise IllegalPlay("starting hand must contain three cards")
+    return tuple(ranks)
+
+
+def starting_seat_and_direction(players: tuple[PlayerState, ...]) -> tuple[int, int]:
+    """D-019: lexicographic lowest three cards; compare starter's neighbours."""
+    n = len(players)
+    if not 2 <= n <= 6:
+        raise ValueError("2–6 players required")
+    keys = [_three_lowest(p) for p in players]
+    best = min(keys)
+    winners = [i for i, value in enumerate(keys) if value == best]
+    if len(winners) != 1:
+        raise UndecidedStartTie("starting-seat tie after three comparisons")
+    starter = winners[0]
+    if n == 2:
+        return starter, 1
+    left = (starter - 1) % n
+    right = (starter + 1) % n
+    if keys[left] == keys[right]:
+        raise UndecidedStartTie("second-seat direction tie after three comparisons")
+    return starter, 1 if keys[right] < keys[left] else -1
 
 
 def make_match(n_players: int, seed: int | None = None) -> Match:
@@ -63,7 +100,11 @@ def make_match(n_players: int, seed: int | None = None) -> Match:
             zones[i][zone] = tuple(deck[offset:offset + 3])
             offset += 3
     players = tuple(PlayerState(**z) for z in zones)
-    return Match(OrdinaryState(players=players, deck=tuple(deck[offset:])))
+    first, direction = starting_seat_and_direction(players)
+    return Match(OrdinaryState(
+        players=players, deck=tuple(deck[offset:]),
+        current=first, direction=direction,
+    ), start_seat=first)
 
 
 def _player_zone(state: OrdinaryState, player: PlayerState) -> str:
@@ -89,26 +130,41 @@ def _valid_target(state: OrdinaryState, actor: int, target: object) -> int:
     return target
 
 
-def _take_power(state: OrdinaryState, seat: int, index: object) -> tuple[OrdinaryState, Card]:
-    pending = state.pending_blind_power
-    if pending is not None:
-        if pending.actor != seat:
+def _take_powers(
+    state: OrdinaryState, seat: int, index: object,
+    indices: object = None,
+) -> tuple[OrdinaryState, tuple[Card, ...]]:
+    """Consume a validated set of physical 3/Joker cards atomically."""
+    blind = state.pending_blind_power
+    if blind is not None:
+        if blind.actor != seat:
             raise IllegalPlay("wrong actor for blind power")
-        return replace(state, pending_blind_power=None), pending.card
+        if indices is not None and indices != []:
+            raise IllegalPlay("a blind power is exactly one committed card")
+        return replace(state, pending_blind_power=None), (blind.card,)
+
     player = state.players[seat]
     zone = _player_zone(state, player)
     if zone == "face_down":
         raise IllegalPlay("blind face-down powers must be revealed first")
-    available = getattr(player, zone)
-    if type(index) is not int or not 0 <= index < len(available):
-        raise IllegalPlay("choose a power card you own")
-    card = available[index]
-    if card.rank not in POWERS:
-        raise IllegalPlay("selected card is not a 3/Joker")
-    remaining = available[:index] + available[index + 1:]
+    source = getattr(player, zone)
+    chosen = indices if indices is not None else [index]
+    if (
+        not isinstance(chosen, list) or not chosen
+        or len(chosen) > len(source)
+        or any(type(i) is not int or i < 0 or i >= len(source) for i in chosen)
+        or len(set(chosen)) != len(chosen)
+    ):
+        raise IllegalPlay("select distinct owned 3/Joker cards")
+    cards = tuple(source[i] for i in chosen)
+    if any(c.rank not in POWERS for c in cards):
+        raise IllegalPlay("selected cards must all be 3/Joker")
+    selected = set(chosen)
     players = list(state.players)
-    players[seat] = replace(player, **{zone: remaining})
-    return replace(state, players=tuple(players)), card
+    players[seat] = replace(
+        player, **{zone: tuple(c for i, c in enumerate(source) if i not in selected)}
+    )
+    return replace(state, players=tuple(players)), cards
 
 
 def _power_code(card: Card) -> str:
@@ -151,46 +207,55 @@ def _resolve_power(match: Match, chosen_next: int) -> Match:
     return replace(match, state=state, pending=None, power_actors=())
 
 
-def _start_power(match: Match, seat: int, index: object, target: object) -> Match:
+def _start_power(
+    match: Match, seat: int, index: object, target: object,
+    indices: object = None,
+) -> Match:
     state = match.state
     if seat != state.current:
         raise IllegalPlay("not your turn")
-    next_state, card = _take_power(state, seat, index)
+    # Validate target before committing any card.
+    recipient = _valid_target(state, seat, target) if state.pile else None
+    next_state, cards = _take_powers(state, seat, index, indices)
     order = _seat_order(state)
     passed = initial_state(order, str(seat))
-    if state.pile:
-        recipient = _valid_target(state, seat, target)
-        passed = reduce(
-            passed, Attack3Joker(target=str(recipient), cards=(_power_code(card),)),
-            actor=str(seat),
-        )
-        return replace(
-            match, state=next_state, pending=passed,
-            power_removed=match.power_removed + (card,),
-            power_actors=(seat,),
-        )
-
-    passed = reduce(passed, EmptyPileSkip(cards=(_power_code(card),)), actor=str(seat))
-    selected = int(resolve_next_actor(order, str(seat), None))
-    return _resolve_power(
-        replace(match, state=next_state,
-                power_removed=match.power_removed + (card,), power_actors=(seat,)),
-        selected,
+    spent = tuple(_power_code(c) for c in cards)
+    updated = replace(
+        match, state=next_state,
+        power_removed=match.power_removed + cards,
+        power_actors=(seat,),
     )
+    if state.pile:
+        passed = reduce(
+            passed, Attack3Joker(
+                target=str(recipient), cards=(spent[0],),
+                extra_skip_cards=spent[1:],
+            ), actor=str(seat),
+        )
+        return replace(updated, pending=passed)
+    passed = reduce(passed, EmptyPileSkip(cards=spent), actor=str(seat))
+    # The first empty-pile power skips the next seat. Each additional
+    # committed physical power skips one more, all in one atomic action.
+    selected = int(resolve_next_actor(
+        order, str(seat), None, extra_skips=len(spent)-1,
+    ))
+    return _resolve_power(updated, selected)
 
 
 def _counter(match: Match, seat: int, index: object, target: object) -> Match:
     assert match.pending is not None
     recipient = _valid_target(match.state, seat, target)
-    next_state, card = _take_power(match.state, seat, index)
+    next_state, cards = _take_powers(match.state, seat, index)
+    if len(cards) != 1:
+        raise IllegalPlay("a counter must commit exactly one 3/Joker")
     next_pass = reduce(
         match.pending,
-        Counter(new_target=str(recipient), cards=(_power_code(card),)),
+        Counter(new_target=str(recipient), cards=(_power_code(cards[0]),)),
         actor=str(seat),
     )
     return replace(
         match, state=next_state, pending=next_pass,
-        power_removed=match.power_removed + (card,),
+        power_removed=match.power_removed + cards,
         power_actors=match.power_actors + (seat,),
     )
 
@@ -233,7 +298,7 @@ def apply_match_action(match: Match, seat: int, kind: str,
     if seat != state.current:
         raise IllegalPlay("not your turn")
     if kind == "power":
-        return _start_power(match, seat, index, target)
+        return _start_power(match, seat, index, target, indices=indices)
     if state.pending_blind_power is not None:
         raise IllegalPlay("resolve the revealed 3/Joker power first")
     if kind == "pickup":
@@ -277,7 +342,9 @@ def public_match_view(match: Match) -> dict[str, Any]:
             for i, p in enumerate(st.players)
         ],
         "pending_blind_power": st.pending_blind_power is not None,
-        "development_start_rule": "seat 0 clockwise (D-019 not yet integrated)",
+        "starter_seat": match.start_seat,
+        "direction": st.direction,
+        "starting_rule": "D-019 lowest three, then neighbour direction",
     }
 
 
