@@ -86,3 +86,36 @@ def test_grouped_nonempty_attack_extra_skip_survives_counter():
     finished = apply_match_action(countered, new_target, "accept")
     assert_card_conservation(finished)
     assert finished.pending is None
+
+
+def test_unresolved_starting_tie_keeps_websocket_lobby_recoverable(monkeypatch):
+    from fastapi.testclient import TestClient
+    import server.app.main as server_main
+
+    def tied(_):
+        raise UndecidedStartTie("three-card tie needs owner decision")
+
+    monkeypatch.setattr(server_main, "make_match", tied)
+    with TestClient(server_main.create_app()) as client:
+        room = client.post("/api/rooms", json={"capacity": 2}).json()["room_id"]
+        a = client.post(f"/api/rooms/{room}/join", json={"name": "A"}).json()
+        b = client.post(f"/api/rooms/{room}/join", json={"name": "B"}).json()
+        with client.websocket_connect(f"/ws/{room}") as ws_a:
+            ws_a.send_json({"type": "auth", "token": a["token"]})
+            first = ws_a.receive_json()
+            with client.websocket_connect(f"/ws/{room}") as ws_b:
+                ws_b.send_json({"type": "auth", "token": b["token"]})
+                second = ws_b.receive_json()
+                first = ws_a.receive_json()
+                ws_a.send_json({"type": "ready", "ready": True,
+                                "expected_version": first["version"], "request_id": "first"})
+                first = ws_a.receive_json()
+                second = ws_b.receive_json()
+                ws_b.send_json({"type": "ready", "ready": True,
+                                "expected_version": second["version"], "request_id": "second"})
+                failure = ws_b.receive_json()
+                assert failure["reasonCode"] == "starting_tie_unresolved"
+                assert failure["stateSnapshot"]["phase"] == "LOBBY"
+                assert failure["stateSnapshot"]["players"][1]["ready"] is False
+                ws_b.send_json({"type": "sync"})
+                assert ws_b.receive_json()["phase"] == "LOBBY"
