@@ -10,6 +10,7 @@ import asyncio
 import json
 import secrets
 import sqlite3
+import threading
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
@@ -73,10 +74,11 @@ class RoomStore:
         self.lock = asyncio.Lock()
         self.max_rooms = max_rooms
         self.db: sqlite3.Connection | None = None
+        self.db_lock = threading.RLock()
         if db_path is not None:
             path = Path(db_path).expanduser()
             path.parent.mkdir(parents=True, exist_ok=True)
-            self.db = sqlite3.connect(str(path))
+            self.db = sqlite3.connect(str(path), check_same_thread=False)
             self.db.execute("CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, payload TEXT NOT NULL)")
             self.db.commit()
             for room_id, payload in self.db.execute("SELECT id, payload FROM rooms"):
@@ -107,7 +109,7 @@ class RoomStore:
             ],
             "match": dump_match(room.match),
         }
-        with self.db:
+        with self.db_lock, self.db:
             self.db.execute(
                 "INSERT OR REPLACE INTO rooms (id, payload) VALUES (?, ?)",
                 (room.id, json.dumps(payload, separators=(",", ":"))),
