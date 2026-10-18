@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import WebSocket
+from server.app.gameplay import Match, private_match_view, public_match_view
 
 
 @dataclass
@@ -29,6 +30,7 @@ class Room:
     capacity: int
     seats: list[Seat] = field(default_factory=list)
     version: int = 0
+    match: Match | None = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     def public_view(self) -> dict[str, Any]:
@@ -36,8 +38,9 @@ class Room:
             "type": "room_state",
             "room_id": self.id,
             "capacity": self.capacity,
-            "phase": "LOBBY",
+            "phase": ("LOBBY" if self.match is None else public_match_view(self.match)["phase"]),
             "version": self.version,
+            "game": public_match_view(self.match) if self.match is not None else None,
             "all_ready": len(self.seats) == self.capacity
             and all(seat.ready for seat in self.seats),
             "players": [
@@ -50,6 +53,14 @@ class Room:
                 for i, seat in enumerate(self.seats)
             ],
         }
+
+    def view_for(self, index: int) -> dict[str, Any]:
+        """Private owner snapshot; only the authenticated seat sees its hand."""
+        out = self.public_view()
+        out["you"] = index
+        if self.match is not None:
+            out["game"] = private_match_view(self.match, index)
+        return out
 
 
 class RoomStore:
@@ -79,10 +90,10 @@ class RoomStore:
 async def broadcast(room: Room, *, exclude: WebSocket | None = None) -> None:
     """Send a fresh public snapshot; never include bearer tokens."""
     async with room.lock:
-        view = room.public_view()
-        sockets = [s.socket for s in room.seats
+        sockets = [(s.socket, room.view_for(i))
+                   for i, s in enumerate(room.seats)
                    if s.socket is not None and s.socket is not exclude]
-    for socket in sockets:
+    for socket, view in sockets:
         try:
             await socket.send_json(view)
         except (RuntimeError, OSError):
