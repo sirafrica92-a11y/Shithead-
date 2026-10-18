@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shithead — Private Lobby</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui;background:#121d22;color:#fafafa}
+body{margin:0;max-width:680px;padding:24px 20px 70px;margin-inline:auto}
+h1{font-size:2rem;margin-bottom:8px}p{color:#bbc9ca;line-height:1.55}
+.panel{background:#1e3035;padding:18px;border-radius:14px;margin:15px 0}
+input,button,select{font:inherit;padding:12px;border-radius:9px;border:1px solid #608083}
+input,select{background:#142329;color:#fff;max-width:100%;box-sizing:border-box}
+button{background:#f38a3e;border:0;color:#151718;font-weight:700;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+#players li{margin:10px 0}#status{min-height:24px;color:#e7a36c}
+small{color:#b5c2c4}
+</style>
+</head>
+<body>
+<h1>Shithead <small>Local multiplayer preview</small></h1>
+<p>W4 milestone: create a room, invite a friend using its code, and see seats update live. The actual card game is not connected yet.</p>
+<div class="panel">
+<h2>Create a room</h2>
+<div class="row"><label>Players <select id="capacity"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label><button id="create">Create room</button></div>
+</div>
+<div class="panel">
+<h2>Join a room</h2>
+<div class="row"><input id="room" placeholder="Room code" aria-label="Room code"><input id="name" placeholder="Your name" maxlength="32" aria-label="Your name"><button id="join">Join</button></div>
+</div>
+<div class="panel" id="lobby" hidden>
+<h2>Lobby <small id="room-label"></small></h2>
+<ul id="players"></ul>
+<div class="row"><button id="ready" disabled>Ready</button><small id="phase"></small></div>
+<p><small>The lobby runs only while the local server stays open. Don't publish this preview to the internet.</small></p>
+</div>
+<p id="status" role="status" aria-live="polite"></p>
+<script>
+const el=(id)=>document.getElementById(id);
+let ws, token, seatIndex=-1, snap;
+function status(s){el("status").textContent=s}
+function render(x){
+  if(x.type!=="room_state")return;
+  snap=x;
+  if(typeof x.you==="number")seatIndex=x.you;
+  el("lobby").hidden=false;
+  el("room-label").textContent=x.room_id;
+  const ul=el("players");ul.replaceChildren();
+  x.players.forEach((p,i)=>{
+    const li=document.createElement("li");
+    li.textContent=(i+1)+". "+p.name+(p.ready?" — Ready":" — Not ready")+(p.connected?" • Online":" • Offline")+(i===seatIndex?" (you)":"");
+    ul.appendChild(li);
+  });
+  el("phase").textContent=x.all_ready?"All seated players ready! Gameplay not yet connected.":"Waiting for all "+x.capacity+" seats";
+  el("ready").disabled=!(ws&&ws.readyState===1&&seatIndex>=0);
+  el("ready").textContent=(x.players[seatIndex]?.ready?"Not ready":"Ready");
+}
+async function request(path,data){
+  const response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+  const obj=await response.json();
+  if(!response.ok)throw Error(typeof obj.detail==="string"?obj.detail:"Request failed");
+  return obj;
+}
+el("create").onclick=async()=>{
+  try{const r=await request("/api/rooms",{capacity:Number(el("capacity").value)});el("room").value=r.room_id;status("Room created. Copy the code to invite another player.");}
+  catch(e){status(e.message)}
+};
+el("join").onclick=async()=>{
+  try{
+    const room=el("room").value.trim(),name=el("name").value.trim();
+    const r=await request("/api/rooms/"+encodeURIComponent(room)+"/join",{name});
+    token=r.token;seatIndex=r.seat;
+    if(ws)ws.close();
+    ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws/"+encodeURIComponent(room));
+    ws.onopen=()=>{ws.send(JSON.stringify({type:"auth",token}));status("Connected to room.");};
+    ws.onmessage=(m)=>{const x=JSON.parse(m.data);if(x.type==="error")status("Please refresh: "+x.reasonCode);else render(x)};
+    ws.onclose=()=>{el("ready").disabled=true;status("Disconnected. Rejoin using your room code and player name (reconnection API is available for existing seat tokens).")};
+  }catch(e){status(e.message)}
+};
+el("ready").onclick=()=>{
+  if(!snap||ws.readyState!==1)return;
+  ws.send(JSON.stringify({type:"ready",ready:!snap.players[seatIndex]?.ready,expected_version:snap.version,request_id:crypto.randomUUID()}));
+};
+</script></body></html>

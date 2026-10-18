@@ -1,0 +1,184 @@
+"""FastAPI W4 local-room prototype. Game actions remain W3 integration work."""
+
+from __future__ import annotations
+
+import asyncio
+import hmac
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
+
+from server.app.lobby import RoomStore, Seat, broadcast, remember_request
+
+
+class CreateRoom(BaseModel):
+    capacity: int = Field(default=2, ge=2, le=6)
+
+
+class JoinRoom(BaseModel):
+    name: str = Field(min_length=1, max_length=32)
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="Shithead local multiplayer lobby", version="0.1-w4")
+    store = RoomStore()
+    app.state.room_store = store
+
+    async def get_room(room_id: str):
+        room = await store.get(room_id)
+        if room is None:
+            raise HTTPException(status_code=404, detail="room not found")
+        return room
+
+    @app.get("/")
+    async def home():
+        return FileResponse(Path(__file__).parent / "static" / "index.html")
+
+    @app.post("/api/rooms", status_code=201)
+    async def create_room(payload: CreateRoom):
+        try:
+            room = await store.create(payload.capacity)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from None
+        return {"room_id": room.id, "capacity": room.capacity}
+
+    @app.get("/api/rooms/{room_id}")
+    async def room_snapshot(room_id: str):
+        room = await get_room(room_id)
+        async with room.lock:
+            return room.public_view()
+
+    @app.post("/api/rooms/{room_id}/join", status_code=201)
+    async def join_room(room_id: str, payload: JoinRoom):
+        room = await get_room(room_id)
+        name = payload.name.strip()
+        if not name or any(ord(c) < 32 for c in name):
+            raise HTTPException(status_code=422, detail="enter a valid player name")
+        async with room.lock:
+            if len(room.seats) == room.capacity:
+                raise HTTPException(status_code=409, detail="room is full")
+            seat = Seat(name=name, token=__import__("secrets").token_urlsafe(24))
+            room.seats.append(seat)
+            room.version += 1
+            index = len(room.seats) - 1
+        await broadcast(room)
+        return {"room_id": room.id, "seat": index, "token": seat.token}
+
+    @app.websocket("/ws/{room_id}")
+    async def room_socket(websocket: WebSocket, room_id: str):
+        # Same-origin browser access only; seat ownership still requires a token.
+        origin = websocket.headers.get("origin")
+        if origin and urlsplit(origin).netloc != websocket.headers.get("host"):
+            await websocket.close(code=1008)
+            return
+        room = await store.get(room_id)
+        if room is None:
+            await websocket.close(code=1008)
+            return
+        await websocket.accept()
+        try:
+            auth = await asyncio.wait_for(websocket.receive_json(), timeout=10)
+        except (WebSocketDisconnect, ValueError, asyncio.TimeoutError):
+            await websocket.close(code=1008)
+            return
+        if not isinstance(auth, dict) or auth.get("type") != "auth" or not isinstance(auth.get("token"), str):
+            await websocket.close(code=1008)
+            return
+
+        old_socket = None
+        index = None
+        async with room.lock:
+            for i, seat in enumerate(room.seats):
+                if hmac.compare_digest(seat.token, auth["token"]):
+                    index = i
+                    old_socket = seat.socket
+                    seat.socket = websocket
+                    room.version += 1
+                    view = room.public_view()
+                    break
+        if index is None:
+            await websocket.close(code=1008)
+            return
+        if old_socket is not None and old_socket is not websocket:
+            try:
+                await old_socket.close(code=4000)
+            except (RuntimeError, OSError):
+                pass
+        await websocket.send_json({**view, "you": index})
+        await broadcast(room, exclude=websocket)
+
+        try:
+            while True:
+                try:
+                    action = await websocket.receive_json()
+                except ValueError:
+                    await websocket.send_json({"type": "error", "reasonCode": "invalid_json"})
+                    continue
+                if not isinstance(action, dict):
+                    await websocket.send_json({"type": "error", "reasonCode": "invalid_action"})
+                    continue
+
+                if action.get("type") == "sync":
+                    async with room.lock:
+                        view = room.public_view()
+                    await websocket.send_json({**view, "you": index})
+                    continue
+
+                if action.get("type") != "ready":
+                    await websocket.send_json({"type": "error", "reasonCode": "unknown_action"})
+                    continue
+
+                request_id = action.get("request_id")
+                expected = action.get("expected_version")
+                ready = action.get("ready")
+                if (not isinstance(request_id, str) or not 1 <= len(request_id) <= 64
+                        or type(expected) is not int or type(ready) is not bool):
+                    await websocket.send_json({"type": "error", "reasonCode": "invalid_action"})
+                    continue
+
+                changed = False
+                error = None
+                async with room.lock:
+                    seat = room.seats[index]
+                    if seat.socket is not websocket:
+                        error = "seat_reconnected"
+                    elif request_id in seat.request_ids:
+                        pass
+                    elif expected != room.version:
+                        error = "stale_version"
+                    else:
+                        remember_request(seat, request_id)
+                        if seat.ready != ready:
+                            seat.ready = ready
+                            room.version += 1
+                            changed = True
+                    view = room.public_view()
+                if error:
+                    await websocket.send_json({
+                        "type": "error", "reasonCode": error, "stateSnapshot": view
+                    })
+                elif changed:
+                    await broadcast(room)
+                else:
+                    await websocket.send_json(view)
+        except WebSocketDisconnect:
+            pass
+        finally:
+            async with room.lock:
+                seat = room.seats[index]
+                if seat.socket is websocket:
+                    seat.socket = None
+                    room.version += 1
+                    notify = True
+                else:
+                    notify = False
+            if notify:
+                await broadcast(room)
+
+    return app
+
+
+app = create_app()
