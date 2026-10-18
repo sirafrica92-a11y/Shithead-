@@ -103,6 +103,28 @@ No player draws replacement cards during the middle of a declared action, group 
 
 Playing a 7 means the NEXT ordinary play must be rank 7 OR LOWER. Another 7 is therefore legal on a 7 and re-imposes the same restriction on the following player. Once a legal non-7 ordinary card is played, the special 7 restriction has been satisfied and normal comparison resumes from that new effective top card. Existing 2/10 overrides remain valid. Never describe this as "lower than 7" — that would incorrectly make another 7 illegal and conflict with the confirmed four-7 clear.
 
+## W3 ordinary-play reducer integration
+
+The W3 reducer (`server/app/rules/ordinary.py`) is the executable implementation of ordinary (non-pass) plays within this contract. It is pure and deterministic — `reduce(state, validatedIntent) -> (newState, events)` per the soft-lock requirements above — with no persistence and no network access, and it never mutates its input state.
+
+**State shape.** The reducer consumes the shared `MatchState` fields defined above: `phase`, `players[]` (including eligibility/finished markers), `activePlayerId`, `turnAnchorPlayerId`, `scheduledNextPlayerId`, `pile[]`, `removedFromGame[]`, `hands{}`, `faceUp{}`, `faceDown{}`, `drawPile[]`, `activeSevenConstraint`, `consecutiveRankCounter`, `turnVersion` and `actionHistory[]`. It reads but never writes `pendingPass`; 3/Joker plays are delegated to the W1/W2 modules (below) rather than resolved here.
+
+**Action flow.** Every ordinary action resolves in a fixed order:
+
+1. **Play.** Validate that the actor is `activePlayerId`, that the card(s) come from the actor's currently legal zone (see below), and that the play is legal against the effective top card and `activeSevenConstraint`; move the card(s) from that zone onto `pile[]`.
+2. **Resolve locks and clears.** A 7 sets `activeSevenConstraint` for the next actor (rank 7 or lower; D-013/O-03). A 2 resets the effective rank for the following ordinary play and clears any active seven-lock, while still incrementing `consecutiveRankCounter` — a 2 therefore counts toward a four-of-a-kind clear. A 10 clears the pile to `removedFromGame[]` and grants the same actor an extra turn. Four of a kind on top of the pile clears regardless of how many players contributed those cards, likewise grants the same actor an extra turn, and resets `consecutiveRankCounter`.
+3. **Refill.** Only after the play and all of its effects have resolved does the actor draw from `drawPile[]`, restoring the hand to its required size subject to remaining stock (D-016/O-06). Cards drawn now cannot retroactively join the action that just ended.
+4. **Turn advancement.** After a clear (10 or four of a kind) the same actor keeps the turn (extra turn, per the phase table); otherwise the W1 turn module computes the next eligible player relative to the actor and updates `turnAnchorPlayerId` / `scheduledNextPlayerId`. A forced pickup (no playable card, or a failed blind play) also advances to the next eligible actor relative to the actor.
+
+**Zone handling.** The legal source zone follows the actor's stage: play from `hand` while it holds cards; once the hand is empty, play from `faceUp`; once both are empty, play blind from `faceDown`. A blind face-down play reveals the top face-down card as part of the action; if that card cannot legally be played on the current pile (including any seven-lock), the actor returns the revealed card to hand and picks up the entire pile — the blind face-down pickup — after which the turn advances. Finish detection runs once the action has fully resolved: a player whose hand, face-up and face-down zones are all empty is marked finished and leaves the eligibility set; when the match finish condition is validated, `phase` becomes `FINISHED`.
+
+**Interaction with W1/W2.** W3 composes with the W1 turn module and the W2 pass module and leaves both unchanged:
+
+- **W1 (turn):** all "who acts next" computation — including after extra turns and forced pickups — is delegated to the W1 turn module, so ordinary plays and pass outcomes share the single anchor-based advancement convention (`turnAnchorPlayerId`, `scheduledNextPlayerId`). W3 bumps `turnVersion` and appends to `actionHistory[]` exactly once per action, preserving idempotency and replay determinism.
+- **W2 (pass):** W3 never creates, mutates or resolves `pendingPass` and never enters `PILE_PASS_DECISION`. A 3/Joker play is outside ordinary scope: control transfers to the W2 pass module, which owns the decision chain until it settles. W3's lock/clear bookkeeping (`activeSevenConstraint`, `consecutiveRankCounter`, pile contents) is carried in the state the pass module operates on, so ordinary constraints resume consistently when the chain resolves and play returns to `PLAYING`.
+
+`server/tests/test_w1_w2_composition.py` composes W3 with the unchanged W1/W2 modules to verify this boundary: ordinary plays stay in `PLAYING` under the phase table above, pass attacks move through `PILE_PASS_DECISION`, and anchor-based advancement is identical on both paths.
+
 ## Ambiguity stops
 
 For points labelled OPEN in `docs/OPEN_DECISIONS.md`, implement interface/stub or a failing pending test only; do not quietly assign conventional Shithead rules.
