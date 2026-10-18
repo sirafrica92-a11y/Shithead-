@@ -36,6 +36,8 @@ See `docs/SCENARIO_MATRIX.md` for explicit 2–6-seat input/output rows and whic
 | AT-22 | Normal vs Shit Face overlay on same action stream | **identical** engine state and outcomes |
 | AT-23 | Crafted action or client snapshot tries to reveal opponent's hand | no hidden card exposure |
 | AT-24 | 6-seat randomly generated legal action traces | invariants always hold; no actionless nonterminal state |
+| AT-25 | Match start (D-019): known dealt hands | the player holding the lowest card starts; ties broken by second-lowest then third-lowest cards |
+| AT-26 | Direction establishment (D-019): starter fixed, left/right neighbours' cards known | the neighbour winning the three-card comparison plays second, and the direction of play is set so that this player is next in the turn order after the starter for the remainder of the game |
 
 ## Pending-owner tests (must not be marked passed by default)
 
@@ -48,6 +50,7 @@ See `docs/SCENARIO_MATRIX.md` for explicit 2–6-seat input/output rows and whic
 - Ordinary equal-rank card legality and group play.
 - Deal, Joker count and blind face-down use.
 - AFK, disconnect, timeout, surrender and finish rules.
+- Residual starting-procedure tie still standing after the third card comparison (D-019 sub-case) — the owner gave no rule; assert an explicit owner-decision gate, never a guessed default.
 
 ## Test depth
 

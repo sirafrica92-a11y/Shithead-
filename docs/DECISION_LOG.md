@@ -14,19 +14,20 @@ Only a direct decision from Africa changes the game's canonical rules. This regi
 | D-008 | CONFIRMED | React Native iOS/Android was selected as mobile client target; browser-first is only a prototype recommendation | Owner Part One |
 | D-009 | CONFIRMED | Shit Face is optional and cosmetic; no drinking consequences affect the engine | Owner Part One |
 | D-010 | CONFIRMED | SOUL will lead as she gains tools, with Claude Code initially doing the technical steps she cannot perform | Owner's 16 Oct project discussion |
+| D-011 | CONFIRMED | Deal: every player gets 3 face-down, 3 face-up, 3 in hand. 2-4 players: one 52-card deck + 2 Jokers. 5-6 players: two decks + 4 Jokers. Starting-player selection uses an existing confirmed rule if one exists; if the docs do not define who starts, ONLY that sub-question stays open. | Owner ruling O-01, approved with amendment |
+| D-012 | CONFIRMED | Ordinary legality is HIGHER-OR-EQUAL to the current effective top card unless a power-card rule overrides it. Multiple cards of the same rank may be played together as one action. Rank order is 3,4,5,6,7,8,9,10,J,Q,K,A, Ace high. Documented power-card behaviour overrides normal comparison. | Owner ruling O-02 |
+| D-013 | CONFIRMED | Seven-lock: playing a 7 means the NEXT ordinary play must be rank 7 OR LOWER. Another 7 is legal on a 7 and re-imposes the restriction. Once a legal non-7 ordinary card is played the restriction lifts and normal comparison resumes from that new top. 2/10 overrides remain. Never worded as "lower than 7" (would forbid a 7 on a 7 and break the four-7 clear). | Owner ruling O-03, precise wording |
+| D-014 | CONFIRMED | Extra skips declared with an attack stay attached through counter/redirect chains, do NOT resolve mid-chain; a counter does not erase them. Once the chain settles, resolve the collector outcome first then apply the validated skips. Turn advancement stays anchored to the ORIGINAL actor per W1. | Owner ruling O-04 |
+| D-015 | CONFIRMED | On an empty pile a player MAY elect to spend a 3/Joker for its skip effect even while holding a playable ordinary card (optional). The spent card follows the confirmed removal-from-game rule. | Owner ruling O-05 |
+| D-016 | CONFIRMED | Refill timing: no player draws mid action/group/attack/counter-chain. Resolve the ENTIRE action/chain first, then affected players refill from stock back to 3 (only enough to restore hand size, subject to stock). Cards drawn after resolution cannot join the action that just ended. | Owner ruling O-06, clarified |
+| D-017 | CONFIRMED | Endgame ordered transition HAND -> FACE-UP -> FACE-DOWN. No voluntary face-up use while hand cards remain; no face-down use while face-up remain. Face-down played blindly one at a time; a failing blind card makes the player collect the pile into HAND and resume hand play until empty before returning to table cards. No free choice between hand and table zones. | Owner ruling O-07 |
+| D-018 | CONFIRMED | A player is finished/out when no cards remain in hand, face-up or face-down after their final play resolves. Finished players are permanently removed from turn rotation. Play continues until only one eligible player remains; that final player is the loser / shithead. The match does NOT end when the first player finishes. | Owner ruling O-08 |
+| D-019 | CONFIRMED | Starting player and direction (resolves O-01a): the player holding the lowest card starts the game. Ties: compare the tied players' second-lowest cards; if still tied, their third-lowest cards. For the second turn, compare the lowest cards of the players immediately left and right of the starter, using the same three-card tie-breaking procedure. The winner of that comparison plays second, establishing the direction of play for the remainder of the game (direction is set so that the winner is next in the turn order after the starter), subject to existing confirmed turn-order mechanics. No rule for a tie remaining after the third card was given; that sub-case stays open rather than being invented. | Owner ruling O-01a |
 
 ## Open decision IDs
 
 | ID | Needs owner clarification | Why it matters |
 | --- | --- | --- |
-| O-01 | Deal, stock, number of decks and Jokers | Realistic card inventories and valid initial state |
-| O-02 | Equal rank, group plays and rank order including Ace/Jack | Basic legality |
-| O-03 | Seven-lock exact comparison, duration and four-7 exception | Power-card compatibility |
-| O-04 | Multi-card attack + counter chain, timing and skip ordering | Avoid deadlocks, double spending and surprises |
-| O-05 | May an empty-pile 3/Joker skip when another playable card is available? | Preserve strategic constraint |
-| O-06 | Refill timing after played/countered 3/Joker and after grouped cards | Card conservation |
-| O-07 | Endgame transition and face-down failure handling | Finishing a real match |
-| O-08 | Win/loss/last-player conditions and elimination effect on seat rotation | Terminal state |
 | O-09 | AFK/disconnect, timeout, reconnect and forfeit | Multiplayer recovery |
 | O-10 | LOBBY/FINISHED ownership nullability (Part One says exactly one actor "at all times") | Model state invariant |
 | O-11 | Authentication, persistence, hosting and prototype platform | Public release |
@@ -34,6 +35,6 @@ Only a direct decision from Africa changes the game's canonical rules. This regi
 
 ## How to add a decision
 
-`D-011 | CONFIRMED | Precise owner decision, with date | Owner message / review URL`
+`D-020 | CONFIRMED | Precise owner decision, with date | Owner message / review URL`
 
 Also update `docs/RULES.md`, `docs/OPEN_DECISIONS.md`, `docs/TURN_ENGINE.md` and tests that depend on it. Append; never silently replace an older entry or pretend one was approved.

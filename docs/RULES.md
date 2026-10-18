@@ -6,15 +6,19 @@
 ## Goal and players
 
 - **CONFIRMED:** Shithead is intended for 2–6 players; "Shit Face" is an optional drinking-mode presentation overlay, never a change to gameplay.
-- **OPEN:** Exact win/loss scoring and loser naming, deck composition and number of Jokers, starting player, direction changes (if any), initial deal and hand/face-up/face-down configuration, legal choice and tie rules.
+- **CONFIRMED (D-018):** A player is finished/out when no cards remain in hand, face-up or face-down after their final play fully resolves. Finished players are permanently removed from turn rotation. Play continues until only one eligible player remains; that final player is the loser ("shithead"). The match does **not** end when the first player finishes.
+- **CONFIRMED (D-011):** Every player is dealt 3 face-down, 3 face-up and 3 cards in hand. 2–4 players: one standard 52-card deck plus 2 Jokers. 5–6 players: two standard 52-card decks plus 4 Jokers.
+- **CONFIRMED (D-019):** The player holding the lowest card starts the game. Ties are broken by comparing the tied players' second-lowest cards, then their third-lowest cards if still tied. For the second turn, the lowest cards of the players immediately left and right of the starter are compared with the same three-card tie-breaking procedure; the winner plays second, establishing the direction of play for the remainder of the game (the direction is set so that this player is next in the turn order after the starter), subject to existing confirmed turn-order mechanics.
+- **OPEN (D-019 sub-case):** The owner gave no rule for a tie that remains after the third card comparison; that sub-case stays unresolved and must not be guessed. Also open: direction changes during play beyond the initial establishment (none are assumed).
 
 ## Ordinary play
 
-- **CONFIRMED:** On a normal pile, play a card **higher** than the effective top rank; power cards may ignore the rank restriction as specified below.
+- **CONFIRMED (D-012):** On a normal pile, play a card **higher-or-equal** to the current effective top rank, unless a power-card rule overrides it. Normal rank order is 3,4,5,6,7,8,9,10,J,Q,K,A with Ace high.
+- **CONFIRMED (D-012):** Multiple cards of the same rank may be played together as one action.
 - **CONFIRMED:** If a player has no valid play, they pick up the playing pile, and their turn ends immediately.
-- **CONFIRMED:** While the draw stack has cards, a player automatically draws back up toward **three cards in hand** after plays, if possible.
+- **CONFIRMED (D-016):** No player draws replacement cards during the middle of a declared action, group play, attack or counter chain. The entire action/chain resolves first; only then do affected players draw back up toward **three cards in hand** (only enough to restore hand size, subject to remaining stock). Cards drawn after resolution cannot join or continue the action that just ended.
 - **CONFIRMED:** Four consecutive cards of identical rank clear the pile; the player who completes the four plays again.
-- **OPEN:** Whether equal ranks are normally permitted (the owner's Part 1 says *higher*, not *equal*), whether multiple identical cards may be played together, how rank runs are counted around special cards, and how draws interact with a 3/Joker attack and skips.
+- **OPEN:** How rank runs are counted around special cards.
 
 ## Power cards
 
@@ -25,8 +29,9 @@
 - **CONFIRMED:** The target has a real choice: **accept** the pile, even if holding a 3/Joker, or **counter** using a 3/Joker, remove that counter from the game, and select any other player as the new target. The chain may redirect back to a previous attacker, and continues until acceptance.
 - **CONFIRMED:** A target who accepts collects the entire playing pile. If they were the **next scheduled player** after the original actor, they lose that immediate turn; the following player plays. If they were not next, the next scheduled player plays normally and the target does not automatically lose a later turn.
 - **CONFIRMED:** When the playing pile is **empty**, a 3/Joker instead skips the next scheduled player's turn. Another 3/Joker may skip another player; after all opponents have been skipped, the actor plays again.
+- **CONFIRMED (D-015):** On an empty pile a player **may elect** to spend a 3/Joker for its skip effect even while holding a playable ordinary card. This is optional, not mandatory. The spent card follows the confirmed removal-from-game rule.
 - **CONFIRMED:** An actor can play multiple 3s/Jokers as a tactical combined action: with a pile, one card can send the pile to a target while additional cards skip successive players; without a pile, cards skip successive players.
-- **OPEN:** Exact transaction structure of a multi-card declaration while a counter chain is unresolved; whether held face-up/face-down counters have different constraints; whether special-card draw replenishment happens between declarations and counter steps.
+- **CONFIRMED (D-014):** Extra skips declared with an attack remain attached to the original attack through any counter/redirect chain. They do **not** resolve mid-chain, and a counter does not erase them. Once the chain settles, resolve the collector outcome first, then apply the validated skips. Turn advancement remains anchored to the **original actor** (W1).
 - **DERIVED:** Track the **original turn anchor** separately from the **current counter-decider**. Merely choosing a non-next target does not jump the normal turn sequence.
 
 ### 10: clear
@@ -34,10 +39,10 @@
 - **CONFIRMED:** May be used as a power card; clears the pile immediately, resets all constraints (including seven-lock) and the **same actor plays again**. This explicitly overrides ordinary turn advancement.
 - **OPEN:** If a 10 happens among simultaneously played cards, resolve grouping rules before implementing.
 
-### 7: lower-than lock
+### 7: lower-or-equal lock
 
-- **CONFIRMED:** Can be played on any ordinary pile. It creates a constraint that the next play must be **lower** than the seven-related bound, or a power card; four sevens in sequence clear the pile and grant the same player another play.
-- **OPEN:** Precise seven-lock comparison bound after a subsequent card (and whether a standard 7 can itself be played during an active lock), persistence through 2 and pickup, and interactions with face-down failure.
+- **CONFIRMED (D-013):** Playing a 7 means the NEXT ordinary play must be rank **7 or lower**. Another 7 is legal on a 7 and re-imposes the same restriction on the following player. Once a legal non-7 ordinary card is played, the restriction is satisfied and normal comparison resumes from that new effective top card. Existing 2/10 overrides remain valid. Never described as "lower than 7", which would wrongly forbid a 7 on a 7 and break the four-7 clear.
+- **CONFIRMED:** Four sevens in sequence clear the pile and grant the same player another play.
 - **DERIVED:** The 10 explicitly cancels the lock. The 2 resets constraints as described below.
 
 ### 2: free pass
@@ -47,9 +52,10 @@
 
 ## Endgame
 
-- **CONFIRMED:** The owner specified that once the draw stack is empty players must move through face-up cards and then face-down cards **one at a time**, and a failed face-down card causes a pile pickup and turn end. Power cards remain effective.
-- **DERIVED/COMMON BUT NOT AUTHORISED:** Many Shithead variants require exhausting the hand before face-up cards; this is not stated unambiguously in the source and must be approved before implementation.
-- **OPEN:** Full hand → face-up transition, blindly drawn face-down mechanics, returning picked-up cards to hand, whether opponents must know exposed face-up powers, clearing once the table is exhausted, finishing/last-player rules.
+- **CONFIRMED (D-017):** Ordered transition **hand → face-up → face-down**. A player cannot voluntarily use face-up cards while hand cards remain, nor face-down cards while any face-up remain.
+- **CONFIRMED (D-017):** Face-down cards are played blindly one at a time. If a blind face-down card cannot legally remain in play, the player collects the pile into their **hand** and resumes normal hand play until empty again before returning to the remaining table cards. There is no free choice between hand and table zones.
+- **CONFIRMED:** Power cards remain effective in the endgame; a failed face-down card causes a pile pickup and turn end.
+- **OPEN:** Whether opponents must know exposed face-up powers; clearing once the table is exhausted.
 
 ## Shit Face overlay
 
