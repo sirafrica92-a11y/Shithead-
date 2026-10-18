@@ -40,6 +40,10 @@ def create_app() -> FastAPI:
     async def home():
         return FileResponse(Path(__file__).parent / "static" / "index.html")
 
+    @app.get("/client.js")
+    async def client_script():
+        return FileResponse(Path(__file__).parent / "static" / "client.js", media_type="application/javascript")
+
     @app.post("/api/rooms", status_code=201)
     async def create_room(payload: CreateRoom):
         try:
@@ -189,7 +193,10 @@ def create_app() -> FastAPI:
                     view = room.view_for(index)
                 if error:
                     await websocket.send_json({
-                        "type": "error", "reasonCode": error, "stateSnapshot": view
+                        "type": "error", "reasonCode": error,
+                        "message": "Action rejected; view refreshed. Please choose an available action.",
+                        "allowedActions": (["accept", "counter"] if room.match is not None and room.match.pending is not None else ["play", "power", "pickup", "flip"] if room.match is not None else ["ready"]),
+                        "stateSnapshot": view,
                     })
                 elif changed:
                     await broadcast(room)
