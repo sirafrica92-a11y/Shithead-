@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import secrets
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -12,6 +13,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from server.app.lobby import RoomStore, Seat, broadcast, remember_request
+from server.app.persistence import token_digest
 from server.app.gameplay import apply_match_action, make_match
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
@@ -25,9 +27,9 @@ class JoinRoom(BaseModel):
     name: str = Field(min_length=1, max_length=32)
 
 
-def create_app() -> FastAPI:
+def create_app(*, db_path: str | Path | None = None) -> FastAPI:
     app = FastAPI(title="Shithead local multiplayer lobby", version="0.1-w4")
-    store = RoomStore()
+    store = RoomStore(db_path=db_path)
     app.state.room_store = store
 
     async def get_room(room_id: str):
@@ -67,12 +69,14 @@ def create_app() -> FastAPI:
         async with room.lock:
             if len(room.seats) == room.capacity:
                 raise HTTPException(status_code=409, detail="room is full")
-            seat = Seat(name=name, token=__import__("secrets").token_urlsafe(24))
+            raw_token = secrets.token_urlsafe(24)
+            seat = Seat(name=name, token_digest=token_digest(raw_token))
             room.seats.append(seat)
             room.version += 1
             index = len(room.seats) - 1
+            store.persist(room)
         await broadcast(room)
-        return {"room_id": room.id, "seat": index, "token": seat.token}
+        return {"room_id": room.id, "seat": index, "token": raw_token}
 
     @app.websocket("/ws/{room_id}")
     async def room_socket(websocket: WebSocket, room_id: str):
@@ -91,7 +95,9 @@ def create_app() -> FastAPI:
         except (WebSocketDisconnect, ValueError, asyncio.TimeoutError):
             await websocket.close(code=1008)
             return
-        if not isinstance(auth, dict) or auth.get("type") != "auth" or not isinstance(auth.get("token"), str):
+        if (not isinstance(auth, dict) or auth.get("type") != "auth"
+                or not isinstance(auth.get("token"), str)
+                or not 1 <= len(auth["token"]) <= 128):
             await websocket.close(code=1008)
             return
 
@@ -99,12 +105,13 @@ def create_app() -> FastAPI:
         index = None
         async with room.lock:
             for i, seat in enumerate(room.seats):
-                if hmac.compare_digest(seat.token, auth["token"]):
+                if hmac.compare_digest(seat.token_digest, token_digest(auth["token"])):
                     index = i
                     old_socket = seat.socket
                     seat.socket = websocket
                     room.version += 1
                     view = room.view_for(i)
+                    store.persist(room)
                     break
         if index is None:
             await websocket.close(code=1008)
@@ -191,6 +198,8 @@ def create_app() -> FastAPI:
                             remember_request(seat, request_id)
                             changed = True
                     view = room.view_for(index)
+                    if changed or (error is None and request_id in seat.request_ids):
+                        store.persist(room)
                 if error:
                     await websocket.send_json({
                         "type": "error", "reasonCode": error,
@@ -210,6 +219,7 @@ def create_app() -> FastAPI:
                 if seat.socket is websocket:
                     seat.socket = None
                     room.version += 1
+                    store.persist(room)
                     notify = True
                 else:
                     notify = False
@@ -219,4 +229,5 @@ def create_app() -> FastAPI:
     return app
 
 
-app = create_app()
+# Persistent only in the CLI server; unit-test create_app() instances stay isolated.
+app = create_app(db_path=Path.home() / ".shithead" / "local_rooms.sqlite3")

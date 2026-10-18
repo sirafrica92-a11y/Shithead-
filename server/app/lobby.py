@@ -1,4 +1,4 @@
-"""Development-only in-memory multiplayer lobby. No matchmaking or persistence.
+"""Development-only multiplayer rooms with optional local SQLite recovery.
 
 Public snapshots never contain seat tokens. A token grants control of exactly
 one seat for the lifetime of this process; it is not a user account.
@@ -7,18 +7,22 @@ one seat for the lifetime of this process; it is not a user account.
 from __future__ import annotations
 
 import asyncio
+import json
 import secrets
+import sqlite3
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import WebSocket
 from server.app.gameplay import Match, private_match_view, public_match_view
+from server.app.persistence import dump_match, restore_match
 
 
 @dataclass
 class Seat:
     name: str
-    token: str
+    token_digest: str
     ready: bool = False
     socket: WebSocket | None = None
     request_ids: list[str] = field(default_factory=list)
@@ -64,10 +68,50 @@ class Room:
 
 
 class RoomStore:
-    def __init__(self, max_rooms: int = 100):
+    def __init__(self, max_rooms: int = 100, db_path: str | Path | None = None):
         self.rooms: dict[str, Room] = {}
         self.lock = asyncio.Lock()
         self.max_rooms = max_rooms
+        self.db: sqlite3.Connection | None = None
+        if db_path is not None:
+            path = Path(db_path).expanduser()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self.db = sqlite3.connect(str(path))
+            self.db.execute("CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, payload TEXT NOT NULL)")
+            self.db.commit()
+            for room_id, payload in self.db.execute("SELECT id, payload FROM rooms"):
+                data = json.loads(payload)
+                seats = [
+                    Seat(
+                        name=x["name"], token_digest=x["token_digest"],
+                        ready=x["ready"], request_ids=list(x.get("request_ids", []))[-64:],
+                    ) for x in data["seats"]
+                ]
+                room = Room(
+                    id=room_id, capacity=data["capacity"], seats=seats,
+                    version=data["version"], match=restore_match(data["match"]),
+                )
+                self.rooms[room.id] = room
+
+    def persist(self, room: Room) -> None:
+        """Save an entire authoritative state while caller holds room.lock."""
+        if self.db is None:
+            return
+        payload = {
+            "capacity": room.capacity, "version": room.version,
+            "seats": [
+                {
+                    "name": s.name, "token_digest": s.token_digest,
+                    "ready": s.ready, "request_ids": list(s.request_ids)[-64:],
+                } for s in room.seats
+            ],
+            "match": dump_match(room.match),
+        }
+        with self.db:
+            self.db.execute(
+                "INSERT OR REPLACE INTO rooms (id, payload) VALUES (?, ?)",
+                (room.id, json.dumps(payload, separators=(",", ":"))),
+            )
 
     async def create(self, capacity: int) -> Room:
         if not 2 <= capacity <= 6:
@@ -80,6 +124,7 @@ class RoomStore:
                 room_id = secrets.token_urlsafe(9)
             room = Room(id=room_id, capacity=capacity)
             self.rooms[room_id] = room
+            self.persist(room)
             return room
 
     async def get(self, room_id: str) -> Room | None:
