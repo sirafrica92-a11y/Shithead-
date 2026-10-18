@@ -84,4 +84,5 @@ def test_websocket_match_starts_only_when_both_ready_and_hidden_hands():
                 assert va["phase"] == vb["phase"] == "PLAYING"
                 assert va["game"]["you"] == 0 and vb["game"]["you"] == 1
                 assert len(va["game"]["hand"]) == len(vb["game"]["hand"]) == 3
-                assert "hand" not in client.get(f"/api/rooms/{room}").json()["game"]\n                assert all("hand" not in p for p in client.get(f"/api/rooms/{room}").json()["game"]["players"])
+                assert "hand" not in client.get(f"/api/rooms/{room}").json()["game"]
+                assert all("hand" not in p for p in client.get(f"/api/rooms/{room}").json()["game"]["players"])
