@@ -35,10 +35,28 @@ small{color:#b5c2c4}
 <div class="row"><button id="ready" disabled>Ready</button><small id="phase"></small></div>
 <p><small>The lobby runs only while the local server stays open. Don't publish this preview to the internet.</small></p>
 </div>
+<div class="panel" id="game-panel" hidden>
+<h2>Table <small id="turn-label"></small></h2>
+<p id="pile-label"></p>
+<div id="player-counts"></div>
+<h3>Your cards</h3>
+<div id="my-cards" class="row"></div>
+<p id="action-hint"></p>
+<div class="row">
+<label>Target <select id="target"></select></label>
+<button id="play-card" type="button">Play selected</button>
+<button id="use-power" type="button">3 / Joker</button>
+<button id="flip-card" type="button">Flip</button>
+<button id="pickup" type="button">Pick up</button>
+<button id="counter" type="button">Counter</button>
+<button id="accept" type="button">Accept pile</button>
+</div>
+</div>
 <p id="status" role="status" aria-live="polite"></p>
 <script>
 const el=(id)=>document.getElementById(id);
 let ws, token, seatIndex=-1, snap;
+let selection=new Set();
 function status(s){el("status").textContent=s}
 function render(x){
   if(x.type!=="room_state")return;
@@ -53,9 +71,80 @@ function render(x){
     ul.appendChild(li);
   });
   el("phase").textContent=x.all_ready?"All seated players ready! Gameplay not yet connected.":"Waiting for all "+x.capacity+" seats";
-  el("ready").disabled=!(ws&&ws.readyState===1&&seatIndex>=0);
+  el("ready").disabled=!(ws&&ws.readyState===1&&seatIndex>=0)||!!x.game;
   el("ready").textContent=(x.players[seatIndex]?.ready?"Not ready":"Ready");
+  if(x.game)renderGame(x.game);
+  else el("game-panel").hidden=true;
 }
+function cardName(c){
+  return c.rank===0?"Joker":({11:"J",12:"Q",13:"K",14:"A"}[c.rank]||String(c.rank))+" "+(c.suit||"");
+}
+function sendGame(kind,fields={}){
+  if(!snap||!ws||ws.readyState!==1)return;
+  ws.send(JSON.stringify({type:"game",kind,expected_version:snap.version,request_id:crypto.randomUUID(),...fields}));
+}
+function renderGame(g){
+  el("game-panel").hidden=false;
+  selection=new Set();
+  const mine=g.actor===seatIndex, pending=g.phase==="PILE_PASS_DECISION";
+  el("turn-label").textContent=g.phase==="FINISHED"?"Match finished — seat "+(g.loser+1)+" loses":
+    "Seat "+(g.actor+1)+" to act"+(mine?" (YOU)":"");
+  el("pile-label").textContent="Pile: "+(g.pile.length?g.pile.map(cardName).join(", "):"empty")+
+    " · Stock "+g.deck_count+" · Burned "+g.burned_count+
+    (g.locked?" · SEVEN LOCK":"");
+  el("player-counts").replaceChildren();
+  g.players.forEach(p=>{
+    const label=document.createElement("p");
+    label.textContent="Seat "+(p.seat+1)+": "+p.hand_count+" in hand, "+
+      p.face_up.map(cardName).join(" / ")+", "+p.face_down_count+" face-down"+
+      (p.finished?" — finished":"");
+    el("player-counts").appendChild(label);
+  });
+  let cards=g.your_zone==="hand"?g.hand:(g.your_zone==="face_up"?g.your_face_up:
+    Array(g.players[seatIndex].face_down_count).fill(null));
+  const holder=el("my-cards");holder.replaceChildren();
+  cards.forEach((card,i)=>{
+    const btn=document.createElement("button");
+    btn.type="button";btn.textContent=card?cardName(card):"Face-down "+(i+1);
+    btn.style.background="#aebec0";
+    btn.onclick=()=>{
+      if(selection.has(i)){selection.delete(i);btn.style.background="#aebec0";}
+      else {selection.add(i);btn.style.background="#f38a3e";}
+    };
+    holder.appendChild(btn);
+  });
+  const target=el("target");target.replaceChildren();
+  g.players.forEach(p=>{
+    if(p.seat===seatIndex||p.finished)return;
+    const option=document.createElement("option");
+    option.value=String(p.seat);option.textContent="Seat "+(p.seat+1);
+    target.appendChild(option);
+  });
+  el("action-hint").textContent=g.your_blind_power?
+    "Blind 3/Joker revealed — choose target (or skip with empty pile)." :
+    (mine?(pending?"Accept the pile or counter with a 3/Joker.":"Choose cards and take an action."):"Wait for your turn.");
+  const controls={
+    "play-card":mine&&!pending&&g.your_zone!=="face_down"&&!g.your_blind_power,
+    "use-power":mine&&!pending&&g.your_zone!=="face_down"||!!g.your_blind_power&&mine,
+    "flip-card":mine&&!pending&&g.your_zone==="face_down",
+    "pickup":mine&&!pending&&g.pile.length>0&&!g.your_blind_power,
+    "counter":mine&&pending&&g.your_zone!=="face_down",
+    "accept":mine&&pending
+  };
+  Object.entries(controls).forEach(([id,show])=>el(id).hidden=!show);
+  target.parentElement.hidden=!mine||(g.pile.length===0&&!pending);
+}
+el("play-card").onclick=()=>sendGame("play",{indices:[...selection].sort((a,b)=>a-b)});
+el("use-power").onclick=()=>sendGame("power",{
+  index:[...selection][0]??null,target:el("target").value===""?null:Number(el("target").value)
+});
+el("flip-card").onclick=()=>sendGame("flip",{index:[...selection][0]??0});
+el("pickup").onclick=()=>sendGame("pickup");
+el("counter").onclick=()=>sendGame("counter",{
+  index:[...selection][0]??null,target:el("target").value===""?null:Number(el("target").value)
+});
+el("accept").onclick=()=>sendGame("accept");
+
 async function request(path,data){
   const response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
   const obj=await response.json();
