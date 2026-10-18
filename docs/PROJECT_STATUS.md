@@ -1,33 +1,28 @@
 # Project status
 
-**Date:** 16 October 2026
-**State:** foundation proposed on branch `foundation/v0.1-proposed` in draft PR #1. `main` contains only the initial README until an owner-approved merge. W1 (turn-seat selector) and W2 (pile-pass reducer) are implemented and verified on `build/w1-turn-seat-selector`; W3 (ordinary-play reducer) is not yet built.
+**Branch:** `build/w1-turn-seat-selector` (at commit `bd48ad9` + approved corrections)
+**Phase:** W1 and W2 complete and verified; W3 authorised, awaiting three owner rule rulings before the match reducer is built.
 
-## Established
+## Verified so far
 
-- Existing owner-created GitHub repository `sirafrica92-a11y/Shithead-`.
-- 2–6-player competitive multiplayer custom Shithead concept.
-- Shit Face cosmetic-only optional mode.
-- Owner's original master prompt and later 2-, 3-, 4-player tactical scenario descriptions.
-- Owner's general logic scales to 5 and 6 seats (derived, not new rules).
-- Server-authoritative FastAPI + WebSockets is the later explicit backend choice; React Native iOS/Android is the original primary client target.
-- SOUL-first supervised product-development intention, with Claude filling tooling gaps.
-- **W1** `server/app/rules/turns.py` — turn-seat selector, verified.
-- **W2** `server/app/rules/pile_pass.py` — pile-pass reducer, verified.
-- Test suite green: **56 passed, 2 skipped** (the 2 skips are pending owner decisions O-09/O-10).
+- **W1 — turn/seat selector:** `server/app/rules/turns.py` resolves the next actor for all 2–6 seat cases, anchored to the original actor; counter chains never move the anchor (D-002, D-014).
+- **W2 — pile-pass reducer:** `server/app/rules/pile_pass.py` is a pure, deterministic reducer covering attack, counter chains, accept, empty-pile skip and multi-skip, with mandatory actor validation on every action (wrong/missing actor rejected), stale-version rejection and structured errors.
+- **W1↔W2 composition:** `server/tests/test_w1_w2_composition.py` pins the seam where the match engine will thread the reducer's terminal state into `resolve_next_actor`.
 
-## Not established
+## Test suite
 
-- Approved final rules for deal, seven-lock, special multi-card counter sequencing, endgame and finish semantics.
-- W3 ordinary-play reducer, and a playable browser or mobile game.
-- Hosting, domain connection, player accounts or deployment.
-- Production QA / CI beyond the local test suite.
-- Completed owner review of this proposed foundation.
+`python -m pytest server/tests -q` → **53 passed, 0 skipped** (verified against the current tree).
 
-## Next gate
+## Awaiting the owner
 
-Owner settles the three W3 gameplay decisions (four-of-a-kind clearing, the 2's effect, group plays under seven-lock), then W3 begins from the scope in `docs/WORK_PACKETS.md`.
+Three rule gaps must be ruled on before the W3 match reducer is built. No rule has been guessed and no W3 work has started:
 
-## Update convention
+1. Four-of-a-kind clear: does any four-of-a-kind clear the pile or only four 7s, and does the streak count consecutive pile cards or one player's cards?
+2. How a played 2 sets the next comparison, and whether a 2 counts toward a four-of-a-kind.
+3. Whether same-rank groups may be played under a seven-lock.
 
-Record each branch/commit, specific changes, what was actually executed and verified, outstanding decisions and the owner approval that allowed it.
+## Working rules for this project
+
+- Africa alone decides rules; OPEN items are never filled with conventional Shithead conventions.
+- Preserve completed milestones; no rewrites of W1/W2.
+- No code changes, commits, pushes or merges except through the Work → Repos approval flow with Africa's explicit approval.
