@@ -1,310 +1,241 @@
-"""W3 — ordinary turns and finish logic for custom Shithead (foundation rules v0.1).
+"""W3 ordinary-play rules. Pure state transitions, independent of networking.
 
-Scope (frozen 2026-05-10; owner rulings 2026-05-14):
-- Rank order 3(low)..A(high); normal play must be >= effective top rank; same-rank multiples.
-- 7 imposes seven-lock (next ordinary play <= 7); 10 clears pile + lock, same actor again;
-  2 clears the comparison (next play free) AND cancels the lock; pickup clears the lock.
-- Four-of-a-kind: four consecutive pile cards of the same rank clear the pile; contributors
-  may differ; same-rank groups count; 2s count toward the streak. No same-actor bonus.
-- Refill to 3 after the full action resolves, only while the deck is non-empty.
-- Zone order hand -> face-up -> face-down (strict); face-down flips are blind; on flip
-  failure the flipper picks up pile + flipped card.
-- Finished players leave rotation; the game continues until exactly one player remains.
-
-Out of scope: pile-pass powers (W2), attack/stack/chains (W2/worlds.py), dealing,
-turn-loop orchestration (W4), "Shit Face" overlay.
+This slice handles 2/7/10, groups, four-of-a-kind, refills, face-up/down,
+and finished-player rotation. The 3/Joker pass is owned by W2; a blind flip
+of one is held as a *pending* power for the future match controller to resolve.
+No card is silently discarded and no target is chosen on a player's behalf.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import List, Optional, Sequence, Tuple
-
-from app.game.deck import Card, JOKER
-from app.rules.pile_pass import has_power
-from app.rules.turns import Rank, compare_ranks
+from typing import Sequence
 
 
-TOP_ZONE = "hand"
-MIDDLE_ZONE = "face_up"
-BOTTOM_ZONE = "face_down"
-
-_ZONE_ORDER = (TOP_ZONE, MIDDLE_ZONE, BOTTOM_ZONE)
-_RANK_INDEX = {rank: i for i, rank in enumerate(Rank.play_order())}
+class IllegalPlay(ValueError):
+    """The proposed action is illegal; the input state has not been changed."""
 
 
-def rank_index(rank: Rank) -> int:
-    return _RANK_INDEX[rank]
-
-
-def _rank_leq(a: Rank, b: Rank) -> bool:
-    return rank_index(a) <= rank_index(b)
-
-
-def effective_top_rank(pile: Sequence[Card]) -> Optional[Rank]:
-    """Rank the next ordinary play must meet/beat. None = free play."""
-    for card in reversed(pile):
-        if card.rank is Rank.TWO:
-            return None
-        return card.rank
-    return None
-
-
-def four_of_a_kind_streak(pile: Sequence[Card]) -> bool:
-    """True iff the pile ends with >=4 consecutive same-rank cards."""
-    if len(pile) < 4:
-        return False
-    last4 = pile[-4:]
-    rank = last4[0].rank
-    return all(c.rank is rank for c in last4)
-
-
-def current_zone(player: "PlayerState") -> str:
-    if player.hand:
-        return TOP_ZONE
-    if player.face_up:
-        return MIDDLE_ZONE
-    return BOTTOM_ZONE
-
-
-def zone_cards(player: "PlayerState", zone: str) -> Tuple[Card, ...]:
-    if zone == TOP_ZONE:
-        return player.hand
-    if zone == MIDDLE_ZONE:
-        return player.face_up
-    return player.face_down
-
-
-def _clear_zone(state: "GameState", player: "PlayerState", zone: str) -> None:
-    if zone == TOP_ZONE:
-        player.hand = []
-    elif zone == MIDDLE_ZONE:
-        player.face_up = []
-    else:
-        player.face_down = []
-        if player.id in state.face_down_flips:
-            del state.face_down_flips[player.id]
-
-
-def is_finished(player: "PlayerState") -> bool:
-    return not (player.hand or player.face_up or player.face_down)
-
-
-@dataclass
-class PlayerState:
-    id: int
-    hand: List[Card]
-    face_up: List[Card]
-    face_down: List[Card]
-
-
-@dataclass
-class GameState:
-    players: List[PlayerState]
-    deck: List[Card]
-    pile: List[Card]
-    current_player_index: int
-    direction: int = 1
-    seven_lock: bool = False
-    finished_player_ids: Tuple[int, ...] = ()
-    face_down_flips: dict = None
+@dataclass(frozen=True)
+class Card:
+    rank: int                    # 2..14 (Ace=14), or 0 for Joker
+    suit: str = "S"
+    id: str | None = None        # set by the authoritative deck for multi-deck games
 
     def __post_init__(self) -> None:
-        if self.face_down_flips is None:
-            self.face_down_flips = {}
+        if self.rank not in (0, *range(2, 15)):
+            raise ValueError("card rank must be 2..14 or 0 for Joker")
 
 
-def _replace_player(state: GameState, player: PlayerState) -> None:
-    state.players = [player if p.id == player.id else p for p in state.players]
+@dataclass(frozen=True)
+class PlayerState:
+    hand: tuple[Card, ...] = ()
+    face_up: tuple[Card, ...] = ()
+    face_down: tuple[Card, ...] = ()
 
 
-def _player_by_id(state: GameState, player_id: int) -> PlayerState:
-    for p in state.players:
-        if p.id == player_id:
-            return p
-    raise KeyError(f"unknown player id: {player_id}")
+@dataclass(frozen=True)
+class PendingBlindPower:
+    actor: int
+    card: Card
+    """The card is face-up but committed to W2, awaiting resolution.
+
+    In particular, a player who flips a 3/Joker against a nonempty pile must
+    still choose an attack target: W3 must not manufacture that choice.
+    """
 
 
-def _remaining_count(state: GameState) -> int:
-    return len(state.players) - len(state.finished_player_ids)
+@dataclass(frozen=True)
+class OrdinaryState:
+    players: tuple[PlayerState, ...]
+    deck: tuple[Card, ...] = ()
+    pile: tuple[Card, ...] = ()
+    current: int = 0
+    locked: bool = False
+    direction: int = 1
+    finished: tuple[int, ...] = ()
+    burned: tuple[Card, ...] = ()
+    pending_blind_power: PendingBlindPower | None = None
+
+    def __post_init__(self) -> None:
+        if not 2 <= len(self.players) <= 6:
+            raise ValueError("2 to 6 seats required")
+        if not 0 <= self.current < len(self.players):
+            raise ValueError("invalid current seat")
+        if self.direction not in (-1, 1):
+            raise ValueError("direction must be 1 or -1")
+        if len(set(self.finished)) != len(self.finished):
+            raise ValueError("duplicate finished player")
+        if any(i < 0 or i >= len(self.players) for i in self.finished):
+            raise ValueError("invalid finished player")
 
 
-def _next_unfinished(state: GameState, index: int) -> int:
-    n = len(state.players)
-    for step in range(1, n + 1):
-        nxt = (index + step * state.direction) % n
-        if state.players[nxt].id not in state.finished_player_ids:
-            return nxt
-    raise RuntimeError("no unfinished player found")
+def _zone(state: OrdinaryState, player: PlayerState) -> str:
+    if player.hand or state.deck:
+        return "hand"
+    if player.face_up:
+        return "face_up"
+    return "face_down"
 
 
-def _finish_turn(state: GameState, player: PlayerState) -> None:
-    _replace_player(state, player)
-    if is_finished(player):
-        if player.id not in state.finished_player_ids:
-            state.finished_player_ids = state.finished_player_ids + (player.id,)
-        if _remaining_count(state) == 1:
-            loser = next(
-                p for p in state.players if p.id not in state.finished_player_ids
-            )
-            state.current_player_index = state.players.index(loser)
-            return
-    state.current_player_index = _next_unfinished(
-        state, state.players.index(player)
+def _legal_rank(state: OrdinaryState, rank: int) -> bool:
+    if rank in (2, 7, 10):
+        return True             # overrides comparisons, including a seven-lock
+    if rank in (0, 3):
+        return False            # handled by W2, not as an ordinary play
+    if state.locked:
+        return rank <= 7
+    if not state.pile or state.pile[-1].rank == 2:
+        return True
+    return rank >= state.pile[-1].rank
+
+
+def _next_seat(state: OrdinaryState, current: int, finished: tuple[int, ...]) -> int:
+    for offset in range(1, len(state.players) + 1):
+        seat = (current + state.direction * offset) % len(state.players)
+        if seat not in finished:
+            return seat
+    raise IllegalPlay("match has no eligible players")
+
+
+def _settle(state: OrdinaryState, player: PlayerState, *, extra_turn: bool) -> OrdinaryState:
+    """After the entire action, refill/finish/advance. State already has its pile."""
+    players = list(state.players)
+    deck = state.deck
+    if player.hand and deck:
+        need = max(0, 3 - len(player.hand))
+        player = replace(player, hand=player.hand + deck[:need])
+        deck = deck[need:]
+    # An empty hand with stock remaining is also refilled after playing its last card.
+    elif not player.hand and deck:
+        player = replace(player, hand=deck[:3])
+        deck = deck[3:]
+    players[state.current] = player
+    finished = state.finished
+    if not deck and not (player.hand or player.face_up or player.face_down):
+        if state.current not in finished:
+            finished = finished + (state.current,)
+    next_player = state.current
+    remaining = len(players) - len(finished)
+    if remaining > 1 and (state.current in finished or not extra_turn):
+        next_player = _next_seat(state, state.current, finished)
+    if remaining == 1:
+        next_player = next(i for i in range(len(players)) if i not in finished)
+    return replace(state, players=tuple(players), deck=deck, finished=finished, current=next_player)
+
+
+def _play_ordinary(state: OrdinaryState, player: PlayerState,
+                   zone: str, indices: tuple[int, ...]) -> OrdinaryState:
+    available = getattr(player, zone)
+    if not indices or len(set(indices)) != len(indices) or any(not isinstance(i, int) or isinstance(i, bool) or i < 0 or i >= len(available) for i in indices):
+        raise IllegalPlay("select distinct cards in the current zone")
+    cards = tuple(available[i] for i in indices)
+    rank = cards[0].rank
+    if any(c.rank != rank for c in cards):
+        raise IllegalPlay("group plays must have a single rank")
+    if not _legal_rank(state, rank):
+        raise IllegalPlay("card rank cannot be played on this pile")
+
+    remaining = tuple(c for j, c in enumerate(available) if j not in set(indices))
+    player = replace(player, **{zone: remaining})
+    pile = state.pile + cards
+    burn = rank == 10 or (len(pile) >= 4 and len({c.rank for c in pile[-4:]}) == 1)
+    if burn:
+        state = replace(state, pile=(), burned=state.burned + pile, locked=False)
+    else:
+        state = replace(state, pile=pile, locked=(rank == 7))
+    return _settle(state, player, extra_turn=burn)
+
+
+def _flip(state: OrdinaryState, player: PlayerState, indices: tuple[int, ...]) -> OrdinaryState:
+    if len(indices) != 1 or not isinstance(indices[0], int) or indices[0] < 0 or indices[0] >= len(player.face_down):
+        raise IllegalPlay("flip exactly one face-down card")
+    pos = indices[0]
+    card = player.face_down[pos]
+    player = replace(player, face_down=player.face_down[:pos] + player.face_down[pos + 1:])
+    if card.rank in (0, 3):
+        # Keep the committed card in state until W2 resolves its target/counter.
+        players = list(state.players)
+        players[state.current] = player
+        return replace(state, players=tuple(players),
+                       pending_blind_power=PendingBlindPower(state.current, card))
+    if not _legal_rank(state, card.rank):
+        picked_up = state.pile + (card,)
+        player = replace(player, hand=player.hand + picked_up)
+        return _settle(replace(state, pile=(), locked=False), player, extra_turn=False)
+    return _play_flipped(state, player, card)
+
+
+def _play_flipped(state: OrdinaryState, player: PlayerState, card: Card) -> OrdinaryState:
+    pile = state.pile + (card,)
+    burn = card.rank == 10 or (len(pile) >= 4 and len({c.rank for c in pile[-4:]}) == 1)
+    if burn:
+        state = replace(state, pile=(), burned=state.burned + pile, locked=False)
+    else:
+        state = replace(state, pile=pile, locked=card.rank == 7)
+    return _settle(state, player, extra_turn=burn)
+
+
+def apply_play(state: OrdinaryState, zone: str, indices: Sequence[int]) -> OrdinaryState:
+    """Return a new authoritative result, never changing the input state."""
+    if state.pending_blind_power is not None:
+        raise IllegalPlay("a blind 3/Joker must be resolved by the W2 match controller")
+    if len(state.finished) >= len(state.players) - 1:
+        raise IllegalPlay("match is finished")
+    if state.current in state.finished:
+        raise IllegalPlay("finished player cannot act")
+    player = state.players[state.current]
+    if zone != _zone(state, player):
+        raise IllegalPlay("must play hand, then face-up, then face-down")
+    indices = tuple(indices)
+    if zone == "face_down":
+        return _flip(state, player, indices)
+    return _play_ordinary(state, player, zone, indices)
+
+
+
+def pick_up(state: OrdinaryState) -> OrdinaryState:
+    """Collect the pile and end the turn when no legal card can be played.
+
+    A player with only blind face-down cards must flip, not choose pickup.
+    A 3/Joker counts as an available W2 play and prevents forced pickup.
+    """
+    if state.pending_blind_power is not None:
+        raise IllegalPlay("resolve pending blind power before another action")
+    if len(state.finished) >= len(state.players) - 1 or state.current in state.finished:
+        raise IllegalPlay("match has ended or current seat is finished")
+    if not state.pile:
+        raise IllegalPlay("cannot collect an empty pile")
+    player = state.players[state.current]
+    zone = _zone(state, player)
+    if zone == "face_down":
+        raise IllegalPlay("face-down cards must be flipped")
+    if any(c.rank in (0, 3) or _legal_rank(state, c.rank)
+           for c in getattr(player, zone)):
+        raise IllegalPlay("a legal play exists; pickup is not forced")
+    return _settle(
+        replace(state, pile=(), locked=False),
+        replace(player, hand=player.hand + state.pile),
+        extra_turn=False,
     )
 
 
-def _resolve_successful_play(state: GameState, player: PlayerState) -> None:
-    played_rank = state.pile[-1].rank
-    if played_rank is Rank.SEVEN:
-        state.seven_lock = True
-    elif played_rank is not Rank.TEN:
-        state.seven_lock = False
-
-    if played_rank is Rank.TEN or four_of_a_kind_streak(state.pile):
-        state.pile = []
-        state.seven_lock = False
-        if is_finished(player):
-            _finish_turn(state, player)
-        else:
-            _replace_player(state, player)
-        return
-
-    _finish_turn(state, player)
-
-
-def _refill_hand(state: GameState, player: PlayerState) -> None:
-    if current_zone(player) is not TOP_ZONE:
-        return
-    while len(player.hand) < 3 and state.deck:
-        player.hand.append(state.deck.pop(0))
-
-
-def _apply_play_cards(state: GameState, player_id: int, card_ids: Sequence[str]) -> GameState:
-    player = _player_by_id(state, player_id)
-    if player.id != state.players[state.current_player_index].id:
-        raise ValueError("not this player's turn")
-    zone = current_zone(player)
-    if zone is BOTTOM_ZONE:
-        raise ValueError("face-down cards must be played via play_face_down")
-    available = zone_cards(player, zone)
-    by_id = {c.id: c for c in available}
+def can_play(state: OrdinaryState, zone: str, indices: Sequence[int]) -> bool:
+    """Read-only legality check. An invalid request does not modify state."""
     try:
-        chosen = [by_id[i] for i in card_ids]
-    except KeyError as exc:
-        raise ValueError(f"card not in current zone: {exc}") from exc
-    if not chosen:
-        raise ValueError("must play at least one card")
-    if any(has_power(c) for c in chosen):
-        raise ValueError("power cards (3/Joker) are pile-pass cards, not ordinary plays")
-    first_rank = chosen[0].rank
-    if any(c.rank is not first_rank for c in chosen):
-        raise ValueError("an ordinary play must be a single rank (1-4 cards)")
-
-    top = effective_top_rank(state.pile)
-    if state.seven_lock:
-        if top is None or not _rank_leq(first_rank, Rank.SEVEN):
-            raise ValueError(
-                "seven-lock: next ordinary play must be rank <= 7 (or a 2/10)"
-            )
-    elif top is not None and compare_ranks(first_rank, top) < 0:
-        raise ValueError(f"rank {first_rank.value} is below effective top {top.value}")
-
-    _clear_zone(state, player, zone)
-    remaining = [c for c in available if c.id not in {ch.id for ch in chosen}]
-    if zone is TOP_ZONE:
-        player.hand = remaining
-    else:
-        player.face_up = remaining
-    state.pile = state.pile + list(chosen)
-    _refill_hand(state, player)
-    _resolve_successful_play(state, player)
-    return state
-
-
-def _apply_play_face_down(state: GameState, player_id: int) -> GameState:
-    player = _player_by_id(state, player_id)
-    if player.id != state.players[state.current_player_index].id:
-        raise ValueError("not this player's turn")
-    if current_zone(player) is not BOTTOM_ZONE:
-        raise ValueError("play_face_down only when hand and face-up are empty")
-    if not player.face_down:
-        raise ValueError("no face-down cards remain")
-
-    card = player.face_down.pop(0)
-    if player.id in state.face_down_flips:
-        del state.face_down_flips[player.id]
-
-    top = effective_top_rank(state.pile)
-    if has_power(card):
-        raise ValueError(
-            "face-down flip revealed a power card (3/Joker): OPEN at W3 - "
-            "pile-pass power handling on blind flips is unresolved"
-        )
-    ok = False
-    if state.seven_lock:
-        ok = top is not None and _rank_leq(card.rank, Rank.SEVEN)
-    elif top is None:
-        ok = True
-    else:
-        ok = compare_ranks(card.rank, top) >= 0
-
-    state.pile = state.pile + [card]
-    if ok:
-        _resolve_successful_play(state, player)
-    else:
-        player = replace(player, hand=player.hand + state.pile)
-        state.pile = []
-        state.seven_lock = False
-        _finish_turn(state, player)
-    return state
-
-
-def _apply_pick_up(state: GameState, player_id: int) -> GameState:
-    player = _player_by_id(state, player_id)
-    if player.id != state.players[state.current_player_index].id:
-        raise ValueError("not this player's turn")
-    if current_zone(player) is not TOP_ZONE:
-        raise ValueError("cannot pick up while in face-up/face-down zones")
-    player = replace(player, hand=player.hand + state.pile)
-    state.pile = []
-    state.seven_lock = False
-    _finish_turn(state, player)
-    return state
-
-
-def apply_action(state: GameState, player_id: int, action: str,
-                 card_ids: Sequence[str] = ()) -> GameState:
-    """Dispatch an ordinary-turn action. `action` is play_cards | play_face_down | pick_up."""
-    if action == "play_cards":
-        return _apply_play_cards(state, player_id, card_ids)
-    if action == "play_face_down":
-        return _apply_play_face_down(state, player_id)
-    if action == "pick_up":
-        return _apply_pick_up(state, player_id)
-    raise ValueError(f"unknown action: {action!r}")
-
-
-def can_apply(state: GameState, player_id: int, action: str,
-              card_ids: Sequence[str] = ()) -> bool:
-    """Non-mutating legality check for UI/hints: same rules, no state change."""
-    probe = GameState(
-        players=[PlayerState(p.id, list(p.hand), list(p.face_up), list(p.face_down))
-                 for p in state.players],
-        deck=list(state.deck),
-        pile=list(state.pile),
-        current_player_index=state.current_player_index,
-        direction=state.direction,
-        seven_lock=state.seven_lock,
-        finished_player_ids=tuple(state.finished_player_ids),
-        face_down_flips=dict(state.face_down_flips),
-    )
-    try:
-        apply_action(probe, player_id, action, card_ids)
-    except _IllegalActionError:
+        apply_play(state, zone, indices)
+        return True
+    except IllegalPlay:
         return False
-    return True
 
 
-class _IllegalActionError(ValueError):
-    """Internal marker so can_apply only swallows legality errors."""
+def loser(state: OrdinaryState) -> int | None:
+    """Last player still holding cards when everybody else has finished."""
+    if len(state.finished) != len(state.players) - 1:
+        return None
+    return next(i for i in range(len(state.players)) if i not in state.finished)
+
+
+def winner(state: OrdinaryState) -> int | None:
+    """First finisher, only once the match has concluded (for 2+ players)."""
+    return state.finished[0] if loser(state) is not None else None

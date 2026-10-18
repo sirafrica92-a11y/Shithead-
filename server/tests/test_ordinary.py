@@ -28,7 +28,7 @@ All tests are pure and deterministic: states are built literally, no shuffling,
 no randomness, no I/O.
 """
 
-from app.rules.ordinary import (
+from server.app.rules.ordinary import (
     Card,
     IllegalPlay,
     OrdinaryState,
@@ -122,7 +122,7 @@ class TestBaselineLegality:
 class TestSevenLock:
     def test_seven_locks_next_player_to_seven_or_lower(self):
         st = S(
-            [P(hand=[C(7), C(13)]), P(hand=[C(9, "H"), C(3, "H")])],
+            [P(hand=[C(7), C(13)]), P(hand=[C(9, "H"), C(4, "H")])],
             pile=[C(5, "D")],
         )
         st = apply_play(st, "hand", (0,))  # P0 plays 7
@@ -130,21 +130,21 @@ class TestSevenLock:
         with pytest.raises(IllegalPlay):
             apply_play(st, "hand", (0,))  # 9 under the lock
         st = apply_play(st, "hand", (1,))  # 3 is legal under the lock
-        assert ranks(st.pile) == (5, 7, 3)
+        assert ranks(st.pile) == (5, 7, 4)
 
     def test_lock_expires_after_one_ordinary_play(self):
         st = S(
-            [P(hand=[C(7), C(13)]), P(hand=[C(3, "H"), C(9, "H")])],
+            [P(hand=[C(7), C(13)]), P(hand=[C(4, "H"), C(9, "H")])],
             pile=[C(5, "D")],
         )
         st = apply_play(st, "hand", (0,))  # 7, lock on
         st = apply_play(st, "hand", (0,))  # 3, lock spent
         st = apply_play(st, "hand", (0,))  # K would be illegal if locked
-        assert ranks(st.pile) == (5, 7, 3, 13)
+        assert ranks(st.pile) == (5, 7, 4, 13)
 
     def test_lock_applies_exactly_once_even_with_multi_play(self):
         st = S(
-            [P(hand=[C(7), C(13)]), P(hand=[C(5, "H"), C(5, "D"), C(12, "H")])],
+            [P(hand=[C(7), C(12)]), P(hand=[C(5, "H"), C(5, "D"), C(13, "H")])],
         )
         st = apply_play(st, "hand", (0,))      # 7, lock on
         st = apply_play(st, "hand", (0, 1))    # pair of 5s, legal under lock
@@ -153,7 +153,7 @@ class TestSevenLock:
 
     def test_seven_played_under_lock_rearms_it(self):
         st = S(
-            [P(hand=[C(7), C(13)]), P(hand=[C(7, "H"), C(4, "H")]), ],
+            [P(hand=[C(7), C(13), C(4)]), P(hand=[C(7, "H"), C(4, "H")]), ],
             pile=[C(5, "D")],
         )
         st = apply_play(st, "hand", (0,))  # 7, lock on
@@ -199,7 +199,7 @@ class TestTenClear:
 
     def test_burn_clears_the_seven_lock(self):
         st = S(
-            [P(hand=[C(7), C(4)]), P(hand=[C(10, "H"), C(13, "H")])],
+            [P(hand=[C(7), C(13)]), P(hand=[C(10, "H"), C(4, "H")])],
             pile=[C(5, "D")],
         )
         st = apply_play(st, "hand", (0,))  # 7, lock on
@@ -207,7 +207,7 @@ class TestTenClear:
         assert st.pile == ()
         assert st.current == 1
         st = apply_play(st, "hand", (0,))  # K would be illegal if lock survived
-        assert ranks(st.pile) == (13,)
+        assert ranks(st.pile) == (4,)  # the unblocked player had a 4, not a King
 
 
 # --------------------------------------------------------------------------
@@ -225,16 +225,16 @@ class TestTwoReset:
 
     def test_anything_is_playable_after_a_two(self):
         st = S(
-            [P(hand=[C(2), C(14)]), P(hand=[C(3, "H"), C(11, "H")])],
+            [P(hand=[C(2), C(14)]), P(hand=[C(4, "H"), C(11, "H")])],
             pile=[C(13, "D")],
         )
         st = apply_play(st, "hand", (0,))  # 2 resets the pile value
         st = apply_play(st, "hand", (0,))  # 3 on a King: legal only after reset
-        assert ranks(st.pile) == (13, 2, 3)
+        assert ranks(st.pile) == (13, 2, 4)
 
     def test_two_clears_the_seven_lock(self):
         st = S(
-            [P(hand=[C(7), C(4)]), P(hand=[C(2, "H"), C(13, "H")])],
+            [P(hand=[C(7), C(13)]), P(hand=[C(2, "H"), C(4, "H")])],
             pile=[C(5, "D")],
         )
         st = apply_play(st, "hand", (0,))  # 7, lock on
@@ -251,7 +251,7 @@ class TestTwoReset:
         assert st.pile != ()
         st = apply_play(st, "hand", (0, 1))     # P1:  2, 2
         assert st.pile != ()                    # three 2s: not yet a quad
-        st = apply_play(st, "hand", (1,))       # P0:  fourth 2 burns the pile
+        st = apply_play(st, "hand", (0,))       # P0: fourth 2 burns the pile
         assert st.pile == ()
         assert st.current == 0                  # burn grants the extra turn
 
@@ -269,7 +269,7 @@ class TestFourOfAKind:
         st = apply_play(st, "hand", (0,))      # P0 contributes one 9
         st = apply_play(st, "hand", (0, 1))    # P1 contributes two 9s
         assert st.pile != ()                   # three 9s: no burn yet
-        st = apply_play(st, "hand", (1,))      # P0 contributes the fourth 9
+        st = apply_play(st, "hand", (0,))      # P0 contributes the fourth 9
         assert st.pile == ()
 
     def test_quad_burn_grants_extra_turn_to_completer(self):
@@ -279,7 +279,7 @@ class TestFourOfAKind:
         )
         st = apply_play(st, "hand", (0,))
         st = apply_play(st, "hand", (0, 1))
-        st = apply_play(st, "hand", (1,))      # P0 completes the quad
+        st = apply_play(st, "hand", (0,))      # P0 completes the quad
         assert st.current == 0                 # completer keeps the turn
         st = apply_play(st, "hand", (0,))      # and can use it immediately
         assert ranks(st.pile) == (4,)
@@ -291,16 +291,16 @@ class TestFourOfAKind:
         )
         st = apply_play(st, "hand", (0, 1, 2, 3))
         assert st.pile == ()
-        assert st.current == 0
+        assert st.finished == (0,) and st.current == 1  # finished player cannot take a bonus turn
 
     def test_only_the_top_four_cards_are_considered(self):
         st = S(
             [P(hand=[C(9), C(4)]), P(hand=[C(8, "H"), C(11, "H")])],
-            pile=[C(9, "H"), C(9, "D"), C(9, "C"), C(13, "D")],
+            pile=[C(9, "H"), C(9, "D"), C(9, "C"), C(8, "D")],
         )
-        st = apply_play(st, "hand", (0,))  # 9 on K: top four are 9,9,13,9
+        st = apply_play(st, "hand", (0,))  # 9 on 8: top four are 9,9,8,9
         assert st.pile != ()               # no burn: the four 9s are not contiguous on top
-        assert ranks(st.pile) == (9, 9, 9, 13, 9)
+        assert ranks(st.pile) == (9, 9, 9, 8, 9)
 
 
 # --------------------------------------------------------------------------
@@ -328,5 +328,52 @@ class TestRefill:
 
     def test_partial_refill_when_deck_runs_out(self):
         st = S(
-            [P(hand=[C(4), C(5), C(6)]), P(hand=[C(8, "H")])],
-            deck=[C(
+            [P(hand=[C(4), C(5)]), P(hand=[C(8, "H")])],
+            deck=[C(14, "C")],
+        )
+        st = apply_play(st, "hand", (0,))
+        assert ranks(st.players[0].hand) == (5, 14)
+        assert st.deck == ()
+
+
+def test_power_three_is_not_an_ordinary_card():
+    st = S([P(hand=[C(3), C(7)]), P(hand=[C(8)])], pile=[C(5)])
+    with pytest.raises(IllegalPlay):
+        apply_play(st, "hand", (0,))
+    assert ranks(st.players[0].hand) == (3, 7)
+
+
+def test_blind_three_is_held_for_w2_without_losing_the_card():
+    from server.app.rules.ordinary import PendingBlindPower
+    st = S([P(face_down=[C(3)]), P(hand=[C(8)])], pile=[C(5)])
+    next_state = apply_play(st, "face_down", (0,))
+    assert isinstance(next_state.pending_blind_power, PendingBlindPower)
+    assert next_state.pending_blind_power.card.rank == 3
+    assert ranks(st.players[0].face_down) == (3,)
+    with pytest.raises(IllegalPlay):
+        apply_play(next_state, "face_down", (0,))
+
+
+def test_failed_blind_flip_collects_revealed_card_and_pile():
+    st = S([P(face_down=[C(4)]), P(hand=[C(8)])], pile=[C(12)])
+    next_state = apply_play(st, "face_down", (0,))
+    assert ranks(next_state.players[0].hand) == (12, 4)
+    assert next_state.pile == ()
+
+
+def test_finish_burn_does_not_give_extra_turn_to_finished_player():
+    st = S([P(hand=[C(10)]), P(hand=[C(8)])])
+    next_state = apply_play(st, "hand", (0,))
+    assert next_state.finished == (0,)
+    assert next_state.current == 1
+    assert winner(next_state) == 0
+
+
+@pytest.mark.parametrize("n", range(2, 7))
+def test_all_ordinary_seats_finish_in_2_to_6_player_simulation(n):
+    players = [P(hand=[C(10, chr(65 + i))]) for i in range(n)]
+    st = S(players)
+    for _ in range(n - 1):
+        st = apply_play(st, "hand", (0,))
+    assert len(st.finished) == n - 1
+    assert len(st.burned) == n - 1
