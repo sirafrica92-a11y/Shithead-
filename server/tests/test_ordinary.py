@@ -207,7 +207,7 @@ class TestTenClear:
         assert st.pile == ()
         assert st.current == 1
         st = apply_play(st, "hand", (0,))  # K would be illegal if lock survived
-        assert ranks(st.pile) == (13,)
+        assert ranks(st.pile) == (4,)  # the unblocked player had a 4, not a King
 
 
 # --------------------------------------------------------------------------
@@ -251,7 +251,7 @@ class TestTwoReset:
         assert st.pile != ()
         st = apply_play(st, "hand", (0, 1))     # P1:  2, 2
         assert st.pile != ()                    # three 2s: not yet a quad
-        st = apply_play(st, "hand", (1,))       # P0:  fourth 2 burns the pile
+        st = apply_play(st, "hand", (0,))       # P0: fourth 2 burns the pile
         assert st.pile == ()
         assert st.current == 0                  # burn grants the extra turn
 
@@ -291,7 +291,7 @@ class TestFourOfAKind:
         )
         st = apply_play(st, "hand", (0, 1, 2, 3))
         assert st.pile == ()
-        assert st.current == 0
+        assert st.finished == (0,) and st.current == 1  # finished player cannot take a bonus turn
 
     def test_only_the_top_four_cards_are_considered(self):
         st = S(
