@@ -2,6 +2,7 @@ name: Shithead Python tests
 on:
   push:
     branches:
+      - fix/room-passwords
       - deploy/railway-shithead-games-staging
       - fix/w4-complete-match-20261019
       - build/w1-turn-seat-selector
@@ -10,6 +11,7 @@ on:
       - feature/w4-live-card-matches-20261018
   pull_request:
     branches:
+      - deploy/railway-shithead-games-staging
       - fix/preflight-multiplayer-20261019
       - build/w1-turn-seat-selector
       - fix/w3-test-contract-20261018

@@ -5,15 +5,15 @@ from server.app.main import create_app
 
 def test_create_and_join_room_capacity_and_privacy():
     with TestClient(create_app()) as client:
-        created = client.post("/api/rooms", json={"capacity": 2})
+        created = client.post("/api/rooms", json={"capacity":2,"password":"test-room-pass123"})
         assert created.status_code == 201
         rid = created.json()["room_id"]
-        a = client.post(f"/api/rooms/{rid}/join", json={"name": "Alice"})
-        b = client.post(f"/api/rooms/{rid}/join", json={"name": "Bob"})
+        a = client.post(f"/api/rooms/{rid}/join", json={"name":"Alice","password":"test-room-pass123"})
+        b = client.post(f"/api/rooms/{rid}/join", json={"name":"Bob","password":"test-room-pass123"})
         assert a.status_code == b.status_code == 201
         assert a.json()["seat"] == 0 and b.json()["seat"] == 1
         assert a.json()["token"] != b.json()["token"]
-        assert client.post(f"/api/rooms/{rid}/join", json={"name": "Eve"}).status_code == 409
+        assert client.post(f"/api/rooms/{rid}/join", json={"name":"Eve","password":"test-room-pass123"}).status_code == 409
         public = client.get(f"/api/rooms/{rid}").json()
         assert public["phase"] == "LOBBY"
         assert public["capacity"] == 2
@@ -32,9 +32,9 @@ def test_bounds_and_unknown_room():
 
 def test_websocket_auth_ready_replay_and_stale_version():
     with TestClient(create_app()) as client:
-        rid = client.post("/api/rooms", json={"capacity": 2}).json()["room_id"]
-        token = client.post(f"/api/rooms/{rid}/join", json={"name": "A"}).json()["token"]
-        client.post(f"/api/rooms/{rid}/join", json={"name": "B"})
+        rid = client.post("/api/rooms", json={"capacity":2,"password":"test-room-pass123"}).json()["room_id"]
+        token = client.post(f"/api/rooms/{rid}/join", json={"name":"A","password":"test-room-pass123"}).json()["token"]
+        client.post(f"/api/rooms/{rid}/join", json={"name":"B","password":"test-room-pass123"})
         with client.websocket_connect(f"/ws/{rid}") as ws:
             ws.send_json({"type": "auth", "token": token})
             snapshot = ws.receive_json()
@@ -57,8 +57,8 @@ def test_websocket_auth_ready_replay_and_stale_version():
 
 def test_reconnect_existing_seat():
     with TestClient(create_app()) as client:
-        rid = client.post("/api/rooms", json={"capacity": 2}).json()["room_id"]
-        token = client.post(f"/api/rooms/{rid}/join", json={"name": "A"}).json()["token"]
+        rid = client.post("/api/rooms", json={"capacity":2,"password":"test-room-pass123"}).json()["room_id"]
+        token = client.post(f"/api/rooms/{rid}/join", json={"name":"A","password":"test-room-pass123"}).json()["token"]
         with client.websocket_connect(f"/ws/{rid}") as ws:
             ws.send_json({"type": "auth", "token": token})
             assert ws.receive_json()["you"] == 0
