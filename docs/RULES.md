@@ -44,6 +44,7 @@
 - **CONFIRMED (D-013):** Playing a 7 means the NEXT ordinary play must be rank **7 or lower**. Another 7 is legal on a 7 and re-imposes the same restriction on the following player. Once a legal non-7 ordinary card is played, the restriction is satisfied and normal comparison resumes from that new effective top card. Existing 2/10 overrides remain valid. Never described as "lower than 7", which would wrongly forbid a 7 on a 7 and break the four-7 clear.
 - **CONFIRMED:** Four sevens in sequence clear the pile and grant the same player another play.
 - **DERIVED:** The 10 explicitly cancels the lock. The 2 resets constraints as described below.
+- **CONFIRMED (D-021):** A 3 or Joker may always be played; an active seven-lock never prevents it.
 
 ### 2: free pass
 
@@ -52,8 +53,10 @@
 
 ## Endgame
 
-- **CONFIRMED (D-017):** Ordered transition **hand → face-up → face-down**. A player cannot voluntarily use face-up cards while hand cards remain, nor face-down cards while any face-up remain.
+- **CONFIRMED (D-017, amended by D-022):** Ordered transition **hand → face-up → face-down**. A player cannot voluntarily use face-down cards while any face-up remain.
+- **CONFIRMED (D-022):** Once the stock is empty AND the player holds fewer than three cards in hand, all three face-up cards are taken into hand **automatically**, as a free action that does not consume a turn. Holding two cards therefore gives five in hand. The stock never refills, so from that point the trigger is effectively “hand below three” and may fire more than once in a match. This supersedes the earlier D-017 wording that face-up cards could not be used while any hand cards remained.
 - **CONFIRMED (D-017):** Face-down cards are played blindly one at a time. If a blind face-down card cannot legally remain in play, the player collects the pile into their **hand** and resumes normal hand play until empty again before returning to the remaining table cards. There is no free choice between hand and table zones.
+- **CONFIRMED (D-020):** A face-down card may only be flipped while the hand is empty, and the pickup on a failed flip takes the pile **and the revealed card** into hand. A blind-revealed power card exerts its normal power; nothing about power behaviour changes on a blind flip.
 - **CONFIRMED:** Power cards remain effective in the endgame; a failed face-down card causes a pile pickup and turn end.
 - **OPEN:** Whether opponents must know exposed face-up powers; clearing once the table is exhausted.
 
