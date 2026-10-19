@@ -21,7 +21,10 @@ small{color:#b5c2c4}
 </head>
 <body>
 <h1>Shithead <small>Multiplayer preview</small></h1>
-<p>Create a room, share its four-character code with friends, then play online.</p>
+<p>Enter your name, then create a room and share its four-character code — or join a friend's.</p>
+<div class="panel">
+<div class="row"><label for="name">Your name</label><input id="name" placeholder="Your name" maxlength="32" autocomplete="nickname" aria-label="Your name"></div>
+</div>
 <div class="panel">
 <h2>Create a room</h2>
 <div class="row"><label>Players <select id="capacity"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label><button id="create">Create room</button></div>
@@ -29,7 +32,7 @@ small{color:#b5c2c4}
 </div>
 <div class="panel">
 <h2>Join a room</h2>
-<div class="row"><input id="name" placeholder="Your name" maxlength="32" autocomplete="nickname" aria-label="Your name"><input id="room" placeholder="Code" maxlength="4" size="6" inputmode="latin" autocapitalize="characters" spellcheck="false" aria-label="Four-character room code"><button id="join">Join</button></div>
+<div class="row"><input id="room" placeholder="Code" maxlength="4" size="6" inputmode="latin" autocapitalize="characters" spellcheck="false" aria-label="Four-character room code"><button id="join">Join</button></div>
 </div>
 <div class="panel" id="lobby" hidden>
 <h2>Lobby <small id="room-label"></small></h2>

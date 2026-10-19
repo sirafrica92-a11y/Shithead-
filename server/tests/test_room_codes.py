@@ -104,3 +104,40 @@ def test_guess_limits_are_per_client_not_shared_behind_the_proxy():
         assert client.get("/api/rooms/YYYY", headers=guesser).status_code == 429
         # A different player still gets their normal allowance.
         assert client.get("/api/rooms/QQQQ", headers=victim).status_code == 404
+
+
+def test_create_room_with_a_name_seats_the_host_in_one_request():
+    """Entering a name and pressing Create room must not need a second Join."""
+    with TestClient(create_app()) as client:
+        created = client.post("/api/rooms", json={"capacity": 2, "name": "Africa"})
+        assert created.status_code == 201
+        body = created.json()
+        assert CODE.match(body["room_id"])
+        assert body["seat"] == 0 and body["token"]
+        public = client.get(f"/api/rooms/{body['room_id']}").json()
+        assert [p["name"] for p in public["players"]] == ["Africa"]
+        assert body["token"] not in str(public)
+
+
+def test_create_room_without_a_name_still_works():
+    """An older client that sends no name keeps the previous behaviour."""
+    with TestClient(create_app()) as client:
+        body = client.post("/api/rooms", json={"capacity": 2}).json()
+        assert "token" not in body and "seat" not in body
+        assert client.get(f"/api/rooms/{body['room_id']}").json()["players"] == []
+
+
+def test_create_room_rejects_a_blank_host_name():
+    with TestClient(create_app()) as client:
+        assert client.post("/api/rooms", json={"capacity": 2, "name": "   "}).status_code == 422
+
+
+def test_host_and_guest_take_different_seats_and_tokens():
+    with TestClient(create_app()) as client:
+        host = client.post("/api/rooms", json={"capacity": 2, "name": "Africa"}).json()
+        guest = client.post(f"/api/rooms/{host['room_id']}/join",
+                            json={"name": "Bardia"}).json()
+        assert host["seat"] == 0 and guest["seat"] == 1
+        assert host["token"] != guest["token"]
+        assert client.post(f"/api/rooms/{host['room_id']}/join",
+                           json={"name": "Third"}).status_code == 409
