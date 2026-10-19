@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 
 from server.app.lobby import RoomStore, Seat, broadcast, remember_request
 from server.app.persistence import token_digest
-from server.app.site_gate import COOKIE_NAME, cookie_allowed, install_test_gate
 from server.app.gameplay import apply_match_action, make_match, UndecidedStartTie
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
@@ -23,16 +22,17 @@ from server.app.rules.pile_pass import IllegalTransition
 
 class CreateRoom(BaseModel):
     capacity: int = Field(default=2, ge=2, le=6)
+    password: str | None = Field(default=None, max_length=128)
 
 
 class JoinRoom(BaseModel):
     name: str = Field(min_length=1, max_length=32)
+    password: str = Field(min_length=4, max_length=128)
 
 
 def create_app(*, db_path: str | Path | None = None) -> FastAPI:
     app = FastAPI(title="Shithead private multiplayer preview", version="0.1-w4")
     cloud = bool(os.getenv("RAILWAY_ENVIRONMENT_ID"))
-    install_test_gate(app, cloud=cloud)
     store = RoomStore(db_path=db_path)
     app.state.room_store = store
 
@@ -57,10 +57,13 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
     @app.post("/api/rooms", status_code=201)
     async def create_room(payload: CreateRoom):
         try:
-            room = await store.create(payload.capacity)
+            password = payload.password or secrets.token_urlsafe(12)
+            if len(password) < 4:
+                raise HTTPException(status_code=422, detail="room password must have at least 4 characters")
+            room = await store.create(payload.capacity, password)
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
-        return {"room_id": room.id, "capacity": room.capacity}
+        return {"room_id": room.id, "capacity": room.capacity, "room_password": password}
 
     @app.get("/api/rooms/{room_id}")
     async def room_snapshot(room_id: str):
@@ -75,6 +78,8 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
         if not name or any(ord(c) < 32 for c in name):
             raise HTTPException(status_code=422, detail="enter a valid player name")
         async with room.lock:
+            if not room.check_password(payload.password):
+                raise HTTPException(status_code=403, detail="incorrect room password")
             if len(room.seats) == room.capacity:
                 raise HTTPException(status_code=409, detail="room is full")
             raw_token = secrets.token_urlsafe(24)
@@ -88,12 +93,6 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
 
     @app.websocket("/ws/{room_id}")
     async def room_socket(websocket: WebSocket, room_id: str):
-        # The private test password also gates WebSocket handshakes.
-        if not cookie_allowed(
-            websocket.cookies.get(COOKIE_NAME), app.state.test_gate_password
-        ):
-            await websocket.close(code=1008)
-            return
         # Same-origin browser access only; seat ownership still requires a token.
         origin = websocket.headers.get("origin")
         if ((cloud and not origin) or

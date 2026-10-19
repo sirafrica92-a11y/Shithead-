@@ -65,9 +65,9 @@ def test_ordinary_action_consumes_owned_card_and_preserves_count():
 
 def test_websocket_match_starts_only_when_both_ready_and_hidden_hands():
     with TestClient(create_app()) as client:
-        room = client.post("/api/rooms", json={"capacity": 2}).json()["room_id"]
-        ta = client.post(f"/api/rooms/{room}/join", json={"name": "A"}).json()["token"]
-        tb = client.post(f"/api/rooms/{room}/join", json={"name": "B"}).json()["token"]
+        room = client.post("/api/rooms", json={"capacity":2,"password":"test-room-pass123"}).json()["room_id"]
+        ta = client.post(f"/api/rooms/{room}/join", json={"name":"A","password":"test-room-pass123"}).json()["token"]
+        tb = client.post(f"/api/rooms/{room}/join", json={"name":"B","password":"test-room-pass123"}).json()["token"]
         with client.websocket_connect(f"/ws/{room}") as a:
             a.send_json({"type": "auth", "token": ta})
             va = a.receive_json()

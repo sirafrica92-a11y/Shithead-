@@ -19,21 +19,22 @@ small{color:#b5c2c4}
 </style>
 </head>
 <body>
-<h1>Shithead <small>Local multiplayer preview</small></h1>
-<p>Local multiplayer card-game preview. Create a room, join from another browser tab, mark all players ready and play. Not deployed or ready for internet exposure.</p>
+<h1>Shithead <small>Multiplayer preview</small></h1>
+<p>Create a private room, share its code and password with friends, then play online.</p>
 <div class="panel">
 <h2>Create a room</h2>
-<div class="row"><label>Players <select id="capacity"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label><button id="create">Create room</button></div>
+<div class="row"><label>Players <select id="capacity"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label><input id="create-password" type="text" minlength="4" maxlength="128" placeholder="Room password (optional)" aria-label="Create room password"><button id="create">Create room</button></div>
+<p id="invite" hidden></p>
 </div>
 <div class="panel">
 <h2>Join a room</h2>
-<div class="row"><input id="room" placeholder="Room code" aria-label="Room code"><input id="name" placeholder="Your name" maxlength="32" aria-label="Your name"><button id="join">Join</button></div>
+<div class="row"><input id="room" placeholder="Room code" aria-label="Room code"><input id="name" placeholder="Your name" maxlength="32" aria-label="Your name"><input id="join-password" type="password" minlength="4" maxlength="128" placeholder="Room password" aria-label="Room password"><button id="join">Join</button></div>
 </div>
 <div class="panel" id="lobby" hidden>
 <h2>Lobby <small id="room-label"></small></h2>
 <ul id="players"></ul>
 <div class="row"><button id="ready" disabled>Ready</button><small id="phase"></small></div>
-<p><small>The lobby runs only while the local server stays open. Don't publish this preview to the internet.</small></p>
+<p><small>Invite friends using the room code and room password. Your seat stays reserved if you disconnect.</small></p>
 </div>
 <div class="panel" id="game-panel" hidden>
 <h2>Table <small id="turn-label"></small></h2>

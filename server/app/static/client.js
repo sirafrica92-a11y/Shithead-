@@ -176,9 +176,12 @@ function connect(room,token,retry=0) {
 }
 el("create").onclick=async()=>{
   try {
-    const r=await request("/api/rooms",{capacity:Number(el("capacity").value)});
+    const r=await request("/api/rooms",{capacity:Number(el("capacity").value),password:el("create-password").value.trim()||null});
     el("room").value=r.room_id;
-    status("Room created. Copy the room code to invite another player.");
+    el("join-password").value=r.room_password;
+    el("invite").hidden=false;
+    el("invite").textContent="Invite code: "+r.room_id+" · Room password: "+r.room_password+" — Share both privately.";
+    status("Room created! Join below, and send your friend the room code and password.");
   } catch(e){status(e.message);}
 };
 el("join").onclick=async()=>{
@@ -191,7 +194,9 @@ el("join").onclick=async()=>{
       connect(room,saved.token);
       return;
     }
-    const r=await request("/api/rooms/"+encodeURIComponent(room)+"/join",{name});
+    const password=el("join-password").value;
+    if(!password){status("Enter the room password shared by the host.");return;}
+    const r=await request("/api/rooms/"+encodeURIComponent(room)+"/join",{name,password});
     seatIndex=r.seat;
     saveSeat(room,r.token,r.seat,name);
     connect(room,r.token);

@@ -7,6 +7,8 @@ one seat for the lifetime of this process; it is not a user account.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import json
 import secrets
 import sqlite3
@@ -34,9 +36,19 @@ class Room:
     id: str
     capacity: int
     seats: list[Seat] = field(default_factory=list)
+    password_salt: str = ""
+    password_hash: str = ""
     version: int = 0
     match: Match | None = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+    def check_password(self, password: str) -> bool:
+        """Existing legacy rooms are closed to new joins until recreated."""
+        if not self.password_salt or not self.password_hash:
+            return False
+        candidate = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"),
+                                        bytes.fromhex(self.password_salt), 210000)
+        return hmac.compare_digest(candidate.hex(), self.password_hash)
 
     def public_view(self) -> dict[str, Any]:
         return {
@@ -92,6 +104,8 @@ class RoomStore:
                 room = Room(
                     id=room_id, capacity=data["capacity"], seats=seats,
                     version=data["version"], match=restore_match(data["match"]),
+                    password_salt=data.get("password_salt", ""),
+                    password_hash=data.get("password_hash", ""),
                 )
                 self.rooms[room.id] = room
 
@@ -101,6 +115,7 @@ class RoomStore:
             return
         payload = {
             "capacity": room.capacity, "version": room.version,
+            "password_salt": room.password_salt, "password_hash": room.password_hash,
             "seats": [
                 {
                     "name": s.name, "token_digest": s.token_digest,
@@ -115,7 +130,7 @@ class RoomStore:
                 (room.id, json.dumps(payload, separators=(",", ":"))),
             )
 
-    async def create(self, capacity: int) -> Room:
+    async def create(self, capacity: int, password: str) -> Room:
         if not 2 <= capacity <= 6:
             raise ValueError("rooms require 2 to 6 players")
         async with self.lock:
@@ -124,7 +139,10 @@ class RoomStore:
             room_id = secrets.token_urlsafe(9)
             while room_id in self.rooms:
                 room_id = secrets.token_urlsafe(9)
-            room = Room(id=room_id, capacity=capacity)
+            salt = secrets.token_bytes(16)
+            digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 210000)
+            room = Room(id=room_id, capacity=capacity,
+                        password_salt=salt.hex(), password_hash=digest.hex())
             self.rooms[room_id] = room
             self.persist(room)
             return room

@@ -33,9 +33,9 @@ def test_exact_match_serialization_with_pending_attack():
 def test_sqlite_restores_room_ready_state_and_seat_token(tmp_path):
     path=tmp_path/"game.sqlite3"
     with TestClient(create_app(db_path=path)) as client:
-        room=client.post("/api/rooms",json={"capacity":2}).json()["room_id"]
-        a=client.post(f"/api/rooms/{room}/join",json={"name":"A"}).json()
-        b=client.post(f"/api/rooms/{room}/join",json={"name":"B"}).json()
+        room=client.post("/api/rooms",json={"capacity":2,"password":"test-room-pass123"}).json()["room_id"]
+        a=client.post(f"/api/rooms/{room}/join",json={"name":"A","password":"test-room-pass123"}).json()
+        b=client.post(f"/api/rooms/{room}/join",json={"name":"B","password":"test-room-pass123"}).json()
         with client.websocket_connect(f"/ws/{room}") as ws:
             ws.send_json({"type":"auth","token":a["token"]})
             view=ws.receive_json()
@@ -60,9 +60,9 @@ def test_sqlite_restores_room_ready_state_and_seat_token(tmp_path):
 def test_started_match_restores_with_private_hand(tmp_path):
     path=tmp_path/"match.sqlite3"
     with TestClient(create_app(db_path=path)) as client:
-        room=client.post("/api/rooms",json={"capacity":2}).json()["room_id"]
-        a=client.post(f"/api/rooms/{room}/join",json={"name":"A"}).json()
-        b=client.post(f"/api/rooms/{room}/join",json={"name":"B"}).json()
+        room=client.post("/api/rooms",json={"capacity":2,"password":"test-room-pass123"}).json()["room_id"]
+        a=client.post(f"/api/rooms/{room}/join",json={"name":"A","password":"test-room-pass123"}).json()
+        b=client.post(f"/api/rooms/{room}/join",json={"name":"B","password":"test-room-pass123"}).json()
         with client.websocket_connect(f"/ws/{room}") as wa:
             wa.send_json({"type":"auth","token":a["token"]})
             va=wa.receive_json()

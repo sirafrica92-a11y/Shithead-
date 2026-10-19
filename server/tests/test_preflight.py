@@ -16,9 +16,9 @@ def test_browser_client_script_reachable():
 
 def test_stale_version_returns_recoverable_private_snapshot():
     with TestClient(create_app()) as client:
-        room = client.post("/api/rooms", json={"capacity": 2}).json()["room_id"]
-        a = client.post(f"/api/rooms/{room}/join", json={"name": "A"}).json()
-        client.post(f"/api/rooms/{room}/join", json={"name": "B"})
+        room = client.post("/api/rooms", json={"capacity":2,"password":"test-room-pass123"}).json()["room_id"]
+        a = client.post(f"/api/rooms/{room}/join", json={"name":"A","password":"test-room-pass123"}).json()
+        client.post(f"/api/rooms/{room}/join", json={"name":"B","password":"test-room-pass123"})
         with client.websocket_connect(f"/ws/{room}") as ws:
             ws.send_json({"type": "auth", "token": a["token"]})
             state = ws.receive_json()
@@ -35,8 +35,8 @@ def test_stale_version_returns_recoverable_private_snapshot():
 
 def test_restoring_same_seat_does_not_add_another_player():
     with TestClient(create_app()) as client:
-        room = client.post("/api/rooms", json={"capacity": 2}).json()["room_id"]
-        seat = client.post(f"/api/rooms/{room}/join", json={"name": "A"}).json()
+        room = client.post("/api/rooms", json={"capacity":2,"password":"test-room-pass123"}).json()["room_id"]
+        seat = client.post(f"/api/rooms/{room}/join", json={"name":"A","password":"test-room-pass123"}).json()
         with client.websocket_connect(f"/ws/{room}") as ws:
             ws.send_json({"type": "auth", "token": seat["token"]})
             assert ws.receive_json()["you"] == seat["seat"]
