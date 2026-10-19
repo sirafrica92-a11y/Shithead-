@@ -2,60 +2,346 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Shithead — Private Lobby</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2a1810">
+<title>Shithead</title>
 <style>
-:root{color-scheme:dark;font:16px system-ui;background:#121d22;color:#fafafa}
-body{margin:0;max-width:680px;padding:24px 20px 70px;margin-inline:auto}
-h1{font-size:2rem;margin-bottom:8px}p{color:#bbc9ca;line-height:1.55}
-.panel{background:#1e3035;padding:18px;border-radius:14px;margin:15px 0}
-input,button,select{font:inherit;padding:12px;border-radius:9px;border:1px solid #608083}
-input,select{background:#142329;color:#fff;max-width:100%;box-sizing:border-box}
-button{background:#f38a3e;border:0;color:#151718;font-weight:700;cursor:pointer}
-button:disabled{opacity:.5;cursor:not-allowed}
-.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-#players li{margin:10px 0}#status{min-height:24px;color:#e7a36c}
-small{color:#b5c2c4}
-#room{text-transform:uppercase;letter-spacing:.18em;font-weight:700}
+/* ---------------------------------------------------------------- tokens */
+:root{
+  --wood-1:#7d4c2b; --wood-2:#5a3520; --wood-3:#331d10;
+  --ivory:#f8f2e4; --ivory-2:#e6d9bd;
+  --red:#b3261e; --black:#18212b;
+  --amber:#f3a23e; --amber-dim:#8a5a24;
+  --charcoal:#14181c; --panel:rgba(20,13,8,.62);
+  --text:#f6efe4; --muted:#c3ad94;
+  --ok:#3fae63;
+  --card-w:60px; --card-h:84px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;
+  color:var(--text);
+  background:var(--charcoal);
+  overscroll-behavior:none;
+  -webkit-text-size-adjust:100%;
+}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.hidden{display:none!important}
+
+/* ------------------------------------------------------------ app shell */
+#app{min-height:100dvh;display:flex;flex-direction:column}
+
+/* --------------------------------------------------------- home + lobby */
+.shell{
+  min-height:100dvh;display:flex;flex-direction:column;gap:18px;
+  padding:28px 20px calc(28px + env(safe-area-inset-bottom));
+  max-width:520px;margin-inline:auto;width:100%;
+  background:
+    radial-gradient(120% 70% at 50% 0%,#20262c 0%,#14181c 60%,#0e1114 100%);
+}
+.brand{text-align:center;margin-top:18px}
+.brand .mark{
+  width:92px;height:92px;margin:0 auto 14px;border-radius:20px;
+  display:grid;place-items:center;
+  background:linear-gradient(145deg,#2b3139,#171b20);
+  border:1px solid #39404a;color:var(--muted);
+  font:600 11px/1.3 system-ui;text-align:center;padding:8px;
+}
+.brand h1{
+  margin:0;font:italic 800 40px/1 Georgia,serif;letter-spacing:.04em;
+  background:linear-gradient(180deg,#ffffff,#9aa3ad 60%,#6d757e);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.brand p{margin:6px 0 0;color:var(--muted);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.panel{
+  background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);
+  border-radius:18px;padding:18px;
+}
+.panel h2{margin:0 0 12px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+label.field{display:block;margin-bottom:12px}
+label.field span{display:block;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+input,select{
+  width:100%;padding:14px;border-radius:12px;
+  background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14);
+  color:var(--text);font:inherit;
+}
+input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
+.btn{
+  display:block;width:100%;padding:15px;border-radius:13px;font-weight:700;
+  text-align:center;transition:transform .08s,filter .15s;
+}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:linear-gradient(180deg,#eceff3,#c3cad3);color:#14181c}
+.btn-ghost{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16)}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#room{text-transform:uppercase;letter-spacing:.4em;text-align:center;font-weight:700}
+#status{min-height:22px;text-align:center;color:var(--amber);font-size:14px}
+
+/* seats in the lobby */
+#players{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+#players li{display:flex;align-items:center;gap:12px;padding:12px;border-radius:13px;background:rgba(0,0,0,.28)}
+.avatar{
+  width:38px;height:38px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
+  background:linear-gradient(145deg,#4a5560,#2b333c);font-weight:700;font-size:15px;
+}
+.seat-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:999px}
+.pill.ready{background:rgba(63,174,99,.2);color:#7fd49a}
+.pill.waiting{background:rgba(255,255,255,.08);color:var(--muted)}
+.pill.off{background:rgba(179,38,30,.18);color:#e88b85}
+.code-display{text-align:center;padding:14px;border-radius:14px;background:rgba(0,0,0,.3);margin-bottom:14px}
+.code-display b{display:block;font-size:34px;letter-spacing:.5em;text-indent:.5em;font-weight:800}
+.code-display small{color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:11px}
+
+/* ------------------------------------------------------------ the table */
+#screen-table{
+  flex:1;display:flex;flex-direction:column;min-height:100dvh;
+  padding:calc(8px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(130% 80% at 50% 38%,#8a552f 0%,#6a3f24 38%,#432716 72%,#2a1810 100%),
+    repeating-linear-gradient(94deg,rgba(0,0,0,.055) 0 2px,rgba(255,255,255,.012) 2px 6px);
+  background-blend-mode:multiply,normal;
+}
+.table-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.room-chip{
+  padding:7px 11px;border-radius:11px;background:rgba(0,0,0,.42);
+  font-size:11px;letter-spacing:.1em;line-height:1.25;color:var(--muted);
+}
+.room-chip b{display:block;color:var(--text);font-size:15px;letter-spacing:.26em}
+.table-top .spacer{flex:1}
+.icon-btn{
+  width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.42);
+  display:grid;place-items:center;font-size:17px;
+}
+
+/* opponents */
+#opponents{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:4px}
+.opp{
+  flex:1 1 0;min-width:96px;max-width:172px;padding:8px 6px;border-radius:14px;
+  background:rgba(0,0,0,.3);border:1.5px solid transparent;text-align:center;
+  transition:border-color .2s,background .2s;
+}
+.opp.is-turn{border-color:var(--amber);background:rgba(243,162,62,.14)}
+.opp.targetable{cursor:pointer}
+.opp.targeted{border-color:#6fd3f5;background:rgba(111,211,245,.16)}
+.opp.done{opacity:.45}
+.opp-head{display:flex;align-items:center;gap:7px;justify-content:center;margin-bottom:6px}
+.opp-name{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:72px}
+.opp .avatar{width:26px;height:26px;font-size:12px}
+.opp-zones{display:flex;gap:6px;justify-content:center;align-items:flex-end}
+.mini-stack{position:relative;display:grid;place-items:center}
+.mini{width:22px;height:31px;border-radius:4px}
+.mini.back{background:linear-gradient(140deg,#35465a,#1b2531);border:1px solid #0e151d}
+.count-badge{
+  position:absolute;right:-5px;bottom:-5px;min-width:17px;height:17px;padding:0 4px;
+  border-radius:9px;background:var(--charcoal);color:var(--text);
+  font-size:10px;font-weight:700;display:grid;place-items:center;border:1px solid rgba(255,255,255,.2);
+}
+.zone-tag{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+
+/* turn banner */
+#turn-banner{
+  align-self:center;margin:8px 0;padding:11px 26px;border-radius:999px;
+  font-weight:800;letter-spacing:.04em;font-size:15px;
+  background:rgba(0,0,0,.4);color:var(--muted);transition:background .25s,color .25s;
+}
+#turn-banner.mine{background:linear-gradient(180deg,#46c172,#2f9b56);color:#06210f;box-shadow:0 3px 14px rgba(63,174,99,.35)}
+#turn-banner.over{background:rgba(179,38,30,.3);color:#f0b4b0}
+
+/* centre felt */
+.felt{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:26px;
+  min-height:140px;position:relative;
+}
+.slot{display:flex;flex-direction:column;align-items:center;gap:7px}
+.slot-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.empty-slot{
+  width:var(--card-w);height:var(--card-h);border-radius:9px;
+  border:2px dashed rgba(255,255,255,.22);display:grid;place-items:center;
+  font-size:11px;color:rgba(255,255,255,.4);
+}
+.pile-stack{position:relative;width:var(--card-w);height:var(--card-h)}
+.pile-stack .card{position:absolute;inset:0}
+.pile-stack .card:nth-child(1){transform:translate(4px,4px) rotate(3deg)}
+.pile-stack .card:nth-child(2){transform:translate(2px,2px) rotate(-2deg)}
+.pile-stack .card:nth-child(3){transform:none}
+#lock-badge{
+  position:absolute;top:4px;left:50%;transform:translateX(-50%);
+  padding:5px 13px;border-radius:999px;background:rgba(111,211,245,.2);
+  border:1px solid rgba(111,211,245,.5);color:#bfe9fa;
+  font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+}
+
+/* a card */
+.card{
+  width:var(--card-w);height:var(--card-h);border-radius:8px;position:relative;
+  background:linear-gradient(158deg,var(--ivory),var(--ivory-2));
+  box-shadow:0 3px 7px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.09);
+  font-family:Georgia,"Times New Roman",serif;flex:0 0 auto;
+}
+.card.red{color:var(--red)} .card.black{color:var(--black)}
+.card .corner{position:absolute;font-weight:700;line-height:.95;text-align:center}
+.card .corner.tl{top:5px;left:5px;font-size:13px}
+.card .corner.br{bottom:5px;right:5px;font-size:13px;transform:rotate(180deg)}
+.card .corner small{display:block;font-size:10px}
+.card .centre{position:absolute;inset:0;display:grid;place-items:center;font-size:30px;font-weight:700}
+.card.joker .centre{font-size:13px;letter-spacing:.04em;text-align:center;line-height:1.15}
+/* small card, used for opponents' exposed face-up cards */
+.card.sm{width:26px;height:37px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.45)}
+.card.sm .corner{display:none}
+.card.sm .centre{font-size:14px}
+.card.sm.joker .centre{font-size:7px;line-height:1.1;letter-spacing:0}
+/* the face-down row is context, not the focus, so it sits smaller */
+#your-face-down .card-back{width:46px;height:64px}
+.card-back{
+  width:var(--card-w);height:var(--card-h);border-radius:8px;flex:0 0 auto;
+  background:
+    repeating-linear-gradient(45deg,rgba(255,255,255,.055) 0 4px,transparent 4px 8px),
+    linear-gradient(140deg,#35465a,#1b2531);
+  border:1px solid #0e151d;box-shadow:0 3px 7px rgba(0,0,0,.45);
+}
+
+/* your zones */
+.my-zone{margin-top:6px}
+.zone-row{display:flex;gap:7px;justify-content:center;align-items:flex-end;flex-wrap:wrap;min-height:4px}
+.zone-row.scroll{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding:4px 2px 8px;scrollbar-width:none}
+.zone-row.scroll::-webkit-scrollbar{display:none}
+.zone-heading{
+  text-align:center;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin:7px 0 4px;
+}
+.zone-heading.live{color:var(--amber)}
+.pick{position:relative;transition:transform .12s,filter .12s;background:none;padding:0}
+.pick[aria-pressed="true"]{transform:translateY(-13px)}
+.pick[aria-pressed="true"] .card,.pick[aria-pressed="true"] .card-back{
+  box-shadow:0 0 0 2.5px var(--amber),0 7px 16px rgba(0,0,0,.55);
+}
+.pick:disabled{filter:grayscale(.55) brightness(.75);cursor:default}
+
+/* actions */
+#action-hint{text-align:center;font-size:12.5px;color:var(--muted);min-height:17px;margin:2px 0 6px}
+#actions{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
+#actions button{
+  padding:12px 16px;border-radius:12px;font-weight:700;font-size:14px;
+  background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.15);
+  transition:transform .08s;
+}
+#actions button:active{transform:scale(.96)}
+#actions button.key{background:linear-gradient(180deg,#f0a74c,#d2792a);color:#2a1606;border-color:transparent}
+#actions button.danger{background:rgba(179,38,30,.3);border-color:rgba(179,38,30,.55);color:#f3b9b5}
+#table-status{text-align:center;font-size:12.5px;color:var(--amber);min-height:16px;margin-top:5px}
+
+@media (max-height:680px){
+  :root{--card-w:52px;--card-h:73px}
+  .brand .mark{width:72px;height:72px}
+  .brand h1{font-size:33px}
+}
 </style>
 </head>
 <body>
-<h1>Shithead <small>Multiplayer preview</small></h1>
-<p>Enter your name, then create a room and share its four-character code — or join a friend's.</p>
-<div class="panel">
-<div class="row"><label for="name">Your name</label><input id="name" placeholder="Your name" maxlength="32" autocomplete="nickname" aria-label="Your name"></div>
+<div id="app">
+
+<!-- ============================================================ HOME -->
+<section id="screen-home" class="shell">
+  <div class="brand">
+    <div class="mark" id="logo-slot">LOGO<br>PENDING<br>ASSET</div>
+    <h1>SHITHEAD</h1>
+    <p>Mobile Multiplayer Card Game</p>
+  </div>
+  <div class="panel">
+    <label class="field" for="name"><span>Enter your name</span>
+      <input id="name" placeholder="Player Name" maxlength="32" autocomplete="nickname">
+    </label>
+    <div class="btn-row">
+      <button id="go-create" class="btn btn-primary" type="button">Create Room</button>
+      <button id="go-join" class="btn btn-ghost" type="button">Join Room</button>
+    </div>
+  </div>
+
+  <div class="panel hidden" id="create-panel">
+    <h2>Create a room</h2>
+    <label class="field" for="capacity"><span>Players</span>
+      <select id="capacity"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+    </label>
+    <button id="create" class="btn btn-primary" type="button">Create</button>
+  </div>
+
+  <div class="panel hidden" id="join-panel">
+    <h2>Join a room</h2>
+    <label class="field" for="room"><span>Room code</span>
+      <input id="room" placeholder="CODE" maxlength="4" inputmode="latin" autocapitalize="characters" spellcheck="false">
+    </label>
+    <button id="join" class="btn btn-primary" type="button">Join</button>
+  </div>
+
+  <button id="go-rules" class="btn btn-ghost" type="button">Rules</button>
+  <p id="status" role="status" aria-live="polite"></p>
+</section>
+
+<!-- =========================================================== LOBBY -->
+<section id="screen-lobby" class="shell hidden">
+  <div class="code-display">
+    <small>Room code</small>
+    <b id="room-label"></b>
+    <button id="copy-code" class="btn btn-ghost" type="button" style="margin-top:10px">Copy code</button>
+  </div>
+  <div class="panel">
+    <h2 id="phase">Waiting for players</h2>
+    <ul id="players"></ul>
+  </div>
+  <button id="ready" class="btn btn-primary" type="button" disabled>Ready</button>
+  <p id="lobby-status" role="status" aria-live="polite" style="text-align:center;color:var(--muted);font-size:13px"></p>
+</section>
+
+<!-- =========================================================== TABLE -->
+<section id="screen-table" class="hidden">
+  <div class="table-top">
+    <div class="room-chip">ROOM<b id="table-room"></b></div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="table-rules" type="button" title="Rules">?</button>
+  </div>
+
+  <div id="opponents"></div>
+
+  <div id="turn-banner">Waiting…</div>
+
+  <div class="felt">
+    <div id="lock-badge" class="hidden">Seven lock</div>
+    <div class="slot">
+      <div id="deck-slot"></div>
+      <div class="slot-label" id="deck-label">Stock</div>
+    </div>
+    <div class="slot">
+      <div id="play-slot"></div>
+      <div class="slot-label" id="pile-label">Pile</div>
+    </div>
+  </div>
+
+  <div class="my-zone">
+    <div class="zone-heading" id="head-down">Face down</div>
+    <div class="zone-row" id="your-face-down"></div>
+    <div class="zone-heading" id="head-up">Face up</div>
+    <div class="zone-row" id="your-face-up"></div>
+    <div class="zone-heading" id="head-hand">Your hand</div>
+    <div class="zone-row scroll" id="your-hand"></div>
+  </div>
+
+  <p id="action-hint"></p>
+  <div id="actions">
+    <button id="play-card" type="button" class="key">Play</button>
+    <button id="use-power" type="button">3 / Joker</button>
+    <button id="flip-card" type="button" class="key">Flip</button>
+    <button id="pickup" type="button" class="danger">Pick up</button>
+    <button id="counter" type="button">Counter</button>
+    <button id="accept" type="button" class="danger">Accept pile</button>
+  </div>
+  <p id="table-status" role="status" aria-live="polite"></p>
+</section>
+
 </div>
-<div class="panel">
-<h2>Create a room</h2>
-<div class="row"><label>Players <select id="capacity"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label><button id="create">Create room</button></div>
-<p id="invite" hidden></p>
-</div>
-<div class="panel">
-<h2>Join a room</h2>
-<div class="row"><input id="room" placeholder="Code" maxlength="4" size="6" inputmode="latin" autocapitalize="characters" spellcheck="false" aria-label="Four-character room code"><button id="join">Join</button></div>
-</div>
-<div class="panel" id="lobby" hidden>
-<h2>Lobby <small id="room-label"></small></h2>
-<ul id="players"></ul>
-<div class="row"><button id="ready" disabled>Ready</button><small id="phase"></small></div>
-<p><small>Invite friends with the room code. Your seat stays reserved if you disconnect.</small></p>
-</div>
-<div class="panel" id="game-panel" hidden>
-<h2>Table <small id="turn-label"></small></h2>
-<p id="pile-label"></p>
-<div id="player-counts"></div>
-<h3>Your cards</h3>
-<div id="my-cards" class="row"></div>
-<p id="action-hint"></p>
-<div class="row">
-<label>Target <select id="target"></select></label>
-<button id="play-card" type="button">Play selected</button>
-<button id="use-power" type="button">3 / Joker</button>
-<button id="flip-card" type="button">Flip</button>
-<button id="pickup" type="button">Pick up</button>
-<button id="counter" type="button">Counter</button>
-<button id="accept" type="button">Accept pile</button>
-</div>
-</div>
-<p id="status" role="status" aria-live="polite"></p>
-<script defer src="/client.js"></script></body></html>
+<script defer src="/client.js"></script>
+</body></html>
