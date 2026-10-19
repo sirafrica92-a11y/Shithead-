@@ -2,6 +2,7 @@ name: Shithead Python tests
 on:
   push:
     branches:
+      - fix/four-character-room-code-websocket-20261019
       - fix/room-passwords
       - deploy/railway-shithead-games-staging
       - fix/w4-complete-match-20261019
@@ -11,6 +12,7 @@ on:
       - feature/w4-live-card-matches-20261018
   pull_request:
     branches:
+      - fix/four-character-room-code-websocket-20261019
       - deploy/railway-shithead-games-staging
       - fix/preflight-multiplayer-20261019
       - build/w1-turn-seat-selector
@@ -25,7 +27,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install pytest fastapi httpx uvicorn
+      - run: python -m pip install -r requirements.txt
       - run: python -m pytest -q server/tests
       - run: python -m py_compile run_local.py
       - run: node --check server/app/static/client.js

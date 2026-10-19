@@ -9,11 +9,13 @@ import secrets
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from server.app.lobby import RoomStore, Seat, broadcast, remember_request
+from server.app.lobby import (
+    MAX_ROOM_CODE_INPUT, RateLimiter, RoomStore, Seat, broadcast, remember_request,
+)
 from server.app.persistence import token_digest
 from server.app.gameplay import apply_match_action, make_match, UndecidedStartTie
 from server.app.rules.ordinary import IllegalPlay
@@ -22,23 +24,65 @@ from server.app.rules.pile_pass import IllegalTransition
 
 class CreateRoom(BaseModel):
     capacity: int = Field(default=2, ge=2, le=6)
-    password: str | None = Field(default=None, max_length=128)
 
 
 class JoinRoom(BaseModel):
     name: str = Field(min_length=1, max_length=32)
-    password: str = Field(min_length=4, max_length=128)
 
 
-def create_app(*, db_path: str | Path | None = None) -> FastAPI:
-    app = FastAPI(title="Shithead private multiplayer preview", version="0.1-w4")
+def _client_key(scope) -> str:
+    """Group lookup attempts by origin address; good enough to stop a scan.
+
+    Behind Railway the socket peer is the edge proxy, so without the forwarded
+    address every player would share one bucket and one guesser could lock the
+    room out for everyone. The header is spoofable, which costs little here:
+    the limiter protects room codes, not an account or a payment.
+    """
+    forwarded = ""
+    headers = getattr(scope, "headers", None)
+    if headers is not None:
+        forwarded = (headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if forwarded:
+        return forwarded[:64]
+    client = getattr(scope, "client", None)
+    return getattr(client, "host", None) or "unknown"
+
+
+def create_app(
+    *,
+    db_path: str | Path | None = None,
+    failed_lookup_limit: int | None = None,
+    rate_window: float | None = None,
+) -> FastAPI:
+    app = FastAPI(title="Shithead multiplayer preview", version="0.2-w4")
     cloud = bool(os.getenv("RAILWAY_ENVIRONMENT_ID"))
     store = RoomStore(db_path=db_path)
     app.state.room_store = store
 
-    async def get_room(room_id: str):
-        room = await store.get(room_id)
+    # Rooms are open to anyone holding the code, so a wrong code is the only
+    # thing worth throttling. Successful play never touches this limiter.
+    limit = failed_lookup_limit if failed_lookup_limit is not None else int(
+        os.getenv("SHITHEAD_FAILED_LOOKUP_LIMIT", "10"))
+    window = rate_window if rate_window is not None else float(
+        os.getenv("SHITHEAD_RATE_WINDOW_SECONDS", "60"))
+    bad_codes = RateLimiter(limit=limit, window=window)
+    app.state.bad_code_limiter = bad_codes
+
+    async def resolve_room(room_id: str, key: str):
+        """Shared code validation for every entry point: HTTP and WebSocket.
+
+        Returns the room, or raises 429 once a client has burned through its
+        allowance of wrong codes, otherwise 404.
+        """
+        room = None
+        if room_id and len(room_id) <= MAX_ROOM_CODE_INPUT:
+            room = await store.get(room_id)
         if room is None:
+            if not bad_codes.allow(key):
+                raise HTTPException(
+                    status_code=429,
+                    detail="too many invalid room codes; wait a minute and try again",
+                )
             raise HTTPException(status_code=404, detail="room not found")
         return room
 
@@ -57,29 +101,24 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
     @app.post("/api/rooms", status_code=201)
     async def create_room(payload: CreateRoom):
         try:
-            password = payload.password or secrets.token_urlsafe(12)
-            if len(password) < 4:
-                raise HTTPException(status_code=422, detail="room password must have at least 4 characters")
-            room = await store.create(payload.capacity, password)
+            room = await store.create(payload.capacity)
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
-        return {"room_id": room.id, "capacity": room.capacity, "room_password": password}
+        return {"room_id": room.id, "capacity": room.capacity}
 
     @app.get("/api/rooms/{room_id}")
-    async def room_snapshot(room_id: str):
-        room = await get_room(room_id)
+    async def room_snapshot(room_id: str, request: Request):
+        room = await resolve_room(room_id, _client_key(request))
         async with room.lock:
             return room.public_view()
 
     @app.post("/api/rooms/{room_id}/join", status_code=201)
-    async def join_room(room_id: str, payload: JoinRoom):
-        room = await get_room(room_id)
+    async def join_room(room_id: str, payload: JoinRoom, request: Request):
+        room = await resolve_room(room_id, _client_key(request))
         name = payload.name.strip()
         if not name or any(ord(c) < 32 for c in name):
             raise HTTPException(status_code=422, detail="enter a valid player name")
         async with room.lock:
-            if not room.check_password(payload.password):
-                raise HTTPException(status_code=403, detail="incorrect room password")
             if len(room.seats) == room.capacity:
                 raise HTTPException(status_code=409, detail="room is full")
             raw_token = secrets.token_urlsafe(24)
@@ -99,8 +138,9 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
                 (origin and urlsplit(origin).netloc != websocket.headers.get("host"))):
             await websocket.close(code=1008)
             return
-        room = await store.get(room_id)
-        if room is None:
+        try:
+            room = await resolve_room(room_id, _client_key(websocket))
+        except HTTPException:
             await websocket.close(code=1008)
             return
         await websocket.accept()

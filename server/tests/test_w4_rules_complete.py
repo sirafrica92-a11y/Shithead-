@@ -97,9 +97,9 @@ def test_unresolved_starting_tie_keeps_websocket_lobby_recoverable(monkeypatch):
 
     monkeypatch.setattr(server_main, "make_match", tied)
     with TestClient(server_main.create_app()) as client:
-        room = client.post("/api/rooms", json={"capacity":2,"password":"test-room-pass123"}).json()["room_id"]
-        a = client.post(f"/api/rooms/{room}/join", json={"name":"A","password":"test-room-pass123"}).json()
-        b = client.post(f"/api/rooms/{room}/join", json={"name":"B","password":"test-room-pass123"}).json()
+        room = client.post("/api/rooms", json={"capacity":2}).json()["room_id"]
+        a = client.post(f"/api/rooms/{room}/join", json={"name":"A"}).json()
+        b = client.post(f"/api/rooms/{room}/join", json={"name":"B"}).json()
         with client.websocket_connect(f"/ws/{room}") as ws_a:
             ws_a.send_json({"type": "auth", "token": a["token"]})
             first = ws_a.receive_json()

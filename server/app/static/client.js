@@ -7,6 +7,7 @@ let ws, seatToken, seatIndex = -1, snap = null, roomId = "", reconnects = 0;
 let selection = new Set();
 let intentionalClose = false;
 function status(message) { el("status").textContent = message; }
+const roomCode = value => (value || "").trim().toUpperCase();
 function loadSeat() {
   try {
     const s = JSON.parse(sessionStorage.getItem(KEY) || "null");
@@ -176,17 +177,17 @@ function connect(room,token,retry=0) {
 }
 el("create").onclick=async()=>{
   try {
-    const r=await request("/api/rooms",{capacity:Number(el("capacity").value),password:el("create-password").value.trim()||null});
+    const r=await request("/api/rooms",{capacity:Number(el("capacity").value)});
     el("room").value=r.room_id;
-    el("join-password").value=r.room_password;
     el("invite").hidden=false;
-    el("invite").textContent="Invite code: "+r.room_id+" · Room password: "+r.room_password+" — Share both privately.";
-    status("Room created! Join below, and send your friend the room code and password.");
+    el("invite").textContent="Room code: "+r.room_id+" — share it with the other players.";
+    status("Room created! Enter your name and join with code "+r.room_id+".");
   } catch(e){status(e.message);}
 };
 el("join").onclick=async()=>{
   try {
-    const room=el("room").value.trim(),name=el("name").value.trim();
+    // Codes are issued uppercase, so a typed code is matched case-insensitively.
+    const room=roomCode(el("room").value),name=el("name").value.trim();
     if(!room||!name){status("Enter your name and the room code.");return;}
     const saved=loadSeat();
     if(saved?.room===room){
@@ -194,9 +195,7 @@ el("join").onclick=async()=>{
       connect(room,saved.token);
       return;
     }
-    const password=el("join-password").value;
-    if(!password){status("Enter the room password shared by the host.");return;}
-    const r=await request("/api/rooms/"+encodeURIComponent(room)+"/join",{name,password});
+    const r=await request("/api/rooms/"+encodeURIComponent(room)+"/join",{name});
     seatIndex=r.seat;
     saveSeat(room,r.token,r.seat,name);
     connect(room,r.token);
