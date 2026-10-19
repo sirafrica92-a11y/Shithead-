@@ -24,6 +24,9 @@ from server.app.rules.pile_pass import IllegalTransition
 
 class CreateRoom(BaseModel):
     capacity: int = Field(default=2, ge=2, le=6)
+    # The host names themselves while creating, so one press both opens the
+    # room and seats them. Optional, so an older client still works.
+    name: str | None = Field(default=None, max_length=32)
 
 
 class JoinRoom(BaseModel):
@@ -98,13 +101,36 @@ def create_app(
     async def client_script():
         return FileResponse(Path(__file__).parent / "static" / "client.js", media_type="application/javascript")
 
+    def clean_name(raw: str) -> str:
+        name = raw.strip()
+        if not name or any(ord(c) < 32 for c in name):
+            raise HTTPException(status_code=422, detail="enter a valid player name")
+        return name
+
+    async def seat_player(room, name: str) -> dict:
+        """Take the next free seat and issue that seat's private token."""
+        async with room.lock:
+            if len(room.seats) == room.capacity:
+                raise HTTPException(status_code=409, detail="room is full")
+            raw_token = secrets.token_urlsafe(24)
+            room.seats.append(Seat(name=name, token_digest=token_digest(raw_token)))
+            room.version += 1
+            index = len(room.seats) - 1
+            store.persist(room)
+        await broadcast(room)
+        return {"room_id": room.id, "seat": index, "token": raw_token}
+
     @app.post("/api/rooms", status_code=201)
     async def create_room(payload: CreateRoom):
+        name = clean_name(payload.name) if payload.name is not None else None
         try:
             room = await store.create(payload.capacity)
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
-        return {"room_id": room.id, "capacity": room.capacity}
+        body = {"room_id": room.id, "capacity": room.capacity}
+        if name is not None:
+            body.update(await seat_player(room, name))
+        return body
 
     @app.get("/api/rooms/{room_id}")
     async def room_snapshot(room_id: str, request: Request):
@@ -115,20 +141,7 @@ def create_app(
     @app.post("/api/rooms/{room_id}/join", status_code=201)
     async def join_room(room_id: str, payload: JoinRoom, request: Request):
         room = await resolve_room(room_id, _client_key(request))
-        name = payload.name.strip()
-        if not name or any(ord(c) < 32 for c in name):
-            raise HTTPException(status_code=422, detail="enter a valid player name")
-        async with room.lock:
-            if len(room.seats) == room.capacity:
-                raise HTTPException(status_code=409, detail="room is full")
-            raw_token = secrets.token_urlsafe(24)
-            seat = Seat(name=name, token_digest=token_digest(raw_token))
-            room.seats.append(seat)
-            room.version += 1
-            index = len(room.seats) - 1
-            store.persist(room)
-        await broadcast(room)
-        return {"room_id": room.id, "seat": index, "token": raw_token}
+        return await seat_player(room, clean_name(payload.name))
 
     @app.websocket("/ws/{room_id}")
     async def room_socket(websocket: WebSocket, room_id: str):

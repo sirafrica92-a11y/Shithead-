@@ -175,13 +175,19 @@ function connect(room,token,retry=0) {
   };
   socket.onerror=()=>{status("Could not reach the local server.");};
 }
+// One press: open the room and take the host's seat in the same request.
 el("create").onclick=async()=>{
+  const name=el("name").value.trim();
+  if(!name){status("Enter your name first.");el("name").focus();return;}
   try {
-    const r=await request("/api/rooms",{capacity:Number(el("capacity").value)});
+    const r=await request("/api/rooms",{capacity:Number(el("capacity").value),name});
     el("room").value=r.room_id;
     el("invite").hidden=false;
     el("invite").textContent="Room code: "+r.room_id+" — share it with the other players.";
-    status("Room created! Enter your name and join with code "+r.room_id+".");
+    seatIndex=r.seat;
+    saveSeat(r.room_id,r.token,r.seat,name);
+    connect(r.room_id,r.token);
+    status("Room "+r.room_id+" created — you are seated. Share the code.");
   } catch(e){status(e.message);}
 };
 el("join").onclick=async()=>{
