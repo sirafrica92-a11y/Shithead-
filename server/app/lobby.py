@@ -1,5 +1,10 @@
 """Development-only multiplayer rooms with optional local SQLite recovery.
 
+Rooms are identified by a short, shareable code and have no password: anyone
+holding the code may take a free seat. Privacy still rests on the seat token,
+which is issued once per seat, never appears in a public snapshot, and is the
+only thing that authenticates a socket or restores a seat after a drop.
+
 Public snapshots never contain seat tokens. A token grants control of exactly
 one seat for the lifetime of this process; it is not a user account.
 """
@@ -7,12 +12,12 @@ one seat for the lifetime of this process; it is not a user account.
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import hmac
 import json
+import re
 import secrets
 import sqlite3
 import threading
+import time
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
@@ -20,6 +25,54 @@ from typing import Any
 from fastapi import WebSocket
 from server.app.gameplay import Match, private_match_view, public_match_view
 from server.app.persistence import dump_match, restore_match
+
+
+# Codes are read aloud and typed by hand, so they are short, case-insensitive
+# and drawn from a single uppercase alphanumeric alphabet (36**4 = 1_679_616).
+ROOM_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+ROOM_CODE_LENGTH = 4
+ROOM_CODE_RE = re.compile(f"^[A-Z0-9]{{{ROOM_CODE_LENGTH}}}$")
+MAX_ROOM_CODE_INPUT = 64  # refuse unbounded lookup keys before touching the store
+
+
+def normalise_room_code(raw: str) -> str:
+    """One spelling for a typed code: trimmed and upper-cased."""
+    return (raw or "").strip().upper()
+
+
+def is_room_code(value: str) -> bool:
+    return bool(ROOM_CODE_RE.match(value))
+
+
+class RateLimiter:
+    """Fixed-window limiter, keyed by client, to make code guessing impractical.
+
+    Only *failed* lookups are recorded, so ordinary play is never throttled
+    while a scan of the code space is stopped after a handful of misses.
+    """
+
+    def __init__(self, limit: int, window: float, clock=time.monotonic):
+        self.limit = limit
+        self.window = window
+        self.clock = clock
+        self.hits: dict[str, list[float]] = {}
+
+    def allow(self, key: str) -> bool:
+        now = self.clock()
+        recent = [t for t in self.hits.get(key, ()) if now - t < self.window]
+        if len(recent) >= self.limit:
+            self.hits[key] = recent
+            return False
+        recent.append(now)
+        self.hits[key] = recent
+        if len(self.hits) > 4096:
+            self._evict(now)
+        return True
+
+    def _evict(self, now: float) -> None:
+        for key in [k for k, v in self.hits.items()
+                    if all(now - t >= self.window for t in v)]:
+            del self.hits[key]
 
 
 @dataclass
@@ -36,19 +89,9 @@ class Room:
     id: str
     capacity: int
     seats: list[Seat] = field(default_factory=list)
-    password_salt: str = ""
-    password_hash: str = ""
     version: int = 0
     match: Match | None = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-
-    def check_password(self, password: str) -> bool:
-        """Existing legacy rooms are closed to new joins until recreated."""
-        if not self.password_salt or not self.password_hash:
-            return False
-        candidate = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"),
-                                        bytes.fromhex(self.password_salt), 210000)
-        return hmac.compare_digest(candidate.hex(), self.password_hash)
 
     def public_view(self) -> dict[str, Any]:
         return {
@@ -101,11 +144,11 @@ class RoomStore:
                         ready=x["ready"], request_ids=list(x.get("request_ids", []))[-64:],
                     ) for x in data["seats"]
                 ]
+                # Rooms saved before codes replaced passwords keep their id and
+                # seat digests; any stored password material is simply dropped.
                 room = Room(
                     id=room_id, capacity=data["capacity"], seats=seats,
                     version=data["version"], match=restore_match(data["match"]),
-                    password_salt=data.get("password_salt", ""),
-                    password_hash=data.get("password_hash", ""),
                 )
                 self.rooms[room.id] = room
 
@@ -115,7 +158,6 @@ class RoomStore:
             return
         payload = {
             "capacity": room.capacity, "version": room.version,
-            "password_salt": room.password_salt, "password_hash": room.password_hash,
             "seats": [
                 {
                     "name": s.name, "token_digest": s.token_digest,
@@ -130,26 +172,43 @@ class RoomStore:
                 (room.id, json.dumps(payload, separators=(",", ":"))),
             )
 
-    async def create(self, capacity: int, password: str) -> Room:
+    def _allocate_code(self) -> str:
+        """A free code, drawn with secrets and checked against live rooms."""
+        for _ in range(100):
+            code = "".join(secrets.choice(ROOM_CODE_ALPHABET)
+                           for _ in range(ROOM_CODE_LENGTH))
+            if code not in self.rooms and is_room_code(code):
+                return code
+        raise ValueError("could not allocate a free room code")
+
+    async def create(self, capacity: int) -> Room:
         if not 2 <= capacity <= 6:
             raise ValueError("rooms require 2 to 6 players")
         async with self.lock:
             if len(self.rooms) >= self.max_rooms:
                 raise ValueError("development room limit reached")
-            room_id = secrets.token_urlsafe(9)
-            while room_id in self.rooms:
-                room_id = secrets.token_urlsafe(9)
-            salt = secrets.token_bytes(16)
-            digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 210000)
-            room = Room(id=room_id, capacity=capacity,
-                        password_salt=salt.hex(), password_hash=digest.hex())
-            self.rooms[room_id] = room
+            room = Room(id=self._allocate_code(), capacity=capacity)
+            self.rooms[room.id] = room
             self.persist(room)
             return room
 
     async def get(self, room_id: str) -> Room | None:
+        """Look a room up by its code.
+
+        New codes are uppercase, so a typed code is matched case-insensitively.
+        Rooms saved under the earlier mixed-case ids stay reachable by their
+        exact id, which keeps existing rooms and seat tokens usable.
+        """
+        raw = (room_id or "").strip()
+        if not raw or len(raw) > MAX_ROOM_CODE_INPUT:
+            return None
         async with self.lock:
-            return self.rooms.get(room_id)
+            # Exact first, so a room saved under a mixed-case id can never be
+            # shadowed by a newer code that matches it only once upper-cased.
+            room = self.rooms.get(raw)
+            if room is None:
+                room = self.rooms.get(normalise_room_code(raw))
+            return room
 
 
 async def broadcast(room: Room, *, exclude: WebSocket | None = None) -> None:
