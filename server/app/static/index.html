@@ -235,6 +235,21 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
 #actions button.danger{background:rgba(179,38,30,.3);border-color:rgba(179,38,30,.55);color:#f3b9b5}
 #table-status{text-align:center;font-size:12.5px;color:var(--amber);min-height:16px;margin-top:5px}
 
+/* ----------------------------------------------------------- rules page */
+.rules-top{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.rules-title{margin:0;font:800 26px/1.1 Georgia,serif;letter-spacing:.01em}
+.rules-block{padding:16px 17px}
+.rules-block p{margin:0 0 9px;font-size:14.5px;line-height:1.55;color:#ded3c4}
+.rules-block p:last-child{margin-bottom:0}
+.rules-block b{color:var(--text)}
+.r-head{margin:0 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.r-power{margin:17px 0 7px;font-size:15.5px;font-weight:700}
+.r-power:first-of-type{margin-top:4px}
+.r-power.gold{color:#e8c061}.r-power.red{color:#e8756c}
+.r-power.blue{color:#6fc0e8}.r-power.green{color:#6fd49a}
+.r-sub{margin:16px 0 7px;font-size:14.5px;font-weight:700;color:var(--text)}
+.r-sub:first-of-type{margin-top:2px}
+.rules-foot{text-align:center;font-size:12.5px;color:var(--muted);margin:2px 0 8px}
 @media (max-height:680px){
   :root{--card-w:52px;--card-h:73px}
   .brand .mark{width:72px;height:72px}
@@ -342,6 +357,85 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
   <p id="table-status" role="status" aria-live="polite"></p>
 </section>
 
+
+<!-- =========================================================== RULES -->
+<section id="screen-rules" class="shell hidden">
+  <div class="rules-top">
+    <button id="rules-back" class="icon-btn" type="button" aria-label="Back">&#8592;</button>
+    <h1 class="rules-title">How to Play</h1>
+  </div>
+
+  <div class="panel rules-block">
+    <h3 class="r-head">Objective</h3>
+    <p>Be rid of your cards. All of them: your hand, your three face-up cards and your three face-down cards.</p>
+    <p>Finishing does not end the match. Play carries on until one player is left holding cards. That player is the Shithead.</p>
+  </div>
+
+  <div class="panel rules-block">
+    <h3 class="r-head">Setting up</h3>
+    <p>Two to six players.</p>
+    <p>You are dealt three cards face down, three cards face up on top of them, and three cards in your hand.</p>
+    <p>Whoever holds the lowest card starts.</p>
+  </div>
+
+  <div class="panel rules-block">
+    <h3 class="r-head">Taking your turn</h3>
+    <p>Play a card of <b>equal or higher</b> rank than the top of the pile.</p>
+    <p>Rank order is 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A. Ace is highest.</p>
+    <p>You may play several cards of the same rank together as one move.</p>
+    <p>If you have no legal play, pick up the whole pile. Your turn ends there.</p>
+    <p>Four cards of the same rank in a row clear the pile. Whoever lays the fourth plays again.</p>
+  </div>
+
+  <div class="panel rules-block">
+    <h3 class="r-head">Keeping three in hand</h3>
+    <p>Once your move has fully resolved, draw from the stock to bring your hand back up to three cards.</p>
+    <p>You never draw in the middle of a move, an attack or a counter chain.</p>
+    <p>When the stock runs out, there is nothing to draw.</p>
+  </div>
+
+  <div class="panel rules-block">
+    <h3 class="r-head">Power cards</h3>
+
+    <h4 class="r-power gold">Three &amp; Joker &mdash; The Hand-Off</h4>
+    <p>A Three and a Joker do exactly the same thing. Either is removed from the game once played &mdash; it never sits in the pile.</p>
+    <p>If there is a pile, send the whole pile to any <b>other</b> player.</p>
+    <p>That player chooses. They may accept the pile, even while holding a Three or a Joker. Or they may counter with a Three or a Joker and send the pile on to anyone &mdash; including back to you. The chain continues until someone accepts.</p>
+    <p>If the pile is empty, a Three or a Joker skips the next player instead. Play another and you skip the player after that.</p>
+    <p><b>Nothing stops a Three or a Joker.</b> A Seven lock never prevents one.</p>
+
+    <h4 class="r-power red">Ten &mdash; Clear</h4>
+    <p>Clears the pile at once and lifts any Seven lock. You play again immediately.</p>
+
+    <h4 class="r-power blue">Seven &mdash; Lock</h4>
+    <p>A Seven can be played on any card.</p>
+    <p>After a Seven, the next ordinary play must be rank <b>seven or lower</b>.</p>
+    <p>A Seven on a Seven is legal, and locks the next player again. Four Sevens in a row clear the pile.</p>
+    <p>A Two or a Ten still overrides the lock.</p>
+
+    <h4 class="r-power green">Two &mdash; Free Pass</h4>
+    <p>A Two can be played on any card. It resets the restrictions, and the next player may play whatever they like.</p>
+  </div>
+
+  <div class="panel rules-block">
+    <h3 class="r-head">Endgame</h3>
+
+    <h4 class="r-sub">Your face-up cards</h4>
+    <p>Once the stock is empty and you hold fewer than three cards, your three face-up cards are added to your hand automatically. It costs you nothing and does not use your turn.</p>
+    <p>From then on you play them from your hand like any other card.</p>
+
+    <h4 class="r-sub">Your face-down cards</h4>
+    <p>When your hand and your face-up cards are gone, you play your face-down cards blind, one at a time.</p>
+    <p>You may only turn one over while your hand is empty.</p>
+    <p>If the card you turn over cannot legally stay in play, you take the pile <b>and that card</b> into your hand. You play your hand out as normal, and only turn over another face-down card once your hand is empty again.</p>
+    <p>A power card turned over blind works exactly as it normally would.</p>
+
+    <h4 class="r-sub">Finishing</h4>
+    <p>You are out when nothing remains in your hand, face up or face down. Out players are skipped from then on. The last player still holding cards is the Shithead.</p>
+  </div>
+
+  <p class="rules-foot">Shit Face mode is presentation only. It never changes the cards, the turn order, or what is legal.</p>
+</section>
 </div>
 <script defer src="/client.js"></script>
 </body></html>
