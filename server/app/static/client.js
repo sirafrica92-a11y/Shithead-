@@ -17,9 +17,16 @@ const roomCode = value => (value || "").trim().toUpperCase();
 function status(message) { el("status").textContent = message; }
 function tableStatus(message) { el("table-status").textContent = message; }
 
+let screenBeforeRules = "screen-home";
 function show(screen) {
-  ["screen-home", "screen-lobby", "screen-table"].forEach(id =>
+  ["screen-home", "screen-lobby", "screen-table", "screen-rules"].forEach(id =>
     el(id).classList.toggle("hidden", id !== screen));
+}
+function openRules() {
+  screenBeforeRules = ["screen-home", "screen-lobby", "screen-table"]
+    .find(id => !el(id).classList.contains("hidden")) || "screen-home";
+  show("screen-rules");
+  window.scrollTo(0, 0);
 }
 
 /* ------------------------------------------------------------- seat store */
@@ -80,9 +87,10 @@ function render(x) {
   if (typeof x.you === "number") seatIndex = x.you;
   roomId = x.room_id;
 
-  if (x.game) { show("screen-table"); renderGame(x.game); return; }
+  const reading = !el("screen-rules").classList.contains("hidden");
+  if (x.game) { if (!reading) show("screen-table"); renderGame(x.game); return; }
 
-  show("screen-lobby");
+  if (!reading) show("screen-lobby");
   el("room-label").textContent = x.room_id;
   const ul = el("players");
   ul.replaceChildren();
@@ -384,8 +392,9 @@ el("go-join").onclick = () => {
   el("join-panel").classList.remove("hidden");
   el("create-panel").classList.add("hidden");
 };
-el("go-rules").onclick = () => status("Rules page is not built yet.");
-el("table-rules").onclick = () => tableStatus("Rules page is not built yet.");
+el("go-rules").onclick = openRules;
+el("table-rules").onclick = openRules;
+el("rules-back").onclick = () => show(screenBeforeRules);
 
 // One press: open the room and take the host's seat in the same request.
 el("create").onclick = async () => {
