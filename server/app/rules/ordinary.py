@@ -98,6 +98,15 @@ def _next_seat(state: OrdinaryState, current: int, finished: tuple[int, ...]) ->
     raise IllegalPlay("match has no eligible players")
 
 
+def _absorb_face_up(player: PlayerState) -> PlayerState:
+    """D-022: once the stock is empty and the player holds fewer than three cards
+    in hand, the three face-up cards are taken into hand automatically. This is a
+    free action: it costs no turn and is applied wherever the state settles."""
+    if not player.face_up or len(player.hand) >= 3:
+        return player
+    return replace(player, hand=player.hand + player.face_up, face_up=())
+
+
 def _settle(state: OrdinaryState, player: PlayerState, *, extra_turn: bool) -> OrdinaryState:
     """After the entire action, refill/finish/advance. State already has its pile."""
     players = list(state.players)
@@ -111,6 +120,11 @@ def _settle(state: OrdinaryState, player: PlayerState, *, extra_turn: bool) -> O
         player = replace(player, hand=deck[:3])
         deck = deck[3:]
     players[state.current] = player
+    # D-022: the stock never refills, so once it is empty every player whose hand
+    # has fallen below three absorbs their face-up cards, not just the actor.
+    if not deck:
+        players = [_absorb_face_up(p) for p in players]
+        player = players[state.current]
     finished = state.finished
     if not deck and not (player.hand or player.face_up or player.face_down):
         if state.current not in finished:

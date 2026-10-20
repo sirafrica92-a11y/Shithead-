@@ -23,3 +23,7 @@ build/
 *.log
 .DS_Store
 Thumbs.db
+
+# local virtualenv and agent worktrees
+.venv/
+.claude/
