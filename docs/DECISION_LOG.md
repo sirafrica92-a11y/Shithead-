@@ -28,6 +28,8 @@ Only a direct decision from Africa changes the game's canonical rules. This regi
 | D-021 | CONFIRMED | A 3 or Joker may always be played. No constraint, including an active seven-lock, prevents it. Resolves the OPEN question of 3/Joker versus an active lock. | Owner message, 19 Oct 2026 |
 | D-022 | CONFIRMED | **Amends D-017.** Once the stock is empty AND the player holds fewer than three cards in hand, all three face-up cards are taken into hand automatically, as a free action that does not consume a turn. A player holding two cards therefore ends with five in hand. Because the stock never refills, from that point the trigger is effectively "hand below three", so the pickup may fire mid-match rather than only once. The face-down phase begins only once hand and face-up are both empty. | Owner message, 19 Oct 2026 |
 
+| D-023 | CONFIRMED | **Voluntary pile pickup clarification:** A player who could legally play may instead collect a nonempty pile and end the turn, including when holding a 3/Joker or another matching playable card. Applies in hand/face-up stages only; face-down flipping, pending attacks, empty-pile restriction, and all existing turn, lock, and power rules remain as before. | Owner chat, 24 Oct 2026; tactical bluffing example |
+
 ## Open decision IDs
 
 | ID | Needs owner clarification | Why it matters |
