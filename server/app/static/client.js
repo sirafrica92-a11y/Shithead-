@@ -391,7 +391,8 @@ function connect(room, token, retry = 0) {
       if (x.stateSnapshot) render(x.stateSnapshot);
       const text = x.message || ("Action rejected: " + x.reasonCode);
       status(text); tableStatus(text);
-    } else { render(x); tableStatus(""); }
+      noteSnapshot(false, text);
+    } else { render(x); tableStatus(""); noteSnapshot(true); }
   };
   socket.onclose = event => {
     if (ws !== socket) return;
@@ -425,6 +426,77 @@ el("go-join").onclick = () => {
 };
 el("go-rules").onclick = openRules;
 el("table-rules").onclick = openRules;
+
+/* ------------------------------------------------- refresh / resynchronise
+   A safe state resynchronisation, never a page reload and never a new seat.
+   Connected: ask the server for a fresh authoritative snapshot over the
+   existing socket ("sync" changes no state and bumps no version).
+   Disconnected: reconnect with the saved room id and private seat token, which
+   returns the player to the same seat with the match untouched. */
+let pendingSync = null;
+
+function endSync(ok, text) {
+  if (!pendingSync) return;
+  clearTimeout(pendingSync.timer);
+  const btn = el("refresh-game");
+  btn.disabled = false;
+  btn.classList.remove("spinning");
+  if (text) tableStatus(text);
+  pendingSync = null;
+}
+
+function noteSnapshot(ok, errorText) {
+  if (!pendingSync) return;
+  // A refused action is still proof the server is answering us.
+  endSync(ok, ok ? pendingSync.success : (errorText || pendingSync.success));
+}
+
+function awaitSnapshot(success, failure) {
+  if (pendingSync) clearTimeout(pendingSync.timer);
+  pendingSync = {
+    success,
+    timer: setTimeout(() => {
+      const t = failure;
+      pendingSync = null;
+      const btn = el("refresh-game");
+      btn.disabled = false;
+      btn.classList.remove("spinning");
+      tableStatus(t);
+    }, 6000),
+  };
+}
+
+function refreshGame() {
+  const btn = el("refresh-game");
+  if (btn.disabled) return;
+  const saved = loadSeat();
+  const room = saved?.room || roomId;
+  const token = saved?.token || seatToken;
+  if (!room || !token) {
+    // Be honest: nothing was lost on the server, this device just cannot prove
+    // which seat is ours.
+    tableStatus("This device no longer has your seat credentials. "
+                + "Rejoin with the room code to take your seat back.");
+    return;
+  }
+  btn.disabled = true;
+  btn.classList.add("spinning");
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    tableStatus("Refreshing game…");
+    awaitSnapshot("Back in sync.",
+                  "The server did not answer the refresh. Your match is still "
+                  + "there — tap refresh again in a moment.");
+    ws.send(JSON.stringify({ type: "sync" }));
+  } else {
+    tableStatus("Reconnecting to your game…");
+    awaitSnapshot("Back in sync.",
+                  "Could not reach the server. Your seat is still held — check "
+                  + "your connection and tap refresh again.");
+    connect(room, token);
+  }
+}
+
+el("refresh-game").onclick = refreshGame;
 el("rules-back").onclick = () => show(screenBeforeRules);
 
 // One press: open the room and take the host's seat in the same request.
