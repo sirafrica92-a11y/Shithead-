@@ -218,6 +218,7 @@ function renderGame(g) {
   const me = g.players[seatIndex];
   const mine = g.actor === seatIndex;
   const pending = g.phase === "PILE_PASS_DECISION";
+  const choosingDraw = g.refill_choice && mine;
   const over = g.phase === "FINISHED";
 
   el("table-room").textContent = roomId;
@@ -285,6 +286,13 @@ function renderGame(g) {
              "face_down", me?.face_down_count);
   renderZone(el("your-face-up"), g.your_face_up, mine && zone === "face_up" && !over, "face_up");
   renderZone(el("your-hand"), g.hand, mine && zone === "hand" && !over, "hand");
+  if (choosingDraw) {
+    const allowed = new Set(g.your_refill_indices || []);
+    el("your-hand").querySelectorAll(".pick").forEach((btn, i) => {
+      btn.disabled = !allowed.has(i);
+      if (allowed.has(i)) btn.classList.add("drawn-option");
+    });
+  }
   el("head-down").classList.toggle("live", zone === "face_down");
   el("head-up").classList.toggle("live", zone === "face_up");
   el("head-hand").classList.toggle("live", zone === "hand");
@@ -297,16 +305,19 @@ function renderGame(g) {
     ? "Blind 3 or Joker revealed — tap a player to send the pile."
     : over ? "Match over."
     : mine ? (pending ? "Accept the pile, or counter with a 3 or Joker."
-                      : "Tap a card to select, then Play. Pick up if you cannot go.")
+                      : choosingDraw ? "Matching card drawn! Play it now, or keep it for later."
+                      : "Tap a card to Play, or choose Pick Up to collect the pile.")
     : "Waiting for the other player.";
 
   // actions — same enabling rules as the proven preview
-  const playing = mine && !pending && !over;
+  const playing = mine && !pending && !over && !choosingDraw;
   const visible = {
     "play-card": playing && zone !== "face_down" && !g.your_blind_power,
     "use-power": playing && (zone !== "face_down" || !!g.your_blind_power),
     "flip-card": playing && zone === "face_down" && !g.your_blind_power,
-    "pickup":    playing && g.pile.length > 0 && !g.your_blind_power,
+    "pickup":    playing && zone !== "face_down" && g.pile.length > 0 && !g.your_blind_power,
+    "play-drawn": choosingDraw,
+    "keep-drawn": choosingDraw,
     "counter":   mine && pending && zone !== "face_down",
     "accept":    mine && pending
   };
@@ -342,6 +353,15 @@ el("use-power").onclick = () => {
 };
 el("flip-card").onclick = () => sendGame("flip", { index: [...selection][0] ?? 0 });
 el("pickup").onclick = () => sendGame("pickup");
+el("play-drawn").onclick = () => {
+  const allowed = new Set(snap?.game?.your_refill_indices || []);
+  const chosen = [...selection].sort((a, b) => a - b);
+  if (!chosen.length || chosen.some(i => !allowed.has(i))) {
+    tableStatus("Select a newly drawn matching card."); return;
+  }
+  sendGame("play_drawn", { indices: chosen });
+};
+el("keep-drawn").onclick = () => sendGame("keep_drawn");
 el("counter").onclick = () => {
   if (selection.size === 0) {
     tableStatus("Tap the 3 or Joker you want to counter with."); return;

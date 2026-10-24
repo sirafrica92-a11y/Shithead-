@@ -9,7 +9,7 @@ from dataclasses import asdict
 import hashlib
 from typing import Any
 
-from server.app.gameplay import Match
+from server.app.gameplay import Match, RefillChoice
 from server.app.rules.ordinary import (
     Card, OrdinaryState, PendingBlindPower, PlayerState,
 )
@@ -81,8 +81,14 @@ def restore_match(data: dict[str, Any] | None) -> Match | None:
             removed=frozenset(pending["removed"]),
             version=pending["version"],
         )
+    refill = data.get("refill_choice")
+    choice = RefillChoice(
+        actor=refill["actor"], rank=refill["rank"],
+        eligible_indices=tuple(refill["eligible_indices"]),
+        next_actor=refill["next_actor"],
+    ) if refill is not None else None
     return Match(
-        state=state, pending=parsed,
+        state=state, pending=parsed, refill_choice=choice,
         power_removed=tuple(restore_card(c) for c in data["power_removed"]),
         power_actors=tuple(data["power_actors"]),
         start_seat=data.get("start_seat", state.current),

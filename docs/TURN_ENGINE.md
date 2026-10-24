@@ -54,7 +54,7 @@ The player holding the **lowest card** starts the game.
 | PLAYING | play 7 | PLAYING; locked constraint passed to next actor |
 | PLAYING | play 3/Joker on nonempty pile | PILE_PASS_DECISION; targeted player owns decision |
 | PLAYING | play 3/Joker on empty pile | PLAYING; next seat skipped, resolve remaining declared skips |
-| PLAYING | forced pickup | PLAYING; next eligible actor, relative to actor |
+| PLAYING | forced or voluntary nonempty-pile pickup (D-023) | PLAYING; next eligible actor, relative to actor |
 | PILE_PASS_DECISION | acceptPile | PLAYING; apply owner's target-versus-next-player condition and any authorised skip budget |
 | PILE_PASS_DECISION | counterWithThree (3 or Joker) | PILE_PASS_DECISION; new target owns decision |
 | any live | validated finish condition | FINISHED |
@@ -95,9 +95,9 @@ The owner allows consecutive skips in one turn, including:
 - In development, invariants raise immediately. In production, flag corrupted state, stop accepting harmful writes, and offer controlled recovery rather than looping forever.
 - Property-based/stateful simulations should establish no actionless states, conservation of cards, predictable active player, and replay determinism. No finite test suite can mathematically guarantee every match finishes under malicious/nonparticipating players.
 
-## Refill timing (D-016, owner ruling O-06)
+## Refill timing (D-016, amended by D-024)
 
-No player draws replacement cards during the middle of a declared action, group play, attack or counter chain. The entire action/chain resolves first; only then do affected players refill from the stock, drawing only enough to restore the hand to its required size, subject to remaining stock. Cards drawn after resolution cannot retroactively join or continue the action that just ended. This prevents a player drawing into a fresh counter during an unresolved chain.
+No player draws replacement cards during an ordinary declared group play, 3/Joker attack or counter chain. After an ordinary hand play has resolved and refilled, D-024 optionally offers a private choice of **newly drawn matching-rank cards** (not previously held or face-up cards). The original scheduled next actor remains recorded until the player selects a drawn match or keeps it; any drawn match uses the existing ordinary reducer for all special effects and may refill again. Keeping ends the opportunity and advances to the original next actor. A clear and any 3/Joker chain remain governed by the established D-016 timing and do not acquire this new choice.
 
 ## Seven-lock (D-013, owner ruling O-03)
 
@@ -114,7 +114,7 @@ The W3 reducer (`server/app/rules/ordinary.py`) is the executable implementation
 1. **Play.** Validate that the actor is `activePlayerId`, that the card(s) come from the actor's currently legal zone (see below), and that the play is legal against the effective top card and `activeSevenConstraint`; move the card(s) from that zone onto `pile[]`.
 2. **Resolve locks and clears.** A 7 sets `activeSevenConstraint` for the next actor (rank 7 or lower; D-013/O-03). A 2 resets the effective rank for the following ordinary play and clears any active seven-lock, while still incrementing `consecutiveRankCounter` — a 2 therefore counts toward a four-of-a-kind clear. A 10 clears the pile to `removedFromGame[]` and grants the same actor an extra turn. Four of a kind on top of the pile clears regardless of how many players contributed those cards, likewise grants the same actor an extra turn, and resets `consecutiveRankCounter`.
 3. **Refill.** Only after the play and all of its effects have resolved does the actor draw from `drawPile[]`, restoring the hand to its required size subject to remaining stock (D-016/O-06). Cards drawn now cannot retroactively join the action that just ended.
-4. **Turn advancement.** After a clear (10 or four of a kind) the same actor keeps the turn (extra turn, per the phase table); otherwise the W1 turn module computes the next eligible player relative to the actor and updates `turnAnchorPlayerId` / `scheduledNextPlayerId`. A forced pickup (no playable card, or a failed blind play) also advances to the next eligible actor relative to the actor.
+4. **Turn advancement.** After a clear (10 or four of a kind) the same actor keeps the turn (extra turn, per the phase table); otherwise the W1 turn module computes the next eligible player relative to the actor and updates `turnAnchorPlayerId` / `scheduledNextPlayerId`. A pile pickup (forced or voluntarily chosen under D-023) also advances to the next eligible actor relative to the actor. Blind face-down flips remain mandatory, and a failed blind flip still collects the pile.
 
 **Zone handling.** The legal source zone follows the actor's stage: play from `hand` while it holds cards; once the hand is empty, play from `faceUp`; once both are empty, play blind from `faceDown`. A blind face-down play reveals the top face-down card as part of the action; if that card cannot legally be played on the current pile (including any seven-lock), the actor returns the revealed card to hand and picks up the entire pile — the blind face-down pickup — after which the turn advances. Finish detection runs once the action has fully resolved: a player whose hand, face-up and face-down zones are all empty is marked finished and leaves the eligibility set; when the match finish condition is validated, `phase` becomes `FINISHED`.
 

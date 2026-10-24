@@ -377,6 +377,8 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
     <button id="use-power" type="button">3 / Joker</button>
     <button id="flip-card" type="button" class="key">Flip</button>
     <button id="pickup" type="button" class="danger">Pick up</button>
+    <button id="play-drawn" type="button" class="key hidden">Play drawn match</button>
+    <button id="keep-drawn" type="button" class="hidden">Keep drawn card</button>
     <button id="counter" type="button">Counter</button>
     <button id="accept" type="button" class="danger">Accept pile</button>
   </div>
@@ -409,7 +411,7 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
     <p>Play a card of <b>equal or higher</b> rank than the top of the pile.</p>
     <p>Rank order is 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A. Ace is highest.</p>
     <p>You may play several cards of the same rank together as one move.</p>
-    <p>If you have no legal play, pick up the whole pile. Your turn ends there.</p>
+    <p>If you cannot play, pick up the pile. You may also choose to pick it up even when you have a playable card — a tactical choice that ends your turn.</p>
     <p>Four cards of the same rank in a row clear the pile. Whoever lays the fourth plays again.</p>
   </div>
 
@@ -417,6 +419,7 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
     <h3 class="r-head">Keeping three in hand</h3>
     <p>Once your move has fully resolved, draw from the stock to bring your hand back up to three cards.</p>
     <p>You never draw in the middle of a move, an attack or a counter chain.</p>
+    <p>If a newly drawn card matches the rank you just played, choose whether to play that drawn match immediately or keep it for later. Only the newly drawn matching cards qualify; otherwise your turn ends normally.</p>
     <p>When the stock runs out, there is nothing to draw.</p>
   </div>
 
