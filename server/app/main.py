@@ -225,6 +225,7 @@ def create_app(
 
                 changed = False
                 error = None
+                reason = None
                 async with room.lock:
                     seat = room.seats[index]
                     if seat.socket is not websocket:
@@ -268,6 +269,11 @@ def create_app(
                             )
                         except (IllegalPlay, IllegalTransition, ValueError) as exc:
                             error = "illegal_action"
+                            # The rule text says what the player must do instead
+                            # ("choose a valid target seat"). Collapsing it into
+                            # a generic string is what made a refused 3/Joker
+                            # look like a frozen game.
+                            reason = str(exc)
                         else:
                             room.match = next_match
                             room.version += 1
@@ -279,7 +285,8 @@ def create_app(
                 if error:
                     await websocket.send_json({
                         "type": "error", "reasonCode": error,
-                        "message": "Action rejected; view refreshed. Please choose an available action.",
+                        "message": (f"{reason[0].upper()}{reason[1:]}." if reason else
+                                    "Action rejected; view refreshed. Please choose an available action."),
                         "allowedActions": (["accept", "counter"] if room.match is not None and room.match.pending is not None else ["play", "power", "pickup", "flip"] if room.match is not None else ["ready"]),
                         "stateSnapshot": view,
                     })
