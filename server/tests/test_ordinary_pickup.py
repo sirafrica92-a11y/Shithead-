@@ -28,7 +28,7 @@ def test_forced_pickup_recovers_cards_and_ends_turn():
     assert original.pile == (C(12),)
 
 
-@pytest.mark.parametrize("rank", [2, 3, 7, 10, 12])
+@pytest.mark.parametrize("rank", [0, 2, 3, 7, 10, 12])
 def test_voluntary_pickup_allowed_despite_legal_ordinary_or_power_play(rank):
     """D-023: even a legal 3/Joker or same-rank ordinary card may be withheld."""
     state = S([P(hand=[C(rank)]), P(hand=[C(8)])], [C(12)])
@@ -98,3 +98,14 @@ def test_blind_player_cannot_choose_pickup_without_flipping():
     state = S([P(face_down=[C(4)]), P(hand=[C(8)])], [C(12)])
     with pytest.raises(IllegalPlay):
         pick_up(state)
+
+@pytest.mark.parametrize("players_count", range(2, 7))
+@pytest.mark.parametrize("direction", [-1, 1])
+def test_voluntary_pickup_keeps_existing_two_to_six_player_rotation(players_count, direction):
+    """Picking up never skips a seat or changes the approved turn direction."""
+    players = [P(hand=[C(11)]) for _ in range(players_count)]
+    state = replace(S(players, [C(11)]), direction=direction)
+    after = pick_up(state)
+    assert after.current == (direction % players_count)
+    assert len(after.players[0].hand) == 2
+    assert after.pile == ()
