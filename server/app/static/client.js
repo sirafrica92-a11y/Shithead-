@@ -277,7 +277,12 @@ function renderGame(g) {
 
   // your three zones — only the live one accepts taps
   const zone = g.your_zone;
-  renderZone(el("your-face-down"), null, mine && zone === "face_down" && !over, "face_down", me?.face_down_count);
+  // A revealed blind 3/Joker is already the committed card, so the remaining
+  // face-down cards must not be selectable: any selection makes the server
+  // refuse the power ("a blind power is exactly one committed card").
+  renderZone(el("your-face-down"), null,
+             mine && zone === "face_down" && !over && !g.your_blind_power,
+             "face_down", me?.face_down_count);
   renderZone(el("your-face-up"), g.your_face_up, mine && zone === "face_up" && !over, "face_up");
   renderZone(el("your-hand"), g.hand, mine && zone === "hand" && !over, "hand");
   el("head-down").classList.toggle("live", zone === "face_down");
@@ -312,17 +317,43 @@ function renderGame(g) {
 
 /* --------------------------------------------------------------- actions */
 el("play-card").onclick = () => sendGame("play", { indices: [...selection].sort((a, b) => a - b) });
-el("use-power").onclick = () => sendGame("power", {
-  index: [...selection][0] ?? null,
-  indices: [...selection].sort((a, b) => a - b),
-  target: targetSeat
-});
+/* A 3/Joker is the only action that needs a chosen opponent, so the common way
+   to "freeze" the game was to press these with nothing chosen and get a refusal
+   back with no idea what was missing. Say what is missing instead of sending a
+   request that cannot succeed. */
+function powerPrerequisite(g, needCard) {
+  if (!g) return "Waiting for the table.";
+  if (needCard && !g.your_blind_power && selection.size === 0)
+    return "Tap the 3 or Joker you want to use.";
+  if (g.pile.length > 0 && targetSeat === null)
+    return "Tap the player you are sending the pile to.";
+  return null;
+}
+
+el("use-power").onclick = () => {
+  const g = snap?.game;
+  const missing = powerPrerequisite(g, true);
+  if (missing) { tableStatus(missing); return; }
+  sendGame("power", {
+    index: [...selection][0] ?? null,
+    indices: [...selection].sort((a, b) => a - b),
+    target: targetSeat
+  });
+};
 el("flip-card").onclick = () => sendGame("flip", { index: [...selection][0] ?? 0 });
 el("pickup").onclick = () => sendGame("pickup");
-el("counter").onclick = () => sendGame("counter", {
-  index: [...selection][0] ?? null,
-  target: targetSeat
-});
+el("counter").onclick = () => {
+  if (selection.size === 0) {
+    tableStatus("Tap the 3 or Joker you want to counter with."); return;
+  }
+  if (targetSeat === null) {
+    tableStatus("Tap the player you are sending the pile to."); return;
+  }
+  sendGame("counter", {
+    index: [...selection][0] ?? null,
+    target: targetSeat
+  });
+};
 el("accept").onclick = () => sendGame("accept");
 
 /* ------------------------------------------------------------- transport */
