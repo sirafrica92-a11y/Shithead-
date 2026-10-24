@@ -12,6 +12,10 @@ from server.app.rules.ordinary import IllegalPlay, PlayerState, loser
 
 
 def bot_step(match):
+    # D-024 explicitly leaves the actor in charge of the optional match
+    # after drawing. This baseline bot elects to keep, then continues normally.
+    if match.refill_choice is not None:
+        return apply_match_action(match, match.refill_choice.actor, "keep_drawn")
     if match.pending is not None:
         # Deliberately accepting rather than countering prevents endless counter loops.
         return apply_match_action(match, int(match.pending.actor), "accept")
