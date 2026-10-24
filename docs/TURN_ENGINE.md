@@ -95,9 +95,9 @@ The owner allows consecutive skips in one turn, including:
 - In development, invariants raise immediately. In production, flag corrupted state, stop accepting harmful writes, and offer controlled recovery rather than looping forever.
 - Property-based/stateful simulations should establish no actionless states, conservation of cards, predictable active player, and replay determinism. No finite test suite can mathematically guarantee every match finishes under malicious/nonparticipating players.
 
-## Refill timing (D-016, owner ruling O-06)
+## Refill timing (D-016, amended by D-024)
 
-No player draws replacement cards during the middle of a declared action, group play, attack or counter chain. The entire action/chain resolves first; only then do affected players refill from the stock, drawing only enough to restore the hand to its required size, subject to remaining stock. Cards drawn after resolution cannot retroactively join or continue the action that just ended. This prevents a player drawing into a fresh counter during an unresolved chain.
+No player draws replacement cards during an ordinary declared group play, 3/Joker attack or counter chain. After an ordinary hand play has resolved and refilled, D-024 optionally offers a private choice of **newly drawn matching-rank cards** (not previously held or face-up cards). The original scheduled next actor remains recorded until the player selects a drawn match or keeps it; any drawn match uses the existing ordinary reducer for all special effects and may refill again. Keeping ends the opportunity and advances to the original next actor. A clear and any 3/Joker chain remain governed by the established D-016 timing and do not acquire this new choice.
 
 ## Seven-lock (D-013, owner ruling O-03)
 
