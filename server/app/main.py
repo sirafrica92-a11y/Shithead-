@@ -101,6 +101,29 @@ def create_app(
     async def client_script():
         return FileResponse(Path(__file__).parent / "static" / "client.js", media_type="application/javascript")
 
+    # Owner-approved brand artwork. The unaltered original is kept in
+    # design/references/; these are display copies only.
+    BRAND = {
+        "shithead-logo.png", "shithead-logo-180.png", "favicon.png",
+    }
+
+    @app.get("/brand/{name}", include_in_schema=False)
+    async def brand_asset(name: str):
+        if name not in BRAND:
+            raise HTTPException(status_code=404, detail="unknown asset")
+        return FileResponse(
+            Path(__file__).parent / "static" / "brand" / name,
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon():
+        return FileResponse(
+            Path(__file__).parent / "static" / "brand" / "favicon.png",
+            media_type="image/png",
+        )
+
     def clean_name(raw: str) -> str:
         name = raw.strip()
         if not name or any(ord(c) < 32 for c in name):
