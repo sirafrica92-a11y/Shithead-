@@ -297,7 +297,7 @@ function renderGame(g) {
     ? "Blind 3 or Joker revealed — tap a player to send the pile."
     : over ? "Match over."
     : mine ? (pending ? "Accept the pile, or counter with a 3 or Joker."
-                      : "Tap a card to select, then Play. Pick up if you cannot go.")
+                      : "Tap a card to Play, or choose Pick Up to collect the pile.")
     : "Waiting for the other player.";
 
   // actions — same enabling rules as the proven preview
