@@ -30,6 +30,8 @@ Only a direct decision from Africa changes the game's canonical rules. This regi
 
 | D-023 | CONFIRMED | **Voluntary pile pickup clarification:** A player who could legally play may instead collect a nonempty pile and end the turn, including when holding a 3/Joker or another matching playable card. Applies in hand/face-up stages only; face-down flipping, pending attacks, empty-pile restriction, and all existing turn, lock, and power rules remain as before. | Owner chat, 24 Oct 2026; tactical bluffing example |
 
+| D-024 | CONFIRMED (narrow amendment to D-016) | After an ordinary hand play resolves and stock replenishment draws a card of the exact rank just played, the player may choose to immediately play **only newly drawn matching cards** or keep them. The original actor holds a temporary, private choice before the scheduled turn advances. Each optional matching play may refill again and offer the same limited choice. Group plays, seven-lock, 2/10 effects, four-of-kind clears, existing turn direction, and card conservation still apply; power chains never draw mid-chain and do not gain this exception. Choosing keep ends the opportunity and restores the original scheduled next actor. | Owner tactical Jack replenishment example and 24 Oct 2026 approval to implement as exception |
+
 ## Open decision IDs
 
 | ID | Needs owner clarification | Why it matters |
