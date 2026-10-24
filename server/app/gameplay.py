@@ -26,12 +26,27 @@ POWERS = (0, 3)
 
 
 @dataclass(frozen=True)
+class RefillChoice:
+    """D-024: only newly drawn cards matching the just-played ordinary rank.
+
+    The original ordinary action and its refill have already resolved.
+    Keep the actor's decision open without altering the original next seat.
+    Indices refer to that actor's private hand in the current snapshot.
+    """
+    actor: int
+    rank: int
+    eligible_indices: tuple[int, ...]
+    next_actor: int
+
+
+@dataclass(frozen=True)
 class Match:
     state: OrdinaryState
     pending: PileState | None = None
     power_removed: tuple[Card, ...] = ()
     power_actors: tuple[int, ...] = ()
     start_seat: int = 0
+    refill_choice: RefillChoice | None = None
 
 
 class UndecidedStartTie(IllegalPlay):
@@ -278,6 +293,85 @@ def _accept(match: Match, seat: int) -> Match:
     return _resolve_power(replace(match, state=state, pending=None), chosen)
 
 
+def _new_matching_draws(
+    before: OrdinaryState, after: OrdinaryState,
+    actor: int, surviving_hand_size: int, rank: int,
+) -> tuple[int, ...]:
+    """Only stock cards appended by this just-completed ordinary play qualify.
+
+    Cards already held, and any face-up cards absorbed under D-022 when stock
+    empties, are NOT newly drawn matches. This also works with duplicate ranks
+    and missing card IDs in isolated test fixtures.
+    """
+    drawn = len(before.deck) - len(after.deck)
+    hand = after.players[actor].hand
+    return tuple(
+        i for i in range(surviving_hand_size, surviving_hand_size + drawn)
+        if i < len(hand) and hand[i].rank == rank
+    )
+
+
+def _finish_or_offer_refill(
+    match: Match, before: OrdinaryState, after: OrdinaryState,
+    actor: int, rank: int, eligible: tuple[int, ...],
+) -> Match:
+    """Keep an optional same-rank decision only if the pile was not cleared."""
+    if not eligible or not after.pile or after.pile[-1].rank != rank:
+        return replace(match, state=after, refill_choice=None)
+    return replace(
+        match,
+        state=replace(after, current=actor),
+        refill_choice=RefillChoice(
+            actor=actor, rank=rank,
+            eligible_indices=eligible, next_actor=after.current,
+        ),
+    )
+
+
+def _apply_refill_choice(
+    match: Match, seat: int, kind: str, indices: object,
+) -> Match:
+    choice = match.refill_choice
+    assert choice is not None
+    state = match.state
+    if seat != choice.actor:
+        raise IllegalPlay("only the player who drew the matching card may decide")
+    if kind == "keep_drawn":
+        # No more cards drawn or played; resume the original turn order.
+        return replace(
+            match, state=replace(state, current=choice.next_actor),
+            refill_choice=None,
+        )
+    if kind != "play_drawn":
+        raise IllegalPlay("play a newly drawn matching card or keep it to end your turn")
+    if (
+        not isinstance(indices, list) or not 1 <= len(indices) <= 4
+        or any(type(i) is not int for i in indices)
+        or len(set(indices)) != len(indices)
+        or not set(indices).issubset(choice.eligible_indices)
+    ):
+        raise IllegalPlay("select only newly drawn matching cards (up to four)")
+    selected = set(indices)
+    hand_size_after_play = len(state.players[seat].hand) - len(indices)
+    # Reuse the existing ordinary reducer for locks, quad clears, refills,
+    # finishing and turn rotation. Never create new 3/Joker powers here.
+    after = apply_play(state, "hand", indices)
+    if not after.pile or after.pile[-1].rank != choice.rank:
+        return replace(match, state=after, refill_choice=None)
+
+    # Existing unplayed matching draw options remain eligible after removing
+    # selected cards; new stock replacements may also qualify.
+    retained = tuple(
+        i - sum(chosen < i for chosen in selected)
+        for i in choice.eligible_indices if i not in selected
+    )
+    new = _new_matching_draws(
+        state, after, seat, hand_size_after_play, choice.rank,
+    )
+    eligible = tuple(sorted((*retained, *new)))
+    return _finish_or_offer_refill(match, state, after, seat, choice.rank, eligible)
+
+
 def apply_match_action(match: Match, seat: int, kind: str,
                        *, indices: object = None, index: object = None,
                        target: object = None) -> Match:
@@ -297,6 +391,8 @@ def apply_match_action(match: Match, seat: int, kind: str,
         raise IllegalPlay("resolve the pending pile attack first")
     if seat != state.current:
         raise IllegalPlay("not your turn")
+    if match.refill_choice is not None:
+        return _apply_refill_choice(match, seat, kind, indices)
     if kind == "power":
         return _start_power(match, seat, index, target, indices=indices)
     if state.pending_blind_power is not None:
@@ -306,7 +402,14 @@ def apply_match_action(match: Match, seat: int, kind: str,
     if kind == "play":
         if not isinstance(indices, list) or not indices or len(indices) > 4:
             raise IllegalPlay("choose 1–4 same-rank cards")
-        return replace(match, state=apply_play(state, _player_zone(state, state.players[seat]), indices))
+        zone = _player_zone(state, state.players[seat])
+        after = apply_play(state, zone, indices)
+        if zone != "hand":
+            return replace(match, state=after)
+        rank = state.players[seat].hand[indices[0]].rank
+        surviving = len(state.players[seat].hand) - len(indices)
+        eligible = _new_matching_draws(state, after, seat, surviving, rank)
+        return _finish_or_offer_refill(match, state, after, seat, rank, eligible)
     if kind == "flip":
         if type(index) is not int:
             raise IllegalPlay("choose a face-down index")
@@ -342,6 +445,7 @@ def public_match_view(match: Match) -> dict[str, Any]:
             for i, p in enumerate(st.players)
         ],
         "pending_blind_power": st.pending_blind_power is not None,
+        "refill_choice": match.refill_choice is not None,
         "starter_seat": match.start_seat,
         "direction": st.direction,
         "starting_rule": "D-019 lowest three, then neighbour direction",
@@ -356,6 +460,11 @@ def private_match_view(match: Match, seat: int) -> dict[str, Any]:
     out["your_zone"] = _player_zone(st, player)
     out["your_face_up"] = [_card(c) for c in player.face_up]
     out["you"] = seat
+    out["your_refill_indices"] = (
+        list(match.refill_choice.eligible_indices)
+        if match.refill_choice is not None and match.refill_choice.actor == seat
+        else []
+    )
     out["your_blind_power"] = (
         _card(st.pending_blind_power.card)
         if st.pending_blind_power is not None and st.pending_blind_power.actor == seat
