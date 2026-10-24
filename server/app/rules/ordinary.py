@@ -209,10 +209,11 @@ def apply_play(state: OrdinaryState, zone: str, indices: Sequence[int]) -> Ordin
 
 
 def pick_up(state: OrdinaryState) -> OrdinaryState:
-    """Collect the pile and end the turn when no legal card can be played.
+    """Voluntarily collect a nonempty pile and end the turn (owner D-023).
 
-    A player with only blind face-down cards must flip, not choose pickup.
-    A 3/Joker counts as an available W2 play and prevents forced pickup.
+    A playable hand/face-up card, even a 3/Joker, never forces the actor to
+    play it instead of collecting. Blind face-down play is still mandatory,
+    and unresolved 3/Joker decisions must be settled before any new action.
     """
     if state.pending_blind_power is not None:
         raise IllegalPlay("resolve pending blind power before another action")
@@ -224,9 +225,6 @@ def pick_up(state: OrdinaryState) -> OrdinaryState:
     zone = _zone(state, player)
     if zone == "face_down":
         raise IllegalPlay("face-down cards must be flipped")
-    if any(c.rank in (0, 3) or _legal_rank(state, c.rank)
-           for c in getattr(player, zone)):
-        raise IllegalPlay("a legal play exists; pickup is not forced")
     return _settle(
         replace(state, pile=(), locked=False),
         replace(player, hand=player.hand + state.pile),
