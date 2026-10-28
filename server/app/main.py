@@ -6,6 +6,7 @@ import asyncio
 import hmac
 import os
 import secrets
+import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -20,6 +21,9 @@ from server.app.persistence import token_digest
 from server.app.gameplay import apply_match_action, make_match, UndecidedStartTie
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
+
+
+REACTIONS = {"😂", "😏", "😭", "👀", "🔥", "💀"}
 
 
 class CreateRoom(BaseModel):
@@ -232,7 +236,7 @@ def create_app(
                     continue
 
                 kind = action.get("type")
-                if kind not in ("ready", "game"):
+                if kind not in ("ready", "game", "rematch", "reaction"):
                     await websocket.send_json({"type": "error", "reasonCode": "unknown_action"})
                     continue
 
@@ -242,7 +246,8 @@ def create_app(
                 if (not isinstance(request_id, str) or not 1 <= len(request_id) <= 64
                         or type(expected) is not int
                         or (kind == "ready" and type(ready) is not bool)
-                        or (kind == "game" and not isinstance(action.get("kind"), str))):
+                        or (kind == "game" and not isinstance(action.get("kind"), str))
+                        or (kind == "reaction" and action.get("emoji") not in REACTIONS)):
                     await websocket.send_json({"type": "error", "reasonCode": "invalid_action"})
                     continue
 
@@ -257,6 +262,45 @@ def create_app(
                         pass
                     elif expected != room.version:
                         error = "stale_version"
+                    elif kind == "reaction":
+                        # Cosmetic only: does not mutate Match, card locations,
+                        # pending decisions, or any turn state.
+                        now = time.monotonic()
+                        if room.match is None:
+                            error = "wrong_phase"
+                        elif now - room.reaction_at.get(index, -9999) < 2.0:
+                            error = "reaction_cooldown"
+                        else:
+                            room.reaction_at[index] = now
+                            room.reaction_seq += 1
+                            room.reaction = {
+                                "seat": index, "emoji": action["emoji"],
+                                "seq": room.reaction_seq,
+                            }
+                            remember_request(seat, request_id)
+                            room.version += 1
+                            changed = True
+                    elif kind == "rematch":
+                        if room.match is None or room.public_view()["phase"] != "FINISHED":
+                            error = "wrong_phase"
+                        else:
+                            remember_request(seat, request_id)
+                            if index not in room.rematch_votes:
+                                room.rematch_votes.add(index)
+                                room.version += 1
+                                changed = True
+                            if len(room.rematch_votes) == room.capacity:
+                                try:
+                                    fresh = make_match(room.capacity)
+                                except UndecidedStartTie:
+                                    error = "starting_tie_unresolved"
+                                else:
+                                    room.match = fresh
+                                    room.rematch_votes.clear()
+                                    room.reaction = None
+                                    room.reaction_at.clear()
+                                    room.version += 1
+                                    changed = True
                     elif kind == "ready":
                         if room.match is not None:
                             error = "wrong_phase"
@@ -278,6 +322,7 @@ def create_app(
                                     error = "starting_tie_unresolved"
                                 else:
                                     room.match = candidate
+                                    room.rematch_votes.clear()
                                     room.version += 1
                                     changed = True
                     elif room.match is None:
