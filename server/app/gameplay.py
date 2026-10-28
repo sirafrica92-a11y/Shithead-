@@ -186,18 +186,35 @@ def _power_code(card: Card) -> str:
     return "J" if card.rank == 0 else "3"
 
 
+def _refill_after_power(state: OrdinaryState, seat: int) -> OrdinaryState:
+    """D-025: replenish immediately after EACH committed attack/counter action.
+
+    A multi-card attack is still atomic: draw only after all its selected powers
+    are removed. The next target can counter; a power freshly drawn in this
+    refill is eligible when the chain later returns to this seat. No new card
+    may join the action that has already been committed.
+    """
+    players = list(state.players)
+    player = players[seat]
+    need = min(max(0, 3 - len(player.hand)), len(state.deck))
+    if need:
+        players[seat] = replace(player, hand=player.hand + state.deck[:need])
+    deck = state.deck[need:]
+    if not deck:
+        # D-022 still applies when the last stock card is used during a chain.
+        for i, current in enumerate(players):
+            if current.face_up and len(current.hand) < 3:
+                players[i] = replace(
+                    current, hand=current.hand + current.face_up, face_up=(),
+                )
+    return replace(state, players=tuple(players), deck=deck)
+
+
 def _resolve_power(match: Match, chosen_next: int) -> Match:
-    """Refill participants only after a complete 3/Joker chain, then finish."""
+    """Settle a completed 3/Joker action; participants already drew per move."""
     state = match.state
     players = list(state.players)
     deck = state.deck
-    for seat in dict.fromkeys(match.power_actors):
-        p = players[seat]
-        if deck and len(p.hand) < 3:
-            need = min(3 - len(p.hand), len(deck))
-            p = replace(p, hand=p.hand + deck[:need])
-            deck = deck[need:]
-        players[seat] = p
     finished = list(state.finished)
     if not deck:
         for seat, p in enumerate(players):
@@ -232,6 +249,7 @@ def _start_power(
     # Validate target before committing any card.
     recipient = _valid_target(state, seat, target) if state.pile else None
     next_state, cards = _take_powers(state, seat, index, indices)
+    next_state = _refill_after_power(next_state, seat)
     order = _seat_order(state)
     passed = initial_state(order, str(seat))
     spent = tuple(_power_code(c) for c in cards)
@@ -263,6 +281,7 @@ def _counter(match: Match, seat: int, index: object, target: object) -> Match:
     next_state, cards = _take_powers(match.state, seat, index)
     if len(cards) != 1:
         raise IllegalPlay("a counter must commit exactly one 3/Joker")
+    next_state = _refill_after_power(next_state, seat)
     next_pass = reduce(
         match.pending,
         Counter(new_target=str(recipient), cards=(_power_code(cards[0]),)),
