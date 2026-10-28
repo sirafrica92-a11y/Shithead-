@@ -52,7 +52,9 @@ def test_power_refill_with_empty_stock_does_not_invent_cards():
     st = m.state
     m = replace(m, state=replace(st, pile=st.pile + st.deck, deck=()))
     m = apply_match_action(m, a, "power", index=0, target=b)
-    assert len(m.state.players[a].hand) == 2
+    # With no stock, D-022 absorbs the exposed cards; none are created.
+    assert len(m.state.players[a].hand) == 5
+    assert not m.state.players[a].face_up
     assert m.pending is not None
 
 
