@@ -137,13 +137,14 @@ def create_app(
     async def seat_player(room, name: str) -> dict:
         """Take the next free seat and issue that seat's private token."""
         async with room.lock:
-            if len(room.seats) == room.capacity:
+            if len(room.seats) >= (6 if room.match is not None else room.capacity):
                 raise HTTPException(status_code=409, detail="room is full")
             raw_token = secrets.token_urlsafe(24)
             index = len(room.seats)
             room.seats.append(Seat(name=name, token_digest=token_digest(raw_token)))
             if room.match is not None:
                 room.pending_joiners.append(index)
+                room.capacity = max(room.capacity, len(room.seats))
             room.version += 1
             store.persist(room)
         await broadcast(room)
