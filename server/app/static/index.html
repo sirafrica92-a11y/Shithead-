@@ -163,6 +163,10 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
 }
 #turn-banner.mine{background:linear-gradient(180deg,#46c172,#2f9b56);color:#06210f;box-shadow:0 3px 14px rgba(63,174,99,.35)}
 #turn-banner.over{background:rgba(179,38,30,.3);color:#f0b4b0}
+#finished-actions{display:grid;gap:8px;margin:9px auto;width:min(100%,360px)}
+#reaction-actions{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:8px 0}
+#reaction-actions button{background:rgba(0,0,0,.45);border:1px solid #856249;border-radius:12px;padding:8px;font-size:22px}
+#reaction-toast{position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:4;background:#1c1510eF;border:1px solid var(--amber);border-radius:25px;padding:10px 18px;font-size:23px;pointer-events:none;max-width:90%;text-align:center}
 
 /* centre felt */
 .felt{
@@ -347,6 +351,7 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
   </div>
 
   <div id="opponents"></div>
+  <div id="reaction-toast" class="hidden" role="status" aria-live="polite"></div>
 
   <div id="turn-banner">Waiting…</div>
 
@@ -381,6 +386,11 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
     <button id="keep-drawn" type="button" class="hidden">Keep drawn card</button>
     <button id="counter" type="button">Counter</button>
     <button id="accept" type="button" class="danger">Accept pile</button>
+  </div>
+  <div id="reaction-actions" aria-label="Quick reactions"></div>
+  <div id="finished-actions" class="hidden">
+    <button class="btn btn-primary" id="rematch" type="button">Play again in this room</button>
+    <button class="btn btn-ghost" id="main-menu" type="button">Main menu</button>
   </div>
   <p id="table-status" role="status" aria-live="polite"></p>
 </section>
@@ -418,7 +428,7 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
   <div class="panel rules-block">
     <h3 class="r-head">Keeping three in hand</h3>
     <p>Once your move has fully resolved, draw from the stock to bring your hand back up to three cards.</p>
-    <p>You never draw in the middle of a move, an attack or a counter chain.</p>
+    <p>Ordinary group plays draw after the move resolves. During a 3/Joker battle, each attacking or countering player draws back towards three immediately after spending their power card, while stock remains. Newly drawn cards can be used on a later counter in that chain.</p>
     <p>If a newly drawn card matches the rank you just played, choose whether to play that drawn match immediately or keep it for later. Only the newly drawn matching cards qualify; otherwise your turn ends normally.</p>
     <p>When the stock runs out, there is nothing to draw.</p>
   </div>
