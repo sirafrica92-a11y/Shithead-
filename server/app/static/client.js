@@ -89,6 +89,14 @@ function render(x) {
   snap = x;
   if (typeof x.you === "number") seatIndex = x.you;
   roomId = x.room_id;
+  const hostPrompt = el("host-join-prompt");
+  const lateNames = (x.pending_joiners || [])
+    .map(i => x.players?.[i]?.name || "A player");
+  hostPrompt.classList.toggle("hidden",
+    x.you !== x.host_seat || lateNames.length === 0 || !x.game ||
+    x.game.phase === "FINISHED");
+  el("host-join-names").textContent = lateNames.join(", ") +
+    (lateNames.length === 1 ? " has joined." : " have joined.");
   if (x.reaction && x.reaction.seq > lastReactionSeq) {
     lastReactionSeq = x.reaction.seq;
     const nm = x.players[x.reaction.seat]?.name || "Player";
@@ -230,7 +238,8 @@ function renderZone(holder, cards, live, zoneName, faceDownCount, sourceIndices 
 function renderGame(g) {
   selection = new Set();
   const me = g.players[seatIndex];
-  const mine = g.actor === seatIndex;
+  const spectator = !!g.is_spectator;
+  const mine = !spectator && g.actor === seatIndex;
   const pending = g.phase === "PILE_PASS_DECISION";
   const choosingDraw = g.refill_choice && mine;
   const over = g.phase === "FINISHED";
@@ -242,7 +251,9 @@ function renderGame(g) {
   const banner = el("turn-banner");
   banner.classList.toggle("mine", mine && !over);
   banner.classList.toggle("over", over);
-  if (over) {
+  if (spectator && !over) {
+    banner.textContent = "Waiting for the next game";
+  } else if (over) {
     const loserName = snap?.players?.[g.loser]?.name || ("Seat " + (g.loser + 1));
     banner.textContent = g.loser === seatIndex ? "You are the Shithead!" : loserName + " is the Shithead!";
   } else if (mine) {
@@ -326,12 +337,13 @@ function renderGame(g) {
   el("finished-actions").classList.toggle("hidden", !over);
   el("rematch").disabled = !over || (snap.rematch_votes || []).includes(seatIndex);
   el("rematch").textContent = (snap.rematch_votes || []).includes(seatIndex)
-    ? "Waiting for others (" + snap.rematch_votes.length + "/" + snap.capacity + ")"
+    ? "Waiting for others (" + snap.rematch_votes.length + "/" + snap.players.length + ")"
     : "Play again in this room";
   el("reaction-actions").classList.toggle("hidden", over);
   el("action-hint").textContent = g.your_blind_power
     ? "Blind 3 or Joker revealed — tap a player to send the pile."
     : over ? "Match over."
+    : spectator ? "You're in the room! You will play in the next round unless the host restarts now."
     : mine ? (pending ? "Accept the pile, or counter with a 3 or Joker."
                       : choosingDraw ? "Matching card drawn! Play it now, or keep it for later."
                       : "Tap a card to Play, or choose Pick Up to collect the pile.")
@@ -411,6 +423,8 @@ function sendRoomAction(type, fields = {}) {
   }));
 }
 el("rematch").onclick = () => sendRoomAction("rematch");
+el("host-restart").onclick = () => sendRoomAction("host_join_decision", {decision: "restart_now"});
+el("host-finish").onclick = () => sendRoomAction("host_join_decision", {decision: "finish_current"});
 el("main-menu").onclick = () => {
   // Leaving the table does not delete a room or change another player's game.
   intentionalClose = true;
