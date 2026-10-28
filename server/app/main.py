@@ -285,7 +285,8 @@ def create_app(
                                 "seq": room.reaction_seq,
                             }
                             remember_request(seat, request_id)
-                            room.version += 1
+                            # Reactions are cosmetic. Never invalidate a card
+                            # selection or an in-flight move's expected_version.
                             changed = True
                     elif kind == "host_join_decision":
                         if index != room.host_seat:
