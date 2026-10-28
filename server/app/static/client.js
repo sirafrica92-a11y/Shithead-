@@ -86,6 +86,12 @@ function initial(name) { return (name || "?").trim().charAt(0).toUpperCase() || 
 function render(x) {
   if (!x || x.type !== "room_state") return;
   if (snap && snap.room_id === x.room_id && x.version < snap.version) return;
+  // A reaction, reconnect, or late join may refresh room metadata while the
+  // authoritative game stays unchanged. Keep selected cards in that case.
+  if (!snap || snap.room_id !== x.room_id ||
+      JSON.stringify(snap.game) !== JSON.stringify(x.game)) {
+    selection.clear();
+  }
   snap = x;
   if (typeof x.you === "number") seatIndex = x.you;
   roomId = x.room_id;
@@ -220,7 +226,7 @@ function renderZone(holder, cards, live, zoneName, faceDownCount, sourceIndices 
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "pick";
-    btn.setAttribute("aria-pressed", "false");
+    btn.setAttribute("aria-pressed", selection.has(serverIndex) ? "true" : "false");
     btn.appendChild(card ? cardEl(card) : backEl());
     btn.setAttribute("aria-label", card ? rankText(card) + " " + (card.suit || "") : "Face-down card " + (i + 1));
     btn.disabled = !live;
@@ -236,7 +242,6 @@ function renderZone(holder, cards, live, zoneName, faceDownCount, sourceIndices 
 }
 
 function renderGame(g) {
-  selection = new Set();
   const me = g.players[seatIndex];
   const spectator = !!g.is_spectator;
   const mine = !spectator && g.actor === seatIndex;
