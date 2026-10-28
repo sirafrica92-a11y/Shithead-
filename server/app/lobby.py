@@ -91,6 +91,10 @@ class Room:
     seats: list[Seat] = field(default_factory=list)
     version: int = 0
     match: Match | None = None
+    rematch_votes: set[int] = field(default_factory=set)
+    reaction: dict[str, Any] | None = None
+    reaction_seq: int = 0
+    reaction_at: dict[int, float] = field(default_factory=dict)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     def public_view(self) -> dict[str, Any]:
@@ -101,6 +105,9 @@ class Room:
             "phase": ("LOBBY" if self.match is None else public_match_view(self.match)["phase"]),
             "version": self.version,
             "game": public_match_view(self.match) if self.match is not None else None,
+            "rematch_votes": sorted(self.rematch_votes),
+            "reaction": self.reaction,
+            "reaction_seq": self.reaction_seq,
             "all_ready": len(self.seats) == self.capacity
             and all(seat.ready for seat in self.seats),
             "players": [
@@ -149,6 +156,8 @@ class RoomStore:
                 room = Room(
                     id=room_id, capacity=data["capacity"], seats=seats,
                     version=data["version"], match=restore_match(data["match"]),
+                    rematch_votes=set(data.get("rematch_votes", [])),
+                    reaction_seq=data.get("reaction_seq", 0),
                 )
                 self.rooms[room.id] = room
 
@@ -165,6 +174,8 @@ class RoomStore:
                 } for s in room.seats
             ],
             "match": dump_match(room.match),
+            "rematch_votes": sorted(room.rematch_votes),
+            "reaction_seq": room.reaction_seq,
         }
         with self.db_lock, self.db:
             self.db.execute(
