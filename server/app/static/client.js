@@ -12,6 +12,9 @@ let ws, seatToken, seatIndex = -1, snap = null, roomId = "", reconnects = 0;
 let selection = new Set();        // indices inside the live zone
 let targetSeat = null;            // chosen opponent for 3 / Joker and counters
 let intentionalClose = false;
+let lastReactionSeq = 0;
+let reactionTimer = null;
+const REACTIONS = ["😂", "😏", "😭", "👀", "🔥", "💀"];
 
 const roomCode = value => (value || "").trim().toUpperCase();
 function status(message) { el("status").textContent = message; }
@@ -83,9 +86,32 @@ function initial(name) { return (name || "?").trim().charAt(0).toUpperCase() || 
 function render(x) {
   if (!x || x.type !== "room_state") return;
   if (snap && snap.room_id === x.room_id && x.version < snap.version) return;
+  // A reaction, reconnect, or late join may refresh room metadata while the
+  // authoritative game stays unchanged. Keep selected cards in that case.
+  if (!snap || snap.room_id !== x.room_id ||
+      JSON.stringify(snap.game) !== JSON.stringify(x.game)) {
+    selection.clear();
+  }
   snap = x;
   if (typeof x.you === "number") seatIndex = x.you;
   roomId = x.room_id;
+  const hostPrompt = el("host-join-prompt");
+  const lateNames = (x.pending_joiners || [])
+    .map(i => x.players?.[i]?.name || "A player");
+  hostPrompt.classList.toggle("hidden",
+    x.you !== x.host_seat || lateNames.length === 0 || !x.game ||
+    x.game.phase === "FINISHED");
+  el("host-join-names").textContent = lateNames.join(", ") +
+    (lateNames.length === 1 ? " has joined." : " have joined.");
+  if (x.reaction && x.reaction.seq > lastReactionSeq) {
+    lastReactionSeq = x.reaction.seq;
+    const nm = x.players[x.reaction.seat]?.name || "Player";
+    const toast = el("reaction-toast");
+    toast.textContent = nm + "  " + x.reaction.emoji;
+    toast.classList.remove("hidden");
+    if (reactionTimer) clearTimeout(reactionTimer);
+    reactionTimer = setTimeout(() => toast.classList.add("hidden"), 2400);
+  }
 
   const reading = !el("screen-rules").classList.contains("hidden");
   if (x.game) { if (!reading) show("screen-table"); renderGame(x.game); return; }
@@ -190,23 +216,25 @@ function renderOpponents(g) {
   });
 }
 
-function renderZone(holder, cards, live, zoneName, faceDownCount) {
+function renderZone(holder, cards, live, zoneName, faceDownCount, sourceIndices = null) {
   holder.replaceChildren();
   const list = zoneName === "face_down"
     ? Array(faceDownCount || 0).fill(null)
     : (cards || []);
   list.forEach((card, i) => {
+    const serverIndex = sourceIndices ? sourceIndices[i] : i;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "pick";
-    btn.setAttribute("aria-pressed", "false");
+    btn.setAttribute("aria-pressed", selection.has(serverIndex) ? "true" : "false");
     btn.appendChild(card ? cardEl(card) : backEl());
     btn.setAttribute("aria-label", card ? rankText(card) + " " + (card.suit || "") : "Face-down card " + (i + 1));
     btn.disabled = !live;
     if (live) {
       btn.onclick = () => {
-        if (selection.has(i)) selection.delete(i); else selection.add(i);
-        btn.setAttribute("aria-pressed", selection.has(i) ? "true" : "false");
+        if (selection.has(serverIndex)) selection.delete(serverIndex);
+        else selection.add(serverIndex);
+        btn.setAttribute("aria-pressed", selection.has(serverIndex) ? "true" : "false");
       };
     }
     holder.appendChild(btn);
@@ -214,9 +242,9 @@ function renderZone(holder, cards, live, zoneName, faceDownCount) {
 }
 
 function renderGame(g) {
-  selection = new Set();
   const me = g.players[seatIndex];
-  const mine = g.actor === seatIndex;
+  const spectator = !!g.is_spectator;
+  const mine = !spectator && g.actor === seatIndex;
   const pending = g.phase === "PILE_PASS_DECISION";
   const choosingDraw = g.refill_choice && mine;
   const over = g.phase === "FINISHED";
@@ -228,8 +256,11 @@ function renderGame(g) {
   const banner = el("turn-banner");
   banner.classList.toggle("mine", mine && !over);
   banner.classList.toggle("over", over);
-  if (over) {
-    banner.textContent = g.loser === seatIndex ? "You are the Shithead" : "Seat " + (g.loser + 1) + " is the Shithead";
+  if (spectator && !over) {
+    banner.textContent = "Waiting for the next game";
+  } else if (over) {
+    const loserName = snap?.players?.[g.loser]?.name || ("Seat " + (g.loser + 1));
+    banner.textContent = g.loser === seatIndex ? "You are the Shithead!" : loserName + " is the Shithead!";
   } else if (mine) {
     banner.textContent = pending ? "Pile coming your way" : "Your turn";
   } else {
@@ -285,12 +316,19 @@ function renderGame(g) {
              mine && zone === "face_down" && !over && !g.your_blind_power,
              "face_down", me?.face_down_count);
   renderZone(el("your-face-up"), g.your_face_up, mine && zone === "face_up" && !over, "face_up");
-  renderZone(el("your-hand"), g.hand, mine && zone === "hand" && !over, "hand");
+  // Sort for display without changing the server-owned hand indices.
+  const sortedHand = (g.hand || []).map((card, index) => ({card, index}))
+    .sort((a, b) => (a.card.rank === 0 ? 15 : a.card.rank) -
+                     (b.card.rank === 0 ? 15 : b.card.rank) || a.index - b.index);
+  renderZone(el("your-hand"), sortedHand.map(x => x.card),
+             mine && zone === "hand" && !over, "hand", null,
+             sortedHand.map(x => x.index));
   if (choosingDraw) {
     const allowed = new Set(g.your_refill_indices || []);
     el("your-hand").querySelectorAll(".pick").forEach((btn, i) => {
-      btn.disabled = !allowed.has(i);
-      if (allowed.has(i)) btn.classList.add("drawn-option");
+      const serverIndex = sortedHand[i].index;
+      btn.disabled = !allowed.has(serverIndex);
+      if (allowed.has(serverIndex)) btn.classList.add("drawn-option");
     });
   }
   el("head-down").classList.toggle("live", zone === "face_down");
@@ -301,9 +339,16 @@ function renderGame(g) {
   el("your-face-up").classList.toggle("hidden", !(g.your_face_up || []).length);
 
   // hint
+  el("finished-actions").classList.toggle("hidden", !over);
+  el("rematch").disabled = !over || (snap.rematch_votes || []).includes(seatIndex);
+  el("rematch").textContent = (snap.rematch_votes || []).includes(seatIndex)
+    ? "Waiting for others (" + snap.rematch_votes.length + "/" + snap.players.length + ")"
+    : "Play again in this room";
+  el("reaction-actions").classList.toggle("hidden", over);
   el("action-hint").textContent = g.your_blind_power
     ? "Blind 3 or Joker revealed — tap a player to send the pile."
     : over ? "Match over."
+    : spectator ? "You're in the room! You will play in the next round unless the host restarts now."
     : mine ? (pending ? "Accept the pile, or counter with a 3 or Joker."
                       : choosingDraw ? "Matching card drawn! Play it now, or keep it for later."
                       : "Tap a card to Play, or choose Pick Up to collect the pile.")
@@ -375,6 +420,32 @@ el("counter").onclick = () => {
   });
 };
 el("accept").onclick = () => sendGame("accept");
+
+function sendRoomAction(type, fields = {}) {
+  if (!snap || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({
+    type, ...fields, expected_version: snap.version, request_id: crypto.randomUUID()
+  }));
+}
+el("rematch").onclick = () => sendRoomAction("rematch");
+el("host-restart").onclick = () => sendRoomAction("host_join_decision", {decision: "restart_now"});
+el("host-finish").onclick = () => sendRoomAction("host_join_decision", {decision: "finish_current"});
+el("main-menu").onclick = () => {
+  // Leaving the table does not delete a room or change another player's game.
+  intentionalClose = true;
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  sessionStorage.removeItem(KEY);
+  seatToken = null; seatIndex = -1; roomId = ""; snap = null;
+  selection.clear(); targetSeat = null;
+  show("screen-home");
+  status("You left the finished room. Create or join a new one.");
+};
+el("reaction-actions").replaceChildren(...REACTIONS.map(emoji => {
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.textContent = emoji; btn.title = "Send " + emoji;
+  btn.onclick = () => sendRoomAction("reaction", {emoji});
+  return btn;
+}));
 
 /* ------------------------------------------------------------- transport */
 async function request(path, data) {

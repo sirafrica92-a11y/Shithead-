@@ -6,6 +6,7 @@ import asyncio
 import hmac
 import os
 import secrets
+import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -20,6 +21,9 @@ from server.app.persistence import token_digest
 from server.app.gameplay import apply_match_action, make_match, UndecidedStartTie
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
+
+
+REACTIONS = {"😂", "😏", "😭", "👀", "🔥", "💀"}
 
 
 class CreateRoom(BaseModel):
@@ -133,15 +137,19 @@ def create_app(
     async def seat_player(room, name: str) -> dict:
         """Take the next free seat and issue that seat's private token."""
         async with room.lock:
-            if len(room.seats) == room.capacity:
+            if len(room.seats) >= (6 if room.match is not None else room.capacity):
                 raise HTTPException(status_code=409, detail="room is full")
             raw_token = secrets.token_urlsafe(24)
+            index = len(room.seats)
             room.seats.append(Seat(name=name, token_digest=token_digest(raw_token)))
+            if room.match is not None:
+                room.pending_joiners.append(index)
+                room.capacity = max(room.capacity, len(room.seats))
             room.version += 1
-            index = len(room.seats) - 1
             store.persist(room)
         await broadcast(room)
-        return {"room_id": room.id, "seat": index, "token": raw_token}
+        return {"room_id": room.id, "seat": index, "token": raw_token,
+                "waiting_next_match": room.match is not None}
 
     @app.post("/api/rooms", status_code=201)
     async def create_room(payload: CreateRoom):
@@ -232,7 +240,7 @@ def create_app(
                     continue
 
                 kind = action.get("type")
-                if kind not in ("ready", "game"):
+                if kind not in ("ready", "game", "rematch", "reaction", "host_join_decision"):
                     await websocket.send_json({"type": "error", "reasonCode": "unknown_action"})
                     continue
 
@@ -242,7 +250,11 @@ def create_app(
                 if (not isinstance(request_id, str) or not 1 <= len(request_id) <= 64
                         or type(expected) is not int
                         or (kind == "ready" and type(ready) is not bool)
-                        or (kind == "game" and not isinstance(action.get("kind"), str))):
+                        or (kind == "game" and not isinstance(action.get("kind"), str))
+                        or (kind == "host_join_decision" and action.get("decision") not in
+                            ("restart_now", "finish_current"))
+                        or (kind == "reaction" and (not isinstance(action.get("emoji"), str)
+                            or action["emoji"] not in REACTIONS))):
                     await websocket.send_json({"type": "error", "reasonCode": "invalid_action"})
                     continue
 
@@ -257,6 +269,79 @@ def create_app(
                         pass
                     elif expected != room.version:
                         error = "stale_version"
+                    elif kind == "reaction":
+                        # Cosmetic only: does not mutate Match, card locations,
+                        # pending decisions, or any turn state.
+                        now = time.monotonic()
+                        if room.match is None:
+                            error = "wrong_phase"
+                        elif now - room.reaction_at.get(index, -9999) < 2.0:
+                            error = "reaction_cooldown"
+                        else:
+                            room.reaction_at[index] = now
+                            room.reaction_seq += 1
+                            room.reaction = {
+                                "seat": index, "emoji": action["emoji"],
+                                "seq": room.reaction_seq,
+                            }
+                            remember_request(seat, request_id)
+                            # Reactions are cosmetic. Never invalidate a card
+                            # selection or an in-flight move's expected_version.
+                            changed = True
+                    elif kind == "host_join_decision":
+                        if index != room.host_seat:
+                            error = "host_only"
+                        elif not room.pending_joiners or room.match is None:
+                            error = "no_pending_joiners"
+                        elif action["decision"] == "finish_current":
+                            room.pending_joiners.clear()
+                            room.room_notice = "New players will join the next round."
+                            room.version += 1
+                            remember_request(seat, request_id)
+                            changed = True
+                        else:
+                            try:
+                                fresh = make_match(len(room.seats))
+                            except UndecidedStartTie:
+                                error = "starting_tie_unresolved"
+                            else:
+                                room.match = fresh
+                                room.pending_joiners.clear()
+                                room.rematch_votes.clear()
+                                room.room_notice = "The host restarted the match for everyone."
+                                room.reaction = None
+                                room.reaction_at.clear()
+                                room.version += 1
+                                remember_request(seat, request_id)
+                                changed = True
+                    elif kind == "rematch":
+                        if room.match is None or room.public_view()["phase"] != "FINISHED":
+                            error = "wrong_phase"
+                        else:
+                            remember_request(seat, request_id)
+                            if index not in room.rematch_votes:
+                                room.rematch_votes.add(index)
+                                room.version += 1
+                                changed = True
+                            if len(room.rematch_votes) == len(room.seats) and len(room.seats) >= 2:
+                                try:
+                                    fresh = make_match(len(room.seats))
+                                except UndecidedStartTie:
+                                    # Leave the match finished and permit a new
+                                    # unanimous retry without a deadlocked vote.
+                                    room.rematch_votes.clear()
+                                    room.version += 1
+                                    changed = True
+                                    error = "starting_tie_unresolved"
+                                else:
+                                    room.match = fresh
+                                    room.pending_joiners.clear()
+                                    room.room_notice = ""
+                                    room.rematch_votes.clear()
+                                    room.reaction = None
+                                    room.reaction_at.clear()
+                                    room.version += 1
+                                    changed = True
                     elif kind == "ready":
                         if room.match is not None:
                             error = "wrong_phase"
@@ -278,10 +363,13 @@ def create_app(
                                     error = "starting_tie_unresolved"
                                 else:
                                     room.match = candidate
+                                    room.rematch_votes.clear()
                                     room.version += 1
                                     changed = True
                     elif room.match is None:
                         error = "wrong_phase"
+                    elif index >= len(room.match.state.players):
+                        error = "waiting_next_match"
                     else:
                         try:
                             next_match = apply_match_action(
