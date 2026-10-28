@@ -247,7 +247,8 @@ def create_app(
                         or type(expected) is not int
                         or (kind == "ready" and type(ready) is not bool)
                         or (kind == "game" and not isinstance(action.get("kind"), str))
-                        or (kind == "reaction" and action.get("emoji") not in REACTIONS)):
+                        or (kind == "reaction" and (not isinstance(action.get("emoji"), str)
+                            or action["emoji"] not in REACTIONS))):
                     await websocket.send_json({"type": "error", "reasonCode": "invalid_action"})
                     continue
 
@@ -293,6 +294,11 @@ def create_app(
                                 try:
                                     fresh = make_match(room.capacity)
                                 except UndecidedStartTie:
+                                    # Leave the match finished and permit a new
+                                    # unanimous retry without a deadlocked vote.
+                                    room.rematch_votes.clear()
+                                    room.version += 1
+                                    changed = True
                                     error = "starting_tie_unresolved"
                                 else:
                                     room.match = fresh
