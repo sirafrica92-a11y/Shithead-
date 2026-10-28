@@ -350,6 +350,15 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
     <button class="icon-btn" id="table-rules" type="button" title="Rules">?</button>
   </div>
 
+  <div id="host-join-prompt" class="panel hidden" style="margin:8px 0;border-color:var(--amber)" role="group" aria-label="New players joined">
+    <h2>New player joined</h2>
+    <p id="host-join-names"></p>
+    <p>End the current match and deal again with everyone, or let the existing match finish?</p>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="host-restart" type="button">Restart with everyone</button>
+      <button class="btn btn-ghost" id="host-finish" type="button">Finish current game</button>
+    </div>
+  </div>
   <div id="opponents"></div>
   <div id="reaction-toast" class="hidden" role="status" aria-live="polite"></div>
 
