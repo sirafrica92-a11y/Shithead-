@@ -445,6 +445,7 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
   <div id="reaction-actions" aria-label="Quick reactions"></div>
   <div id="finished-actions" class="hidden">
     <button class="btn btn-primary" id="rematch" type="button">Play again in this room</button>
+    <button class="btn btn-ghost hidden" id="shithead-switch" type="button">Change game in this room</button>
     <button class="btn btn-ghost" id="main-menu" type="button">Main menu</button>
   </div>
   <p id="table-status" role="status" aria-live="polite"></p>
@@ -457,6 +458,13 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
     <strong>LUDO</strong><button class="icon-btn" id="ludo-refresh" type="button" aria-label="Refresh board">↻</button>
   </div>
   <div id="ludo-turn" class="ludo-turn">Waiting for players…</div>
+  <div id="ludo-join-prompt" class="panel hidden">
+    <h2>New friends joined</h2>
+    <p id="ludo-join-names"></p>
+    <p>Restart now to include them, or finish this match?</p>
+    <div class="btn-row"><button class="btn btn-primary" id="ludo-restart" type="button">Restart</button>
+      <button class="btn btn-ghost" id="ludo-finish" type="button">Finish current</button></div>
+  </div>
   <div id="ludo-board" class="ludo-board" aria-label="Ludo board"></div>
   <div class="ludo-controls">
     <div class="ludo-die" id="ludo-dice">⚄</div>
