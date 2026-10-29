@@ -28,6 +28,31 @@ function renderLudo(g) {
   el("ludo-join-prompt").classList.toggle("hidden",
     !(seatIndex === snap.host_seat && pending.length && g.phase !== "FINISHED"));
   el("ludo-join-names").textContent = pending.map(i=>snap.players[i]?.name||"Friend").join(", ");
+  const players = el("ludo-players");
+  players.replaceChildren();
+  g.players.forEach(p=>{
+    const card=document.createElement("div");
+    card.className="ludo-player"+(g.actor===p.seat&&g.phase!=="FINISHED"?" active":"");
+    const dot=document.createElement("span");dot.className="dot "+p.color;
+    const name=document.createElement("span");name.className="name";
+    name.textContent=snap.players[p.seat]?.name || ("Player "+(p.seat+1));
+    const progress=document.createElement("span");progress.className="progress";
+    progress.textContent=p.tokens.filter(t=>t===56).length+"/4 home";
+    card.append(dot,name,progress);players.appendChild(card);
+  });
+  const choices=el("ludo-move-options");
+  const legal=g.your_legal_tokens||[];
+  choices.classList.toggle("hidden",legal.length===0);
+  choices.replaceChildren();
+  if(legal.length){
+    const heading=document.createElement("strong");heading.textContent="Choose a token to move:";
+    choices.appendChild(heading);
+    legal.forEach(index=>{
+      const btn=document.createElement("button");btn.type="button";
+      btn.textContent="Token "+(index+1);btn.onclick=()=>sendLudo("move",index);
+      choices.appendChild(btn);
+    });
+  }
   const board = el("ludo-board");
   board.replaceChildren();
   const cells = Array.from({length:15},()=>Array(15).fill(null));
@@ -46,8 +71,8 @@ function renderLudo(g) {
   g.players.forEach(p => {
     p.tokens.forEach((progress,index)=>{
       let pos;
+      if(progress===56)return; // Finished pieces belong in the home score, not a pile in the centre.
       if(progress===-1)pos=LUDO_BASES[p.color][index];
-      else if(progress===56)pos=[7,7];
       else if(progress>=51)pos=LUDO_LANES[p.color][progress-51];
       else pos=LUDO_TRACK[(LUDO_STARTS[p.color]+progress)%52];
       const key=pos.join(":");
@@ -87,6 +112,7 @@ function renderLudo(g) {
   el("ludo-rematch").disabled=(snap.rematch_votes||[]).includes(seatIndex);
   el("ludo-rematch").textContent=el("ludo-rematch").disabled?"Waiting for rematch votes":"Play again in this room";
   el("ludo-switch").classList.toggle("hidden",!(over&&seatIndex===snap.host_seat));
+  el("ludo-reactions").classList.toggle("hidden",over);
   el("ludo-reactions").replaceChildren(...REACTIONS.map(emoji=>{
     const btn=document.createElement("button");btn.type="button";btn.textContent=emoji;
     btn.onclick=()=>sendRoomAction("reaction",{emoji});return btn;
