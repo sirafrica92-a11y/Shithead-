@@ -23,7 +23,7 @@ function tableStatus(message) { el("table-status").textContent = message; }
 
 let screenBeforeRules = "screen-home";
 function show(screen) {
-  ["screen-home", "screen-lobby", "screen-table", "screen-ludo", "screen-rules"].forEach(id =>
+  ["screen-home", "screen-lobby", "screen-table", "screen-ludo", "screen-rules", "screen-ludo-rules"].forEach(id =>
     el(id).classList.toggle("hidden", id !== screen));
 }
 function openRules() {
@@ -115,7 +115,7 @@ function render(x) {
     reactionTimer = setTimeout(() => toast.classList.add("hidden"), 2400);
   }
 
-  const reading = !el("screen-rules").classList.contains("hidden");
+  const reading = !el("screen-rules").classList.contains("hidden") || !el("screen-ludo-rules").classList.contains("hidden");
   if (x.game) {
     if (!reading) show(isLudo ? "screen-ludo" : "screen-table");
     if (isLudo) {
@@ -130,6 +130,10 @@ function render(x) {
   el("lobby-game-label").textContent = "Selected game: " + (isLudo ? "Ludo" : "Shithead");
   el("lobby-switch").classList.toggle("hidden", seatIndex !== x.host_seat);
   el("lobby-game").value = x.game_type || "shithead";
+  const limit = isLudo ? 4 : 6;
+  const picker = el("lobby-capacity");
+  if (picker.options.length !== limit - 1) picker.replaceChildren(...Array.from({length:limit-1},(_,i)=>{const o=document.createElement("option");o.value=String(i+2);o.textContent=String(i+2);return o;}));
+  picker.value=String(x.capacity);
   const ul = el("players");
   ul.replaceChildren();
   x.players.forEach((p, i) => {
@@ -540,8 +544,11 @@ document.querySelectorAll(".game-choice").forEach(btn=>{
   btn.onclick=()=>selectHomeGame(btn.dataset.game);
 });
 el("switch-game").onclick=()=>sendRoomAction("select_game",{game_type:el("lobby-game").value});
+el("set-capacity").onclick=()=>sendRoomAction("set_capacity",{capacity:Number(el("lobby-capacity").value)});
 el("ludo-switch").onclick=()=>sendRoomAction("return_lobby");
 el("ludo-refresh").onclick=()=>{if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:"sync"}));};
+el("ludo-open-rules").onclick=()=>{show("screen-ludo-rules");window.scrollTo(0,0);};
+el("ludo-rules-back").onclick=()=>show("screen-ludo");
 selectHomeGame("shithead");
 
 el("go-create").onclick = () => {
