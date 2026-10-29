@@ -315,6 +315,120 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
 .ludo-home-count.yellow{background:#b98913}.ludo-home-count.blue{background:#175ab1}
 @media(prefers-reduced-motion:reduce){.ludo-token.legal{animation:none}}
 
+
+/* ---------------------------------------------------------- games hub homepage
+   Isolated to #screen-home: never restyle the Shithead table or Ludo match. */
+#screen-home.games-home{
+  position:relative;isolation:isolate;max-width:520px;gap:0;
+  padding:25px 20px calc(24px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(ellipse 110% 53% at 50% 0%,rgba(138,81,38,.24) 0%,transparent 74%),
+    radial-gradient(ellipse 80% 60% at 7% 34%,rgba(104,44,24,.19),transparent 77%),
+    linear-gradient(160deg,#111820,#0e1318 54%,#090e11);
+}
+.games-home-header{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.games-identity{display:flex;align-items:center;gap:11px;min-width:0}
+.games-identity-logo{
+  width:76px;height:76px;object-fit:contain;flex:0 0 auto;
+  background:#101316;border:1px solid rgba(242,183,93,.32);border-radius:15px;
+  box-shadow:0 8px 25px #0008;
+}
+.games-wordmark{font:800 clamp(14px,3.4vw,19px)/1.1 Georgia,serif;letter-spacing:.02em;white-space:nowrap;color:#f2eadc}
+.games-wordmark span{color:#f1be77}
+.games-night-label{
+  border:1px solid #896944;display:flex;align-items:center;gap:6px;white-space:nowrap;
+  border-radius:99px;padding:7px 9px;font-size:9px;letter-spacing:.1em;
+  color:#e6ddd1;background:#0b1116aa;
+}
+.games-live-dot{width:7px;height:7px;background:#45bf83;border-radius:50%;flex:0 0 auto}
+.games-hero{text-align:center;padding:22px 0 25px}
+.games-eyebrow{font-size:10px;letter-spacing:.21em;font-weight:800;color:#e2ae68}
+.games-hero h1{
+  margin:10px 0 12px;font:700 clamp(35px,9.6vw,52px)/1.06 Georgia,serif;
+  color:#fff8ee;letter-spacing:-.032em;
+}
+.games-hero h1 span{color:#edba73}
+.games-hero p{margin:0;font-size:13px;line-height:1.55;color:#d0c3b3}
+.games-picker{width:100%}
+.games-section-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.games-section-heading h2{margin:0;font-weight:800;font-size:10px;letter-spacing:.15em;color:#f0e7d9}
+.games-section-heading>span{font-size:9px;letter-spacing:.12em;color:#a99b8a;white-space:nowrap}
+#screen-home .game-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+#screen-home .game-choice{
+  display:flex;align-items:flex-start;flex-direction:column;overflow:hidden;
+  text-align:left;min-width:0;width:100%;padding:11px;border-radius:15px;
+  border:1.5px solid #60544d;background:#251b1d;color:#fff;
+  transition:border-color .15s,box-shadow .15s,transform .1s;
+}
+#screen-home .game-choice:focus-visible{outline:3px solid #f2c27f;outline-offset:3px}
+#screen-home .game-choice.active{border-color:#e9b06c;box-shadow:0 0 0 2px rgba(240,182,97,.23)}
+#screen-home .game-choice:active{transform:scale(.985)}
+#screen-home .game-choice-shithead{
+  background:linear-gradient(155deg,#512e2f 0%,#24191c 62%,#160e14 100%);
+}
+#screen-home .game-choice-ludo{
+  background:linear-gradient(155deg,#1b4a4c 0%,#18272b 66%,#10191e 100%);
+}
+#screen-home .game-art{width:100%;height:115px;display:flex;align-items:center;justify-content:center;position:relative}
+#screen-home .game-cards-art{filter:drop-shadow(0 9px 6px #0008)}
+#screen-home .art-card{
+  position:absolute;width:51px;height:75px;padding:7px;border-radius:7px;
+  font:800 18px/1 Georgia,serif;color:#1e2530;background:linear-gradient(140deg,#fffdf5,#e9dfd3);
+  border:2px solid #fff9ed;box-shadow:0 4px 12px #0009;
+  display:flex;flex-direction:column;justify-content:space-between;
+}
+#screen-home .art-card small{font-size:17px;line-height:1;align-self:flex-end}
+#screen-home .art-card-left{transform:translateX(-30px) rotate(-23deg)}
+#screen-home .art-card-middle{transform:translateY(-5px) rotate(-2deg);color:#b82631}
+#screen-home .art-card-right{transform:translateX(30px) rotate(19deg);background:#212937;color:#f3c075}
+#screen-home .art-ludo-board{
+  display:grid;position:relative;grid-template:1fr 1fr / 1fr 1fr;
+  width:100px;height:100px;transform:rotate(-7deg);border:4px solid #e4d3b5;
+  border-radius:4px;box-shadow:0 7px 13px #0009;
+}
+#screen-home .art-ludo-cell{display:grid;place-items:center;color:#fff;font-size:23px;text-shadow:0 2px 2px #0004}
+#screen-home .art-red{background:#c44748}#screen-home .art-green{background:#3d9472}
+#screen-home .art-blue{background:#3878bb}#screen-home .art-yellow{background:#d5ae44}
+#screen-home .art-ludo-centre{
+  position:absolute;inset:35%;display:grid;place-items:center;
+  background:#f7e6bd;color:#473a27;font-size:17px;box-shadow:0 0 0 2px #fff5;
+}
+#screen-home .game-card-name{font:700 clamp(18px,4.9vw,24px)/1.2 Georgia,serif;color:#fff6e9}
+#screen-home .game-card-players{font-size:12px;color:#e0d7c8;margin-top:4px}
+#screen-home .game-card-tag{
+  align-self:stretch;text-align:center;margin-top:14px;
+  border-radius:99px;padding:5px 2px;background:#12101380;border:1px solid #b78b58a0;
+  color:#e9c08c;font-size:9px;letter-spacing:.09em;font-weight:800;
+}
+.games-entry{margin-top:25px}
+#screen-home .games-entry .field span{font-weight:800;color:#e8dcc9}
+#screen-home #name{background:#0e161c;border-color:#5f6262;padding:15px;color:#f7f0e4}
+#screen-home .games-entry-actions{display:grid;gap:10px}
+#screen-home .games-action-primary{
+  background:linear-gradient(100deg,#f4ca8a,#e4aa5f);color:#261a11;
+  display:flex;align-items:center;justify-content:space-between;
+  border:1px solid #edc582;
+}
+#screen-home .games-action-secondary{
+  background:#131e25;border:1px solid #d4a461;color:#f8f1e5;
+  display:flex;align-items:center;justify-content:space-between;
+}
+#screen-home .games-entry-actions button span{font-size:20px;line-height:1}
+#screen-home .games-entry-panel{margin-top:13px;border-color:#5e503f}
+#screen-home .games-join-help{font-size:12px;margin:0 0 13px;color:#c6b69e}
+#screen-home .games-rules-link{align-self:center;margin-top:19px;padding:9px 14px;color:#d9bb8f;text-decoration:underline;text-underline-offset:4px;font-size:13px}
+#screen-home #status{margin:8px 0;min-height:18px}
+.games-home-footer{text-align:center;font-size:10px;letter-spacing:.18em;color:#a99a8c;margin-top:auto;padding-top:18px}
+@media(max-width:370px){
+  #screen-home.games-home{padding-inline:13px}
+  .games-identity-logo{width:62px;height:62px}
+  .games-wordmark{font-size:13px}
+  .games-night-label{font-size:8px;padding:6px}
+  #screen-home .game-art{height:98px}
+  #screen-home .art-ludo-board{width:83px;height:83px}
+  #screen-home .art-card{width:45px;height:67px}
+}
+
 </style>
 </head>
 <body>
@@ -322,56 +436,89 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
 <div id="reaction-toast" class="hidden" role="status" aria-live="polite"></div>
 
 <!-- ============================================================ HOME -->
-<section id="screen-home" class="shell">
-  <div class="brand">
-    <img class="mark" id="logo-slot" src="/brand/shithead-logo.png"
-         srcset="/brand/shithead-logo-180.png 180w, /brand/shithead-logo.png 512w"
-         sizes="(max-width: 480px) 138px, 170px"
-         width="512" height="512" decoding="async"
-         alt="Shithead — four playing cards around a jester">
-    <noscript><p class="muted">JavaScript is required to play.</p></noscript>
-    <h1>SHITHEAD</h1>
-    <p>Multiplayer game night</p>
+<section id="screen-home" class="shell games-home">
+  <header class="games-home-header">
+    <div class="games-identity">
+      <!-- The original Shithead logo from the existing repository. Never replace or recolour. -->
+      <img class="games-identity-logo" id="logo-slot" src="/brand/shithead-logo.png"
+           srcset="/brand/shithead-logo-180.png 180w, /brand/shithead-logo.png 512w"
+           sizes="88px" width="88" height="88" decoding="async"
+           alt="Original Shithead game logo">
+      <div class="games-wordmark">SHITHEAD <span>GAMES</span></div>
+    </div>
+    <span class="games-night-label"><span class="games-live-dot" aria-hidden="true"></span>GAME NIGHT</span>
+  </header>
+
+  <div class="games-hero">
+    <div class="games-eyebrow">THE TABLE IS YOURS</div>
+    <h1>Same friends.<br><span>More games.</span></h1>
+    <p>Pick your game. Get your people together.<br>Let the chaos begin.</p>
   </div>
-  <div class="panel" id="game-picker">
-    <h2>Choose your game</h2>
+
+  <section id="game-picker" class="games-picker" aria-labelledby="games-pick-title">
+    <div class="games-section-heading">
+      <h2 id="games-pick-title">CHOOSE YOUR GAME</h2>
+      <span>02 AVAILABLE</span>
+    </div>
     <div class="game-choices">
-      <button type="button" class="game-choice active" data-game="shithead" aria-pressed="true">
-        <span class="game-emoji">🂡</span><strong>Shithead</strong><small>2–6 players</small>
+      <button type="button" class="game-choice game-choice-shithead active" data-game="shithead" aria-pressed="true">
+        <span class="game-art game-cards-art" aria-hidden="true">
+          <span class="art-card art-card-left">A<small>♠</small></span>
+          <span class="art-card art-card-middle">7<small>♥</small></span>
+          <span class="art-card art-card-right">J<small>★</small></span>
+        </span>
+        <span class="game-card-name">Shithead</span>
+        <span class="game-card-players">2–6 players</span>
+        <span class="game-card-tag">THE CARD BATTLE</span>
       </button>
-      <button type="button" class="game-choice" data-game="ludo" aria-pressed="false">
-        <span class="game-emoji">🎲</span><strong>Ludo</strong><small>2–4 players</small>
+      <button type="button" class="game-choice game-choice-ludo" data-game="ludo" aria-pressed="false">
+        <span class="game-art" aria-hidden="true">
+          <span class="art-ludo-board">
+            <span class="art-ludo-cell art-red">●</span>
+            <span class="art-ludo-cell art-green">●</span>
+            <span class="art-ludo-cell art-blue">●</span>
+            <span class="art-ludo-cell art-yellow">●</span>
+            <span class="art-ludo-centre">✦</span>
+          </span>
+        </span>
+        <span class="game-card-name">Ludo</span>
+        <span class="game-card-players">2–4 players</span>
+        <span class="game-card-tag">THE BOARD BATTLE</span>
       </button>
     </div>
-  </div>
-  <div class="panel">
-    <label class="field" for="name"><span>Enter your name</span>
-      <input id="name" placeholder="Player Name" maxlength="32" autocomplete="nickname">
+  </section>
+
+  <div class="games-entry">
+    <label class="field" for="name"><span>YOUR PLAYER NAME</span>
+      <input id="name" placeholder="Enter your name" maxlength="32" autocomplete="nickname">
     </label>
-    <div class="btn-row">
-      <button id="go-create" class="btn btn-primary" type="button">Create Room</button>
-      <button id="go-join" class="btn btn-ghost" type="button">Join Room</button>
+    <div class="games-entry-actions">
+      <button id="go-create" class="btn games-action-primary" type="button">Create a room <span aria-hidden="true">✦</span></button>
+      <button id="go-join" class="btn games-action-secondary" type="button">Join with a room code <span aria-hidden="true">→</span></button>
     </div>
   </div>
 
-  <div class="panel hidden" id="create-panel">
+  <div class="panel hidden games-entry-panel" id="create-panel">
     <h2>Create a room</h2>
     <label class="field" for="capacity"><span>Players</span>
       <select id="capacity"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
     </label>
-    <button id="create" class="btn btn-primary" type="button">Create</button>
+    <button id="create" class="btn btn-primary" type="button">Create room</button>
   </div>
 
-  <div class="panel hidden" id="join-panel">
+  <div class="panel hidden games-entry-panel" id="join-panel">
     <h2>Join a room</h2>
     <label class="field" for="room"><span>Room code</span>
       <input id="room" placeholder="CODE" maxlength="4" inputmode="latin" autocapitalize="characters" spellcheck="false">
     </label>
-    <button id="join" class="btn btn-primary" type="button">Join</button>
+    <p class="games-join-help">Your room code joins whichever game the host selected.</p>
+    <button id="join" class="btn btn-primary" type="button">Join room</button>
   </div>
 
-  <button id="go-rules" class="btn btn-ghost" type="button">Rules</button>
+  <button id="go-rules" class="games-rules-link" type="button">How to play Shithead</button>
   <p id="status" role="status" aria-live="polite"></p>
+  <footer class="games-home-footer">PLAY TOGETHER. STAY TOGETHER.</footer>
+  <noscript><p>JavaScript is required to play.</p></noscript>
 </section>
 
 <!-- =========================================================== LOBBY -->
