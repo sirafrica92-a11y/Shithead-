@@ -253,7 +253,7 @@ def create_app(
                     continue
 
                 kind = action.get("type")
-                if kind not in ("ready", "game", "ludo", "rematch", "reaction", "host_join_decision", "select_game"):
+                if kind not in ("ready", "game", "ludo", "rematch", "reaction", "host_join_decision", "select_game", "return_lobby"):
                     await websocket.send_json({"type": "error", "reasonCode": "unknown_action"})
                     continue
 
@@ -301,6 +301,21 @@ def create_app(
                             remember_request(seat, request_id)
                             # Reactions are cosmetic. Never invalidate a card
                             # selection or an in-flight move's expected_version.
+                            changed = True
+                    elif kind == "return_lobby":
+                        if index != room.host_seat:
+                            error = "host_only"
+                        elif room.public_view()["phase"] != "FINISHED":
+                            error = "wrong_phase"
+                        else:
+                            room.match = None
+                            room.ludo = None
+                            room.pending_joiners.clear()
+                            room.rematch_votes.clear()
+                            for player in room.seats:
+                                player.ready = False
+                            room.version += 1
+                            remember_request(seat, request_id)
                             changed = True
                     elif kind == "select_game":
                         if index != room.host_seat:
