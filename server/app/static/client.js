@@ -352,6 +352,7 @@ function renderGame(g) {
 
   // hint
   el("finished-actions").classList.toggle("hidden", !over);
+  el("shithead-switch").classList.toggle("hidden", !(over && seatIndex === snap.host_seat));
   el("rematch").disabled = !over || (snap.rematch_votes || []).includes(seatIndex);
   el("rematch").textContent = (snap.rematch_votes || []).includes(seatIndex)
     ? "Waiting for others (" + snap.rematch_votes.length + "/" + snap.players.length + ")"
@@ -440,6 +441,7 @@ function sendRoomAction(type, fields = {}) {
   }));
 }
 el("rematch").onclick = () => sendRoomAction("rematch");
+el("shithead-switch").onclick = () => sendRoomAction("return_lobby");
 el("host-restart").onclick = () => sendRoomAction("host_join_decision", {decision: "restart_now"});
 el("host-finish").onclick = () => sendRoomAction("host_join_decision", {decision: "finish_current"});
 el("main-menu").onclick = () => {
