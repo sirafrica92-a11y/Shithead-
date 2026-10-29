@@ -298,11 +298,28 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
 .ludo-die{font-size:32px;border-radius:12px;background:#fff;color:#262526;min-width:55px;text-align:center;padding:5px}
 .ludo-controls .btn{flex:1 1 120px}.ludo-controls p{width:100%;margin:0;text-align:center;color:var(--muted)}
 .ludo-reactions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.ludo-reactions button{background:#222d37;padding:7px 11px;border-radius:9px;font-size:22px}
+
+.ludo-players{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.ludo-player{padding:9px 10px;border-radius:12px;display:flex;align-items:center;gap:8px;background:#17202a;border:1px solid #3a4956;min-width:0}
+.ludo-player.active{border-color:#f3a23e;box-shadow:0 0 0 1px #f3a23e55}
+.ludo-player .dot{width:13px;height:13px;flex:0 0 auto;border-radius:50%}
+.ludo-player .dot.red{background:#e04a4a}.ludo-player .dot.green{background:#36b982}
+.ludo-player .dot.yellow{background:#e8b949}.ludo-player .dot.blue{background:#4ba0fa}
+.ludo-player .name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.ludo-player .progress{font-size:12px;color:#d0c5b4;white-space:nowrap}
+.ludo-move-options{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ludo-move-options strong{flex-basis:100%;font-size:13px}
+.ludo-move-options button{background:#dfb25c;color:#131b22;padding:13px 15px;border-radius:11px;font-weight:800;min-height:44px}
+.ludo-home-count{display:grid;place-items:center;color:white;border:1px solid #fff;border-radius:50%;font-weight:900;font-size:10px;width:95%;aspect-ratio:1;z-index:1}
+.ludo-home-count.red{background:#d82730}.ludo-home-count.green{background:#137d54}
+.ludo-home-count.yellow{background:#b98913}.ludo-home-count.blue{background:#175ab1}
 @media(prefers-reduced-motion:reduce){.ludo-token.legal{animation:none}}
+
 </style>
 </head>
 <body>
 <div id="app">
+<div id="reaction-toast" class="hidden" role="status" aria-live="polite"></div>
 
 <!-- ============================================================ HOME -->
 <section id="screen-home" class="shell">
@@ -374,6 +391,10 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
       <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option></select>
     </label>
     <button id="switch-game" class="btn btn-ghost" type="button">Change game</button>
+    <label class="field" for="lobby-capacity" style="margin-top:12px"><span>Players in next match</span>
+      <select id="lobby-capacity"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
+    </label>
+    <button id="set-capacity" class="btn btn-ghost" type="button">Update player count</button>
   </div>
   <button id="ready" class="btn btn-primary" type="button" disabled>Ready</button>
   <p id="lobby-status" role="status" aria-live="polite" style="text-align:center;color:var(--muted);font-size:13px"></p>
@@ -406,7 +427,7 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
     </div>
   </div>
   <div id="opponents"></div>
-  <div id="reaction-toast" class="hidden" role="status" aria-live="polite"></div>
+
 
   <div id="turn-banner">Waiting…</div>
 
@@ -458,6 +479,7 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
     <strong>LUDO</strong><button class="icon-btn" id="ludo-refresh" type="button" aria-label="Refresh board">↻</button>
   </div>
   <div id="ludo-turn" class="ludo-turn">Waiting for players…</div>
+  <div id="ludo-players" class="ludo-players" aria-label="Players and progress"></div>
   <div id="ludo-join-prompt" class="panel hidden">
     <h2>New friends joined</h2>
     <p id="ludo-join-names"></p>
@@ -465,16 +487,44 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
     <div class="btn-row"><button class="btn btn-primary" id="ludo-restart" type="button">Restart</button>
       <button class="btn btn-ghost" id="ludo-finish" type="button">Finish current</button></div>
   </div>
-  <div id="ludo-board" class="ludo-board" aria-label="Ludo board"></div>
+  <div id="ludo-board" class="ludo-board" role="group" aria-label="Ludo board"></div>
+  <div id="ludo-move-options" class="ludo-move-options hidden" aria-label="Select token to move"></div>
   <div class="ludo-controls">
-    <div class="ludo-die" id="ludo-dice">⚄</div>
+    <div class="ludo-die" id="ludo-dice" aria-label="Last dice roll">⚄</div>
     <button class="btn btn-primary" id="ludo-roll" type="button">Roll dice</button>
     <p id="ludo-event" role="status" aria-live="polite"></p>
   </div>
   <div id="ludo-reactions" class="ludo-reactions" aria-label="Quick reactions"></div>
+  <button class="btn btn-ghost" id="ludo-open-rules" type="button">Ludo rules</button>
   <button class="btn btn-primary hidden" id="ludo-rematch" type="button">Play again in this room</button>
   <button class="btn btn-ghost hidden" id="ludo-switch" type="button">Change game in this room</button>
   <button class="btn btn-ghost" id="ludo-home" type="button">Main menu</button>
+</section>
+
+<!-- ======================================================= LUDO RULES -->
+<section id="screen-ludo-rules" class="shell hidden">
+  <div class="rules-top">
+    <button id="ludo-rules-back" class="icon-btn" type="button" aria-label="Back">←</button>
+    <h1 class="rules-title">How to Play Ludo</h1>
+  </div>
+  <div class="panel rules-block">
+    <h3 class="r-head">Goal</h3>
+    <p>2–4 players, four tokens each. Be the first to move all four tokens from base, around the board and into the centre home.</p>
+  </div>
+  <div class="panel rules-block">
+    <h3 class="r-head">Roll and move</h3>
+    <p>Roll a <b>6</b> to bring a token out of base onto your coloured starting square. After that, move a token clockwise by the exact dice number. Tap a highlighted token or use the move buttons below the board.</p>
+    <p>A <b>6</b> always grants another roll. There is <b>no penalty for three or more consecutive sixes</b>. If no move is possible, your turn passes unless you rolled a 6.</p>
+  </div>
+  <div class="panel rules-block">
+    <h3 class="r-head">Capture and safety</h3>
+    <p>Landing on a single opponent token sends it back to base and grants an extra roll. You cannot capture on protected squares, shown by a star or coloured starting square.</p>
+    <p><b>Blockades:</b> two or more tokens of the same colour on a shared square form a blockade. Opponents cannot land there or pass through until it opens.</p>
+  </div>
+  <div class="panel rules-block">
+    <h3 class="r-head">Finish</h3>
+    <p>After circling the board, enter your coloured home lane. You must roll the exact number needed to reach the central home. The first person to bring all four tokens home wins.</p>
+  </div>
 </section>
 
 <!-- =========================================================== RULES -->
