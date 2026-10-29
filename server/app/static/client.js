@@ -12,6 +12,7 @@ let ws, seatToken, seatIndex = -1, snap = null, roomId = "", reconnects = 0;
 let selection = new Set();        // indices inside the live zone
 let targetSeat = null;            // chosen opponent for 3 / Joker and counters
 let intentionalClose = false;
+let chosenGame = "shithead";
 let lastReactionSeq = 0;
 let reactionTimer = null;
 const REACTIONS = ["😂", "😏", "😭", "👀", "🔥", "💀"];
@@ -22,11 +23,11 @@ function tableStatus(message) { el("table-status").textContent = message; }
 
 let screenBeforeRules = "screen-home";
 function show(screen) {
-  ["screen-home", "screen-lobby", "screen-table", "screen-rules"].forEach(id =>
+  ["screen-home", "screen-lobby", "screen-table", "screen-ludo", "screen-rules"].forEach(id =>
     el(id).classList.toggle("hidden", id !== screen));
 }
 function openRules() {
-  screenBeforeRules = ["screen-home", "screen-lobby", "screen-table"]
+  screenBeforeRules = ["screen-home", "screen-lobby", "screen-table", "screen-ludo"]
     .find(id => !el(id).classList.contains("hidden")) || "screen-home";
   show("screen-rules");
   window.scrollTo(0, 0);
@@ -95,6 +96,7 @@ function render(x) {
   snap = x;
   if (typeof x.you === "number") seatIndex = x.you;
   roomId = x.room_id;
+  const isLudo = x.game_type === "ludo";
   const hostPrompt = el("host-join-prompt");
   const lateNames = (x.pending_joiners || [])
     .map(i => x.players?.[i]?.name || "A player");
@@ -114,10 +116,20 @@ function render(x) {
   }
 
   const reading = !el("screen-rules").classList.contains("hidden");
-  if (x.game) { if (!reading) show("screen-table"); renderGame(x.game); return; }
+  if (x.game) {
+    if (!reading) show(isLudo ? "screen-ludo" : "screen-table");
+    if (isLudo) {
+      el("ludo-room").textContent = x.room_id;
+      renderLudo(x.game);
+    } else renderGame(x.game);
+    return;
+  }
 
   if (!reading) show("screen-lobby");
   el("room-label").textContent = x.room_id;
+  el("lobby-game-label").textContent = "Selected game: " + (isLudo ? "Ludo" : "Shithead");
+  el("lobby-switch").classList.toggle("hidden", seatIndex !== x.host_seat);
+  el("lobby-game").value = x.game_type || "shithead";
   const ul = el("players");
   ul.replaceChildren();
   x.players.forEach((p, i) => {
@@ -507,6 +519,29 @@ function connect(room, token, retry = 0) {
 }
 
 /* ------------------------------------------------------------ home flow */
+function selectHomeGame(game) {
+  chosenGame = game;
+  document.querySelectorAll(".game-choice").forEach(button => {
+    const active = button.dataset.game === game;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  const capacity = el("capacity");
+  const oldValue = Number(capacity.value);
+  capacity.replaceChildren(...Array.from({length:(game==="ludo"?3:5)},(_,i)=>{
+    const option=document.createElement("option"); option.value=String(i+2);
+    option.textContent=String(i+2);return option;
+  }));
+  capacity.value=String(Math.min(oldValue,game==="ludo"?4:6));
+}
+document.querySelectorAll(".game-choice").forEach(btn=>{
+  btn.onclick=()=>selectHomeGame(btn.dataset.game);
+});
+el("switch-game").onclick=()=>sendRoomAction("select_game",{game_type:el("lobby-game").value});
+el("ludo-switch").onclick=()=>sendRoomAction("return_lobby");
+el("ludo-refresh").onclick=()=>{if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:"sync"}));};
+selectHomeGame("shithead");
+
 el("go-create").onclick = () => {
   el("create-panel").classList.remove("hidden");
   el("join-panel").classList.add("hidden");
@@ -595,7 +630,7 @@ el("create").onclick = async () => {
   const name = el("name").value.trim();
   if (!name) { status("Enter your name first."); el("name").focus(); return; }
   try {
-    const r = await request("/api/rooms", { capacity: Number(el("capacity").value), name });
+    const r = await request("/api/rooms", { capacity: Number(el("capacity").value), name, game_type: chosenGame });
     el("room").value = r.room_id;
     seatIndex = r.seat;
     saveSeat(r.room_id, r.token, r.seat, name);
