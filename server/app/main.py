@@ -253,7 +253,7 @@ def create_app(
                     continue
 
                 kind = action.get("type")
-                if kind not in ("ready", "game", "ludo", "rematch", "reaction", "host_join_decision", "select_game", "return_lobby"):
+                if kind not in ("ready", "game", "ludo", "rematch", "reaction", "host_join_decision", "select_game", "set_capacity", "return_lobby"):
                     await websocket.send_json({"type": "error", "reasonCode": "unknown_action"})
                     continue
 
@@ -326,7 +326,24 @@ def create_app(
                             error = "too_many_players"
                         else:
                             room.game_type = action["game_type"]
-                            room.capacity = min(room.capacity, 4) if room.game_type == "ludo" else room.capacity
+                            room.capacity = max(len(room.seats), min(room.capacity, 4)) if room.game_type == "ludo" else max(2, room.capacity)
+                            for player in room.seats:
+                                player.ready = False
+                            room.version += 1
+                            remember_request(seat, request_id)
+                            changed = True
+                    elif kind == "set_capacity":
+                        new_capacity = action.get("capacity")
+                        if index != room.host_seat:
+                            error = "host_only"
+                        elif room.match is not None or room.ludo is not None:
+                            error = "wrong_phase"
+                        elif (type(new_capacity) is not int
+                              or not len(room.seats) <= new_capacity <= (4 if room.game_type == "ludo" else 6)
+                              or new_capacity < 2):
+                            error = "invalid_capacity"
+                        else:
+                            room.capacity = new_capacity
                             for player in room.seats:
                                 player.ready = False
                             room.version += 1
