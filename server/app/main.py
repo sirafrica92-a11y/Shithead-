@@ -19,6 +19,7 @@ from server.app.lobby import (
 )
 from server.app.persistence import token_digest
 from server.app.gameplay import apply_match_action, make_match, UndecidedStartTie
+from server.app.ludo import make_ludo_match, apply_ludo_action, IllegalLudoMove
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
 
@@ -28,6 +29,7 @@ REACTIONS = {"😂", "😏", "😭", "👀", "🔥", "💀"}
 
 class CreateRoom(BaseModel):
     capacity: int = Field(default=2, ge=2, le=6)
+    game_type: str = "shithead"
     # The host names themselves while creating, so one press both opens the
     # room and seats them. Optional, so an older client still works.
     name: str | None = Field(default=None, max_length=32)
@@ -105,6 +107,10 @@ def create_app(
     async def client_script():
         return FileResponse(Path(__file__).parent / "static" / "client.js", media_type="application/javascript")
 
+    @app.get("/ludo.js")
+    async def ludo_script():
+        return FileResponse(Path(__file__).parent / "static" / "ludo.js", media_type="application/javascript")
+
     # Owner-approved brand artwork. The unaltered original is kept in
     # design/references/; these are display copies only.
     BRAND = {
@@ -137,28 +143,35 @@ def create_app(
     async def seat_player(room, name: str) -> dict:
         """Take the next free seat and issue that seat's private token."""
         async with room.lock:
-            if len(room.seats) >= (6 if room.match is not None else room.capacity):
+            max_seats = 4 if room.game_type == "ludo" else 6
+            if len(room.seats) >= (max_seats if (room.ludo is not None or room.match is not None) else room.capacity):
                 raise HTTPException(status_code=409, detail="room is full")
             raw_token = secrets.token_urlsafe(24)
             index = len(room.seats)
             room.seats.append(Seat(name=name, token_digest=token_digest(raw_token)))
-            if room.match is not None:
+            if room.match is not None or room.ludo is not None:
                 room.pending_joiners.append(index)
                 room.capacity = max(room.capacity, len(room.seats))
             room.version += 1
             store.persist(room)
         await broadcast(room)
         return {"room_id": room.id, "seat": index, "token": raw_token,
-                "waiting_next_match": room.match is not None}
+                "waiting_next_match": room.match is not None or room.ludo is not None}
 
     @app.post("/api/rooms", status_code=201)
     async def create_room(payload: CreateRoom):
         name = clean_name(payload.name) if payload.name is not None else None
+        if payload.game_type not in ("shithead", "ludo"):
+            raise HTTPException(status_code=422, detail="unknown game")
+        if payload.game_type == "ludo" and payload.capacity > 4:
+            raise HTTPException(status_code=422, detail="Ludo supports up to four players")
         try:
             room = await store.create(payload.capacity)
+            room.game_type = payload.game_type
+            store.persist(room)
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
-        body = {"room_id": room.id, "capacity": room.capacity}
+        body = {"room_id": room.id, "capacity": room.capacity, "game_type": room.game_type}
         if name is not None:
             body.update(await seat_player(room, name))
         return body
@@ -240,7 +253,7 @@ def create_app(
                     continue
 
                 kind = action.get("type")
-                if kind not in ("ready", "game", "rematch", "reaction", "host_join_decision"):
+                if kind not in ("ready", "game", "ludo", "rematch", "reaction", "host_join_decision", "select_game"):
                     await websocket.send_json({"type": "error", "reasonCode": "unknown_action"})
                     continue
 
@@ -250,7 +263,8 @@ def create_app(
                 if (not isinstance(request_id, str) or not 1 <= len(request_id) <= 64
                         or type(expected) is not int
                         or (kind == "ready" and type(ready) is not bool)
-                        or (kind == "game" and not isinstance(action.get("kind"), str))
+                        or (kind in ("game", "ludo") and not isinstance(action.get("kind"), str))
+                        or (kind == "select_game" and action.get("game_type") not in ("ludo", "shithead"))
                         or (kind == "host_join_decision" and action.get("decision") not in
                             ("restart_now", "finish_current"))
                         or (kind == "reaction" and (not isinstance(action.get("emoji"), str)
@@ -273,7 +287,7 @@ def create_app(
                         # Cosmetic only: does not mutate Match, card locations,
                         # pending decisions, or any turn state.
                         now = time.monotonic()
-                        if room.match is None:
+                        if room.match is None and room.ludo is None:
                             error = "wrong_phase"
                         elif now - room.reaction_at.get(index, -9999) < 2.0:
                             error = "reaction_cooldown"
@@ -288,10 +302,25 @@ def create_app(
                             # Reactions are cosmetic. Never invalidate a card
                             # selection or an in-flight move's expected_version.
                             changed = True
+                    elif kind == "select_game":
+                        if index != room.host_seat:
+                            error = "host_only"
+                        elif room.match is not None or room.ludo is not None:
+                            error = "wrong_phase"
+                        elif action["game_type"] == "ludo" and len(room.seats) > 4:
+                            error = "too_many_players"
+                        else:
+                            room.game_type = action["game_type"]
+                            room.capacity = min(room.capacity, 4) if room.game_type == "ludo" else room.capacity
+                            for player in room.seats:
+                                player.ready = False
+                            room.version += 1
+                            remember_request(seat, request_id)
+                            changed = True
                     elif kind == "host_join_decision":
                         if index != room.host_seat:
                             error = "host_only"
-                        elif not room.pending_joiners or room.match is None:
+                        elif not room.pending_joiners or (room.match is None and room.ludo is None):
                             error = "no_pending_joiners"
                         elif action["decision"] == "finish_current":
                             room.pending_joiners.clear()
@@ -301,11 +330,14 @@ def create_app(
                             changed = True
                         else:
                             try:
-                                fresh = make_match(len(room.seats))
+                                fresh = make_ludo_match(len(room.seats)) if room.game_type == "ludo" else make_match(len(room.seats))
                             except UndecidedStartTie:
                                 error = "starting_tie_unresolved"
                             else:
-                                room.match = fresh
+                                if room.game_type == "ludo":
+                                    room.ludo = fresh
+                                else:
+                                    room.match = fresh
                                 room.pending_joiners.clear()
                                 room.rematch_votes.clear()
                                 room.room_notice = "The host restarted the match for everyone."
@@ -315,7 +347,7 @@ def create_app(
                                 remember_request(seat, request_id)
                                 changed = True
                     elif kind == "rematch":
-                        if room.match is None or room.public_view()["phase"] != "FINISHED":
+                        if (room.match is None and room.ludo is None) or room.public_view()["phase"] != "FINISHED":
                             error = "wrong_phase"
                         else:
                             remember_request(seat, request_id)
@@ -325,7 +357,7 @@ def create_app(
                                 changed = True
                             if len(room.rematch_votes) == len(room.seats) and len(room.seats) >= 2:
                                 try:
-                                    fresh = make_match(len(room.seats))
+                                    fresh = make_ludo_match(len(room.seats)) if room.game_type == "ludo" else make_match(len(room.seats))
                                 except UndecidedStartTie:
                                     # Leave the match finished and permit a new
                                     # unanimous retry without a deadlocked vote.
@@ -333,6 +365,9 @@ def create_app(
                                     room.version += 1
                                     changed = True
                                     error = "starting_tie_unresolved"
+                                else:
+                                    if room.game_type == "ludo":
+                                    room.ludo = fresh
                                 else:
                                     room.match = fresh
                                     room.pending_joiners.clear()
@@ -343,7 +378,7 @@ def create_app(
                                     room.version += 1
                                     changed = True
                     elif kind == "ready":
-                        if room.match is not None:
+                        if room.match is not None or room.ludo is not None:
                             error = "wrong_phase"
                         else:
                             remember_request(seat, request_id)
@@ -354,7 +389,7 @@ def create_app(
                             if (len(room.seats) == room.capacity
                                     and all(s.ready for s in room.seats)):
                                 try:
-                                    candidate = make_match(room.capacity)
+                                    candidate = make_ludo_match(room.capacity) if room.game_type == "ludo" else make_match(room.capacity)
                                 except UndecidedStartTie:
                                     # No owner-approved fallback for an exact
                                     # D-019 three-card tie: keep lobby recoverable.
@@ -362,10 +397,34 @@ def create_app(
                                     room.version += 1
                                     error = "starting_tie_unresolved"
                                 else:
-                                    room.match = candidate
+                                    if room.game_type == "ludo":
+                                        room.ludo = candidate
+                                    else:
+                                        room.match = candidate
                                     room.rematch_votes.clear()
                                     room.version += 1
                                     changed = True
+                    elif room.game_type == "ludo":
+                        if kind != "ludo":
+                            error = "wrong_game"
+                        elif room.ludo is None:
+                            error = "wrong_phase"
+                        elif index >= len(room.ludo.players):
+                            error = "waiting_next_match"
+                        else:
+                            try:
+                                next_match = apply_ludo_action(
+                                    room.ludo, index, action["kind"], token=action.get("token"))
+                            except IllegalLudoMove as exc:
+                                error = "illegal_action"
+                                reason = str(exc)
+                            else:
+                                room.ludo = next_match
+                                room.version += 1
+                                remember_request(seat, request_id)
+                                changed = True
+                    elif kind != "game":
+                        error = "wrong_game"
                     elif room.match is None:
                         error = "wrong_phase"
                     elif index >= len(room.match.state.players):
