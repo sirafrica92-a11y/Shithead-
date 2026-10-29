@@ -367,9 +367,9 @@ def create_app(
                                     error = "starting_tie_unresolved"
                                 else:
                                     if room.game_type == "ludo":
-                                    room.ludo = fresh
-                                else:
-                                    room.match = fresh
+                                        room.ludo = fresh
+                                    else:
+                                        room.match = fresh
                                     room.pending_joiners.clear()
                                     room.room_notice = ""
                                     room.rematch_votes.clear()
