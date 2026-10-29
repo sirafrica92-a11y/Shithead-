@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#15120f">
-<title>Shithead — Mobile Multiplayer Card Game</title>
+<title>Shithead Games — Shithead &amp; Ludo</title>
 <link rel="icon" href="/brand/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/brand/shithead-logo-180.png">
-<meta name="description" content="Shithead — mobile multiplayer card game.">
+<meta name="description" content="Play Shithead and Ludo with friends online.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Shithead">
 <style>
@@ -271,6 +271,34 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
   .brand .mark{width:138px;height:138px}
   .brand h1{font-size:33px}
 }
+
+.game-choices{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.game-choice{display:flex;flex-direction:column;align-items:center;gap:5px;border-radius:15px;border:1px solid #414b56;background:#1b2229;padding:15px;color:#fff}
+.game-choice.active{border:2px solid #f3a23e;background:#353026}
+.game-emoji{font-size:34px}.game-choice small,.game-label{color:var(--muted)}
+.game-label{text-align:center;margin:0}
+.ludo-shell{max-width:680px;gap:10px;justify-content:flex-start}
+.ludo-top{display:flex;justify-content:space-between;align-items:center}
+.ludo-top>strong{font-size:22px;letter-spacing:.2em;color:#f2c77f}
+.ludo-turn{text-align:center;font-weight:800;font-size:19px}
+.ludo-board{width:100%;aspect-ratio:1;display:grid;grid-template-columns:repeat(15,minmax(0,1fr));grid-template-rows:repeat(15,minmax(0,1fr));background:#f5ead2;border:4px solid #9b774b;border-radius:8px;overflow:hidden}
+.ludo-cell{display:flex;align-items:center;justify-content:center;gap:1px;position:relative;border:1px solid #cbbda5;background:#fffbf2;color:#ab936d;font-size:9px;min-width:0;min-height:0}
+.ludo-cell.blank{background:#202831;border:0}
+.ludo-cell.base.red,.ludo-cell.lane.red,.ludo-cell.start.red{background:#bd383b}
+.ludo-cell.base.green,.ludo-cell.lane.green,.ludo-cell.start.green{background:#318e66}
+.ludo-cell.base.yellow,.ludo-cell.lane.yellow,.ludo-cell.start.yellow{background:#e1b13d}
+.ludo-cell.base.blue,.ludo-cell.lane.blue,.ludo-cell.start.blue{background:#367bc5}
+.ludo-cell.safe{background:#efe4bb;color:#b17f2e}
+.ludo-cell.center{background:#59432e;color:#f8d59d}
+.ludo-token{padding:0;flex:1 1 0;min-width:0;max-width:85%;aspect-ratio:1;border:2px solid #fff;border-radius:50%;font-size:clamp(6px,1.7vw,11px);font-weight:800;color:white;box-shadow:0 1px 3px #2228;z-index:1}
+.ludo-token.red{background:#d82730}.ludo-token.green{background:#137d54}.ludo-token.yellow{background:#b98913}.ludo-token.blue{background:#175ab1}
+.ludo-token:disabled{opacity:.83}.ludo-token.legal{outline:3px solid #101820;box-shadow:0 0 0 3px #fff;animation:ludo-pulse 1.2s infinite alternate}
+@keyframes ludo-pulse{to{transform:scale(.87)}}
+.ludo-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ludo-die{font-size:32px;border-radius:12px;background:#fff;color:#262526;min-width:55px;text-align:center;padding:5px}
+.ludo-controls .btn{flex:1 1 120px}.ludo-controls p{width:100%;margin:0;text-align:center;color:var(--muted)}
+.ludo-reactions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.ludo-reactions button{background:#222d37;padding:7px 11px;border-radius:9px;font-size:22px}
+@media(prefers-reduced-motion:reduce){.ludo-token.legal{animation:none}}
 </style>
 </head>
 <body>
@@ -286,7 +314,18 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
          alt="Shithead — four playing cards around a jester">
     <noscript><p class="muted">JavaScript is required to play.</p></noscript>
     <h1>SHITHEAD</h1>
-    <p>Mobile Multiplayer Card Game</p>
+    <p>Multiplayer game night</p>
+  </div>
+  <div class="panel" id="game-picker">
+    <h2>Choose your game</h2>
+    <div class="game-choices">
+      <button type="button" class="game-choice active" data-game="shithead" aria-pressed="true">
+        <span class="game-emoji">🂡</span><strong>Shithead</strong><small>2–6 players</small>
+      </button>
+      <button type="button" class="game-choice" data-game="ludo" aria-pressed="false">
+        <span class="game-emoji">🎲</span><strong>Ludo</strong><small>2–4 players</small>
+      </button>
+    </div>
   </div>
   <div class="panel">
     <label class="field" for="name"><span>Enter your name</span>
@@ -328,6 +367,13 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
   <div class="panel">
     <h2 id="phase">Waiting for players</h2>
     <ul id="players"></ul>
+  </div>
+  <p id="lobby-game-label" class="game-label">Selected game: Shithead</p>
+  <div id="lobby-switch" class="hidden">
+    <label class="field" for="lobby-game"><span>Host: choose next game</span>
+      <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option></select>
+    </label>
+    <button id="switch-game" class="btn btn-ghost" type="button">Change game</button>
   </div>
   <button id="ready" class="btn btn-primary" type="button" disabled>Ready</button>
   <p id="lobby-status" role="status" aria-live="polite" style="text-align:center;color:var(--muted);font-size:13px"></p>
@@ -404,6 +450,24 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
   <p id="table-status" role="status" aria-live="polite"></p>
 </section>
 
+
+<!-- =========================================================== LUDO -->
+<section id="screen-ludo" class="shell hidden ludo-shell">
+  <div class="ludo-top"><div class="room-chip">ROOM<b id="ludo-room"></b></div>
+    <strong>LUDO</strong><button class="icon-btn" id="ludo-refresh" type="button" aria-label="Refresh board">↻</button>
+  </div>
+  <div id="ludo-turn" class="ludo-turn">Waiting for players…</div>
+  <div id="ludo-board" class="ludo-board" aria-label="Ludo board"></div>
+  <div class="ludo-controls">
+    <div class="ludo-die" id="ludo-dice">⚄</div>
+    <button class="btn btn-primary" id="ludo-roll" type="button">Roll dice</button>
+    <p id="ludo-event" role="status" aria-live="polite"></p>
+  </div>
+  <div id="ludo-reactions" class="ludo-reactions" aria-label="Quick reactions"></div>
+  <button class="btn btn-primary hidden" id="ludo-rematch" type="button">Play again in this room</button>
+  <button class="btn btn-ghost hidden" id="ludo-switch" type="button">Change game in this room</button>
+  <button class="btn btn-ghost" id="ludo-home" type="button">Main menu</button>
+</section>
 
 <!-- =========================================================== RULES -->
 <section id="screen-rules" class="shell hidden">
@@ -486,4 +550,5 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
 </section>
 </div>
 <script defer src="/client.js"></script>
+<script defer src="/ludo.js"></script>
 </body></html>
