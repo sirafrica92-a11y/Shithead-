@@ -25,6 +25,7 @@ from typing import Any
 from fastapi import WebSocket
 from server.app.gameplay import Match, private_match_view, public_match_view
 from server.app.persistence import dump_match, restore_match
+from server.app.ludo import LudoMatch, dump_ludo, restore_ludo, public_ludo_view, private_ludo_view
 
 
 # Codes are read aloud and typed by hand, so they are short, case-insensitive
@@ -91,6 +92,8 @@ class Room:
     seats: list[Seat] = field(default_factory=list)
     version: int = 0
     match: Match | None = None
+    game_type: str = "shithead"
+    ludo: LudoMatch | None = None
     # Seat zero is the creator in the current one-click create-and-seat flow.
     # Older API-created unseated rooms grant this role to their first joiner.
     host_seat: int = 0
@@ -103,18 +106,24 @@ class Room:
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     def public_view(self) -> dict[str, Any]:
-        active_count = len(self.match.state.players) if self.match else 0
+        active_count = (len(self.ludo.players) if self.game_type == "ludo" and self.ludo
+                        else len(self.match.state.players) if self.match else 0)
+        active = self.ludo if self.game_type == "ludo" else self.match
+        game = (public_ludo_view(self.ludo) if self.game_type == "ludo" and self.ludo
+                else public_match_view(self.match) if self.game_type == "shithead" and self.match
+                else None)
         return {
             "type": "room_state",
             "room_id": self.id,
             "capacity": self.capacity,
+            "game_type": self.game_type,
             "host_seat": self.host_seat,
             "pending_joiners": list(self.pending_joiners),
             "active_player_count": active_count,
             "room_notice": self.room_notice,
-            "phase": ("LOBBY" if self.match is None else public_match_view(self.match)["phase"]),
+            "phase": ("LOBBY" if active is None else game["phase"]),
             "version": self.version,
-            "game": public_match_view(self.match) if self.match is not None else None,
+            "game": game,
             "rematch_votes": sorted(self.rematch_votes),
             "reaction": self.reaction,
             "reaction_seq": self.reaction_seq,
@@ -126,7 +135,7 @@ class Room:
                     "name": seat.name,
                     "ready": seat.ready,
                     "connected": seat.socket is not None,
-                    "waiting_next_match": self.match is not None and i >= active_count,
+                    "waiting_next_match": active is not None and i >= active_count,
                 }
                 for i, seat in enumerate(self.seats)
             ],
@@ -136,7 +145,11 @@ class Room:
         """Private owner snapshot; only the authenticated seat sees its hand."""
         out = self.public_view()
         out["you"] = index
-        if self.match is not None:
+        if self.game_type == "ludo" and self.ludo is not None:
+            out["game"] = (private_ludo_view(self.ludo, index) if index < len(self.ludo.players)
+                           else public_ludo_view(self.ludo))
+            out["game"]["is_spectator"] = index >= len(self.ludo.players)
+        elif self.match is not None:
             if index < len(self.match.state.players):
                 out["game"] = private_match_view(self.match, index)
                 out["game"]["is_spectator"] = False
@@ -174,6 +187,8 @@ class RoomStore:
                 room = Room(
                     id=room_id, capacity=data["capacity"], seats=seats,
                     version=data["version"], match=restore_match(data["match"]),
+                    game_type=data.get("game_type", "shithead"),
+                    ludo=restore_ludo(data["ludo"]) if data.get("ludo") else None,
                     host_seat=data.get("host_seat", 0),
                     pending_joiners=list(data.get("pending_joiners", [])),
                     room_notice=data.get("room_notice", ""),
@@ -198,6 +213,8 @@ class RoomStore:
                 } for s in room.seats
             ],
             "match": dump_match(room.match),
+            "game_type": room.game_type,
+            "ludo": dump_ludo(room.ludo) if room.ludo else None,
             "rematch_votes": sorted(room.rematch_votes),
             "reaction_seq": room.reaction_seq,
         }
