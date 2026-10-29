@@ -24,6 +24,10 @@ function sendLudo(kind, token = null) {
                           request_id:crypto.randomUUID()}));
 }
 function renderLudo(g) {
+  const pending = snap.pending_joiners || [];
+  el("ludo-join-prompt").classList.toggle("hidden",
+    !(seatIndex === snap.host_seat && pending.length && g.phase !== "FINISHED"));
+  el("ludo-join-names").textContent = pending.map(i=>snap.players[i]?.name||"Friend").join(", ");
   const board = el("ludo-board");
   board.replaceChildren();
   const cells = Array.from({length:15},()=>Array(15).fill(null));
@@ -89,5 +93,7 @@ function renderLudo(g) {
   }));
 }
 el("ludo-roll").onclick=()=>sendLudo("roll");
+el("ludo-restart").onclick=()=>sendRoomAction("host_join_decision",{decision:"restart_now"});
+el("ludo-finish").onclick=()=>sendRoomAction("host_join_decision",{decision:"finish_current"});
 el("ludo-rematch").onclick=()=>sendRoomAction("rematch");
 el("ludo-home").onclick=()=>el("main-menu").click();
