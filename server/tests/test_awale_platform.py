@@ -77,9 +77,10 @@ def test_awale_api_and_two_seat_websocket(tmp_path):
         other=client.post(f"/api/rooms/{code}/join",json={"name":"B"}).json()
         with client.websocket_connect(f"/ws/{code}") as a,client.websocket_connect(f"/ws/{code}") as b:
             a.send_json({"type":"auth","token":created["token"]})
-            b.send_json({"type":"auth","token":other["token"]})
             first=a.receive_json()
+            b.send_json({"type":"auth","token":other["token"]})
             second=b.receive_json()
+            first=a.receive_json()  # newer broadcast after guest reconnect
             a.send_json({"type":"ready","ready":True,"expected_version":first["version"],"request_id":"ready-a"})
             first=a.receive_json()
             second=b.receive_json()
