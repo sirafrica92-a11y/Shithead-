@@ -532,7 +532,7 @@ def create_app(
                     elif room.game_type == "dara":
                         if kind != "dara":
                             error = "wrong_game"
-                        elif room.dara is None and room.yote is None and room.dominoes is None:
+                        elif room.dara is None and room.yote is None:
                             error = "wrong_phase"
                         elif index >= 2:
                             error = "waiting_next_match"
