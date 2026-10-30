@@ -1,5 +1,5 @@
 """Jamaican Dominoes six-game isolation, rules and recovery contracts."""
-from collections import Counter
+from dataclasses import replace
 import random
 
 import pytest
@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from server.app.dominoes import (
     make_domino_match, apply_domino_action, legal_domino_actions, dump_domino,
     restore_domino, public_domino_view, private_domino_view,
-    assert_domino_invariants, IllegalDominoMove, ALL_BONES,
+    assert_domino_invariants, IllegalDominoMove, ALL_BONES, _end_hand,
 )
 from server.app.main import create_app
 
@@ -59,7 +59,8 @@ def test_wrong_turn_illegal_pass_and_invalid_side_rejected():
     assert restore_domino(dump_domino(m))==m
 
 
-def test_sixty_full_six_love_matches_and_seed_conservation():
+def test_sixty_random_games_preserve_rules_and_seed_conservation():
+    completed = 0
     for seed in range(60):
         rng=random.Random(seed)
         m=make_domino_match(seed=seed)
@@ -101,3 +102,16 @@ def test_static_ui_has_jamaican_choice_and_original_logo(tmp_path):
         assert 'id="screen-dominoes-rules"' in html
         assert "/brand/shithead-logo.png" in html
         assert client.get("/dominoes.js").status_code==200
+
+
+def test_six_love_finish_and_broken_streak_reset():
+    initial=make_domino_match(seed=11)
+    near_win=replace(initial,scores=(5,0))
+    finished=_end_hand(near_win,0,0,reason="Team zero hand")
+    assert finished.stage=="FINISHED"
+    assert finished.winner_team==0 and finished.scores==(6,0)
+    interrupted=_end_hand(near_win,1,1,reason="Opposite partnership wins")
+    assert interrupted.stage=="HAND_OVER"
+    assert interrupted.scores==(0,0)
+    assert interrupted.next_pose_team is None
+    assert interrupted.winner_team is None
