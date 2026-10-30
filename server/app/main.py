@@ -401,25 +401,7 @@ def create_app(
                             else:
                                 if room.game_type == "dominoes":
                                     room.dominoes = fresh
-                                elif room.game_type == "dominoes":
-                        if kind != "dominoes":
-                            error = "wrong_game"
-                        elif room.dominoes is None:
-                            error = "wrong_phase"
-                        elif index >= 4:
-                            error = "waiting_next_match"
-                        else:
-                            try:
-                                next_match = apply_domino_action(room.dominoes, index, action["kind"], index=action.get("index"), side=action.get("side"))
-                            except IllegalDominoMove as exc:
-                                error = "illegal_action"
-                                reason = str(exc)
-                            else:
-                                room.dominoes = next_match
-                                room.version += 1
-                                remember_request(seat, request_id)
-                                changed = True
-                    elif room.game_type == "yote":
+                                elif room.game_type == "yote":
                                     room.yote = fresh
                                 elif room.game_type == "dara":
                                     room.dara = fresh
@@ -459,25 +441,7 @@ def create_app(
                                 else:
                                     if room.game_type == "dominoes":
                                         room.dominoes = fresh
-                                    elif room.game_type == "dominoes":
-                        if kind != "dominoes":
-                            error = "wrong_game"
-                        elif room.dominoes is None:
-                            error = "wrong_phase"
-                        elif index >= 4:
-                            error = "waiting_next_match"
-                        else:
-                            try:
-                                next_match = apply_domino_action(room.dominoes, index, action["kind"], index=action.get("index"), side=action.get("side"))
-                            except IllegalDominoMove as exc:
-                                error = "illegal_action"
-                                reason = str(exc)
-                            else:
-                                room.dominoes = next_match
-                                room.version += 1
-                                remember_request(seat, request_id)
-                                changed = True
-                    elif room.game_type == "yote":
+                                    elif room.game_type == "yote":
                                         room.yote = fresh
                                     elif room.game_type == "dara":
                                         room.dara = fresh
@@ -516,25 +480,7 @@ def create_app(
                                 else:
                                     if room.game_type == "dominoes":
                                         room.dominoes = candidate
-                                    elif room.game_type == "dominoes":
-                        if kind != "dominoes":
-                            error = "wrong_game"
-                        elif room.dominoes is None:
-                            error = "wrong_phase"
-                        elif index >= 4:
-                            error = "waiting_next_match"
-                        else:
-                            try:
-                                next_match = apply_domino_action(room.dominoes, index, action["kind"], index=action.get("index"), side=action.get("side"))
-                            except IllegalDominoMove as exc:
-                                error = "illegal_action"
-                                reason = str(exc)
-                            else:
-                                room.dominoes = next_match
-                                room.version += 1
-                                remember_request(seat, request_id)
-                                changed = True
-                    elif room.game_type == "yote":
+                                    elif room.game_type == "yote":
                                         room.yote = candidate
                                     elif room.game_type == "dara":
                                         room.dara = candidate
