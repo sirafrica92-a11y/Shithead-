@@ -999,6 +999,7 @@ select option { color:var(--cream);background:var(--surface); }
     <label class="field" for="capacity"><span>Players</span>
       <select id="capacity"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
     </label>
+    <label id="domino-home-options" class="field hidden" for="domino-home-mode"><span>Dominoes mode</span><select id="domino-home-mode"><option value="partner">Partner (2 vs 2) — recommended</option><option value="cutthroat">Cut Throat — everyone for themselves</option></select></label>
     <button id="create" class="btn btn-primary" type="button">Create room</button>
   </div>
 
@@ -1034,6 +1035,7 @@ select option { color:var(--cream);background:var(--surface); }
       <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option><option value="awale">Awalé</option><option value="dara">Dara</option><option value="yote">Yoté</option><option value="dominoes">Jamaican Dominoes</option></select>
     </label>
     <button id="switch-game" class="btn btn-ghost" type="button">Change game</button>
+    <div id="domino-lobby-options" class="hidden"><label class="field" for="lobby-domino-mode"><span>Host: dominoes format</span><select id="lobby-domino-mode"><option value="partner">Partner (2 vs 2)</option><option value="cutthroat">Cut Throat — each for themselves</option></select></label><button id="set-domino-mode" class="btn btn-ghost" type="button">Change dominoes mode</button></div>
     <label class="field" for="lobby-capacity" style="margin-top:12px"><span>Players in next match</span>
       <select id="lobby-capacity"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
     </label>
@@ -1246,6 +1248,7 @@ select option { color:var(--cream);background:var(--surface); }
 <section id="screen-dominoes" class="shell hidden">
   <div class="domino-top"><div class="room-chip">ROOM <b id="domino-room"></b></div>
     <strong>DOMINOES 🇯🇲</strong><button id="domino-refresh" class="icon-btn" type="button" aria-label="Refresh dominoes">↻</button></div>
+  <div id="domino-mode-label" class="domino-score">Partner · 2 vs 2</div>
   <div id="domino-score" class="domino-score"></div>
   <div id="domino-turn" class="domino-turn" aria-live="polite">Waiting for four players…</div>
   <div id="domino-hand-counts" class="domino-players"></div>
@@ -1268,11 +1271,12 @@ select option { color:var(--cream);background:var(--surface); }
   <p id="domino-status" role="status" aria-live="polite"></p>
 </section>
 <section id="screen-dominoes-rules" class="shell hidden">
-  <div class="rules-top"><button id="domino-rules-back" class="icon-btn" type="button" aria-label="Back">←</button><h1 class="rules-title">Jamaican Partner Dominoes</h1></div>
-  <div class="panel rules-block"><h3 class="r-head">The table</h3><p>Four players, two teams. Players 1 and 3 are partners; Players 2 and 4 are partners. Each player gets seven tiles from a double-six set of 28.</p></div>
+  <div class="rules-top"><button id="domino-rules-back" class="icon-btn" type="button" aria-label="Back">←</button><h1 class="rules-title">Jamaican Dominoes</h1></div>
+  <div class="panel rules-block"><h3 class="r-head">Partner mode (recommended)</h3><p>Four players, two teams. Players 1 and 3 are partners; Players 2 and 4 are partners. Each player gets seven tiles from a double-six set of 28.</p></div>
   <div class="panel rules-block"><h3 class="r-head">First pose and turns</h3><p>The player holding double-six starts the opening hand by playing it. Follow the seat order. Play a tile that matches either open end of the domino chain. If you have no matching tile, pass.</p></div>
   <div class="panel rules-block"><h3 class="r-head">Winning a hand</h3><p>Your team wins a hand if either partner plays their final tile. If nobody can play, the player holding the fewest pips wins for their team; a tie across teams is a drawn hand.</p></div>
   <div class="panel rules-block"><h3 class="r-head">Six Love</h3><p>The aim is to reach six points without the other team interrupting your run. A normal winning hand scores one point. In this chosen variant, a last key-tile finish can count for two. If the other team wins a hand during the run, both scores reset. A member of the winning team chooses when to deal the next hand.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Cut Throat (optional)</h3><p>Four individual players. Everyone gets seven tiles and plays in seat order; the first hand starts with double-six. Win a hand by emptying your tiles, or, if everyone is blocked, by holding the fewest total pips. An exact lowest-pip tie is a drawn hand. Each won hand earns that player one point; first to six wins the match. No partner scoring, bonus key-bone points or interrupted-streak reset. The winning player opens the next hand, except after a draw when double-six opens.</p></div>
   <div class="panel rules-block"><h3 class="r-head">Fair play</h3><p>Only you can see your own tiles. Team partners are not shown each other's hands. The server deals and checks every move. House rules can differ across Jamaican tables; this is the platform's selected four-player variant.</p></div>
 </section>
 
