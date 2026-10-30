@@ -83,8 +83,9 @@ def apply_yote_action(m:YoteMatch,seat:int,kind:str,*,index:object=None,source:o
         if matching:
             mid=matching[0][2];c[source]=0;c[mid]=0;c[destination]=seat+1
             bonus=any(v==2-seat for v in c)
-            return replace(m,cells=tuple(c),pending_bonus=bonus,actor=seat if bonus else 1-seat,
+            result=replace(m,cells=tuple(c),pending_bonus=bonus,actor=seat if bonus else 1-seat,
                            turn_number=m.turn_number+1,event=f"Player {seat+1} jumped and captured. Choose a bonus capture." if bonus else "Jump captured the final enemy piece.")
+            return result if bonus else _settle(result)
     if kind=="bonus" and type(index) is int and index in legal["bonuses"]:
         c[index]=0
         return _settle(replace(m,cells=tuple(c),pending_bonus=False,actor=1-seat,
