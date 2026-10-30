@@ -373,7 +373,7 @@ def create_app(
                             error = "wrong_phase"
                         elif (type(new_capacity) is not int
                               or not len(room.seats) <= new_capacity <= game_spec(room.game_type).max_players
-                              or new_capacity < 2):
+                              or new_capacity < game_spec(room.game_type).min_players):
                             error = "invalid_capacity"
                         else:
                             room.capacity = new_capacity
@@ -568,7 +568,7 @@ def create_app(
                     elif room.game_type == "yote":
                         if kind != "yote":
                             error = "wrong_game"
-                        elif room.yote is None and room.dominoes is None:
+                        elif room.yote is None:
                             error = "wrong_phase"
                         elif index >= 2:
                             error = "waiting_next_match"
