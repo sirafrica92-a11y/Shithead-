@@ -73,3 +73,10 @@ def test_room_and_ui_creation_and_older_games(tmp_path):
         for game,cap in (("shithead",6),("ludo",4),("awale",2),("dara",2),("yote",2)):
             created=client.post("/api/rooms",json={"name":"A","game_type":game,"capacity":cap})
             assert created.status_code==201,created.text
+
+def test_jump_removing_final_enemy_ends_instead_of_deadlock():
+    c=[0]*30;c[0]=1;c[1]=2
+    m=YoteMatch(cells=tuple(c),reserves=(0,0))
+    out=apply_yote_action(m,0,"jump",source=0,destination=2)
+    assert out.finished and out.winner==0
+    assert not out.pending_bonus
