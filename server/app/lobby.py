@@ -102,6 +102,7 @@ class Room:
     dara: DaraMatch | None = None
     yote: YoteMatch | None = None
     dominoes: DominoMatch | None = None
+    domino_mode: str = "partner"
     # Seat zero is the creator in the current one-click create-and-seat flow.
     # Older API-created unseated rooms grant this role to their first joiner.
     host_seat: int = 0
@@ -133,6 +134,7 @@ class Room:
             "room_id": self.id,
             "capacity": self.capacity,
             "game_type": self.game_type,
+            "domino_mode": self.domino_mode,
             "host_seat": self.host_seat,
             "pending_joiners": list(self.pending_joiners),
             "active_player_count": active_count,
@@ -225,6 +227,7 @@ class RoomStore:
                     dara=restore_dara(data["dara"]) if data.get("dara") else None,
                     yote=restore_yote(data["yote"]) if data.get("yote") else None,
                     dominoes=restore_domino(data["dominoes"]) if data.get("dominoes") else None,
+                    domino_mode=data.get("domino_mode", data.get("dominoes", {}).get("mode", "partner") if data.get("dominoes") else "partner"),
                     host_seat=data.get("host_seat", 0),
                     pending_joiners=list(data.get("pending_joiners", [])),
                     room_notice=data.get("room_notice", ""),
@@ -255,6 +258,7 @@ class RoomStore:
             "dara": dump_dara(room.dara) if room.dara else None,
             "yote": dump_yote(room.yote) if room.yote else None,
             "dominoes": dump_domino(room.dominoes) if room.dominoes else None,
+            "domino_mode": room.domino_mode,
             "rematch_votes": sorted(room.rematch_votes),
             "reaction_seq": room.reaction_seq,
         }
