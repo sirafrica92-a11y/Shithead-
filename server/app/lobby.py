@@ -27,6 +27,7 @@ from server.app.gameplay import Match, private_match_view, public_match_view
 from server.app.persistence import dump_match, restore_match
 from server.app.ludo import LudoMatch, dump_ludo, restore_ludo, public_ludo_view, private_ludo_view
 from server.app.awale import AwaleMatch, dump_awale, restore_awale, public_awale_view, private_awale_view
+from server.app.dara import DaraMatch, dump_dara, restore_dara, public_dara_view, private_dara_view
 
 
 # Codes are read aloud and typed by hand, so they are short, case-insensitive
@@ -96,6 +97,7 @@ class Room:
     game_type: str = "shithead"
     ludo: LudoMatch | None = None
     awale: AwaleMatch | None = None
+    dara: DaraMatch | None = None
     # Seat zero is the creator in the current one-click create-and-seat flow.
     # Older API-created unseated rooms grant this role to their first joiner.
     host_seat: int = 0
@@ -109,11 +111,13 @@ class Room:
 
     def public_view(self) -> dict[str, Any]:
         active_count = (len(self.ludo.players) if self.game_type == "ludo" and self.ludo
+                        else 2 if self.game_type == "dara" and self.dara
                         else 2 if self.game_type == "awale" and self.awale
                         else len(self.match.state.players) if self.match else 0)
-        active = self.ludo if self.game_type == "ludo" else self.awale if self.game_type == "awale" else self.match
+        active = self.ludo if self.game_type == "ludo" else self.awale if self.game_type == "awale" else self.dara if self.game_type == "dara" else self.match
         game = (public_ludo_view(self.ludo) if self.game_type == "ludo" and self.ludo
                 else public_awale_view(self.awale) if self.game_type == "awale" and self.awale
+                else public_dara_view(self.dara) if self.game_type == "dara" and self.dara
                 else public_match_view(self.match) if self.game_type == "shithead" and self.match
                 else None)
         return {
@@ -153,6 +157,10 @@ class Room:
             out["game"] = (private_ludo_view(self.ludo, index) if index < len(self.ludo.players)
                            else public_ludo_view(self.ludo))
             out["game"]["is_spectator"] = index >= len(self.ludo.players)
+        elif self.game_type == "dara" and self.dara is not None:
+            out["game"] = (private_dara_view(self.dara,index) if index < 2
+                           else public_dara_view(self.dara))
+            out["game"]["is_spectator"] = index >= 2
         elif self.game_type == "awale" and self.awale is not None:
             out["game"] = (private_awale_view(self.awale, index) if index < 2
                            else public_awale_view(self.awale))
@@ -198,6 +206,7 @@ class RoomStore:
                     game_type=data.get("game_type", "shithead"),
                     ludo=restore_ludo(data["ludo"]) if data.get("ludo") else None,
                     awale=restore_awale(data["awale"]) if data.get("awale") else None,
+                    dara=restore_dara(data["dara"]) if data.get("dara") else None,
                     host_seat=data.get("host_seat", 0),
                     pending_joiners=list(data.get("pending_joiners", [])),
                     room_notice=data.get("room_notice", ""),
@@ -225,6 +234,7 @@ class RoomStore:
             "game_type": room.game_type,
             "ludo": dump_ludo(room.ludo) if room.ludo else None,
             "awale": dump_awale(room.awale) if room.awale else None,
+            "dara": dump_dara(room.dara) if room.dara else None,
             "rematch_votes": sorted(room.rematch_votes),
             "reaction_seq": room.reaction_seq,
         }
