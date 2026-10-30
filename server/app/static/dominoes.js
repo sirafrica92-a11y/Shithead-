@@ -18,17 +18,21 @@ function renderDominoes(g) {
   const done=g.phase==="FINISHED",handover=g.stage==="HAND_OVER";
   const mine=seatIndex===g.actor&&!done&&!handover&&!g.is_spectator;
   const names=snap.players||[];
+  const cutthroat=g.mode==="cutthroat";
+  el("domino-mode-label").textContent=cutthroat?"Cut Throat · free-for-all":"Partner · 2 vs 2";
   const teamNames=[0,1].map(t=>(names[t]?.name||"Seat "+(t+1))+" & "+(names[t+2]?.name||"Seat "+(t+3)));
-  el("domino-score").textContent=teamNames[0]+": "+g.scores[0]+"  •  "+teamNames[1]+": "+g.scores[1]+" (first to 6)";
+  el("domino-score").textContent=cutthroat
+    ?g.scores.map((s,i)=>(names[i]?.name||"Player "+(i+1))+": "+s).join(" · ")+" (first to 6)"
+    :teamNames[0]+": "+g.scores[0]+"  •  "+teamNames[1]+": "+g.scores[1]+" (first to 6)";
   el("domino-turn").textContent=done
-    ?teamNames[g.winner_team]+" wins Six Love!"
+    ?(cutthroat?(names[g.winner_player]?.name||"Player")+" wins Cut Throat!":teamNames[g.winner_team]+" wins Six Love!")
     :handover?"Hand finished — "+g.event
     :mine?"Your turn — play a matching tile or pass when blocked"
     :(names[g.actor]?.name||"Player")+" to play";
   el("domino-event").textContent=g.event||"";
   el("domino-hand-counts").replaceChildren(...g.hand_counts.map((count,i)=>{
     const label=document.createElement("div");label.className="domino-player";
-    label.textContent=(names[i]?.name||"Seat "+(i+1))+(i===seatIndex?" (you)":"")+" · Team "+((i%2)+1)+" · "+count+" tiles";
+    label.textContent=(names[i]?.name||"Seat "+(i+1))+(i===seatIndex?" (you)":"")+(cutthroat?"":" · Team "+((i%2)+1))+" · "+count+" tiles";
     return label;
   }));
   const chain=el("domino-chain");chain.replaceChildren(...g.chain.map(boneEl));
@@ -58,6 +62,7 @@ function renderDominoes(g) {
   el("domino-next").classList.toggle("hidden",!(g.legal?.next_hand));
   el("domino-next").textContent=g.next_pose_team===null?"Deal again (double-six opens)":"Deal again — pose for Team "+(g.next_pose_team+1);
   el("domino-rematch").classList.toggle("hidden",!done);
+  el("domino-rematch").textContent=cutthroat?"Play Cut Throat again":"Play Six Love again";
   el("domino-rematch").disabled=(snap.rematch_votes||[]).includes(seatIndex);
   el("domino-switch").classList.toggle("hidden",!(done&&seatIndex===snap.host_seat));
   el("domino-reactions").replaceChildren(...REACTIONS.map(emoji=>{
