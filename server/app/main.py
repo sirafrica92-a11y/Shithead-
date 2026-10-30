@@ -21,6 +21,7 @@ from server.app.persistence import token_digest
 from server.app.gameplay import apply_match_action, make_match, UndecidedStartTie
 from server.app.ludo import make_ludo_match, apply_ludo_action, IllegalLudoMove
 from server.app.awale import make_awale_match, apply_awale_action, IllegalAwaleMove
+from server.app.game_catalog import game_spec, capacity_after_switch
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
 
@@ -148,7 +149,7 @@ def create_app(
     async def seat_player(room, name: str) -> dict:
         """Take the next free seat and issue that seat's private token."""
         async with room.lock:
-            max_seats = {"ludo":4,"awale":2}.get(room.game_type,6)
+            max_seats = game_spec(room.game_type).max_players
             if len(room.seats) >= (max_seats if (room.ludo is not None or room.match is not None) else room.capacity):
                 raise HTTPException(status_code=409, detail="room is full")
             raw_token = secrets.token_urlsafe(24)
@@ -336,7 +337,7 @@ def create_app(
                             error = "too_many_players"
                         else:
                             room.game_type = action["game_type"]
-                            room.capacity = 2 if room.game_type == "awale" else max(len(room.seats), min(room.capacity, 4)) if room.game_type == "ludo" else max(2, room.capacity)
+                            room.capacity = capacity_after_switch(room.game_type, room.capacity, len(room.seats))
                             for player in room.seats:
                                 player.ready = False
                             room.version += 1
@@ -349,7 +350,7 @@ def create_app(
                         elif room.match is not None or room.ludo is not None or room.awale is not None:
                             error = "wrong_phase"
                         elif (type(new_capacity) is not int
-                              or not len(room.seats) <= new_capacity <= (2 if room.game_type == "awale" else 4 if room.game_type == "ludo" else 6)
+                              or not len(room.seats) <= new_capacity <= game_spec(room.game_type).max_players
                               or new_capacity < 2):
                             error = "invalid_capacity"
                         else:
