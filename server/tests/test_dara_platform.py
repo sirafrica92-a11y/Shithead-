@@ -30,11 +30,11 @@ def test_placement_never_forms_three():
 
 def test_movement_capture_only_after_new_three():
     c=[0]*30
-    for i in [0,2,8,10,12,13,15,17,19,22,24,27]:c[i]=1
-    for i in [4,5,6,7,9,11,14,16,18,20,23,25]:c[i]=2
+    for i in [0,2,7,10,12,13,15,17,19,22,24,27]:c[i]=1
+    for i in [4,5,6,8,9,11,14,16,18,20,23,25]:c[i]=2
     m=DaraMatch(cells=tuple(c),placed=(12,12),phase="MOVE",actor=0)
-    assert [8,1] in legal_dara_moves(m,0)["moves"]
-    out=apply_dara_action(m,0,"move",source=8,destination=1)
+    assert [7,1] in legal_dara_moves(m,0)["moves"]
+    out=apply_dara_action(m,0,"move",source=7,destination=1)
     assert out.pending_capture and out.actor==0
     victims=legal_dara_moves(out,0)["captures"]
     assert victims
