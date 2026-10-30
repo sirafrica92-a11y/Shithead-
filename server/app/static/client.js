@@ -150,7 +150,15 @@ function render(x) {
   el("lobby-domino-mode").value = x.domino_mode || "partner";
   const limit = isAwale || isDara || isYote ? 2 : isLudo || isDominoes ? 4 : 6;
   const picker = el("lobby-capacity");
-  if (picker.options.length !== limit - 1) picker.replaceChildren(...Array.from({length:isDominoes?1:limit-1},(_,i)=>{const o=document.createElement("option");o.value=String(i+(isDominoes?4:2));o.textContent=o.value;return o;}));
+  // Ludo and Dominoes both allow four players, but Ludo offers 2–4 while
+  // Dominoes requires exactly four. Rebuild if the actual options differ.
+  const capacityChoices = Array.from({length:isDominoes?1:limit-1},(_,i)=>String(i+(isDominoes?4:2)));
+  if (picker.options.length !== capacityChoices.length ||
+      capacityChoices.some((value,i)=>picker.options[i]?.value!==value)) {
+    picker.replaceChildren(...capacityChoices.map(value=>{
+      const o=document.createElement("option");o.value=value;o.textContent=value;return o;
+    }));
+  }
   picker.value=String(x.capacity);
   const ul = el("players");
   ul.replaceChildren();
