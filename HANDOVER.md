@@ -1,5 +1,5 @@
 # SHITHEAD GAMES — SINGLE ACTIVE HANDOVER
-Updated: 2026-10-30 | Owner: Africa | Read this BEFORE changes.
+Updated: 2026-10-30 (Dara development) | Owner: Africa | Read this BEFORE changes.
 
 ## Platform purpose (owner-approved)
 SHITHEAD Games is an online multiplayer home for approachable traditional games from different cultures. Each game should invite and develop a distinct quality through play: adaptation, patience, foresight, sacrifice, pattern recognition or collaboration. Entertaining human-to-human play is the priority, not a classroom or a clone of chess. Accessible rules are non-negotiable: the owner should be able to understand/test a game without learning highly complex systems.
@@ -12,37 +12,30 @@ SHITHEAD Games is an online multiplayer home for approachable traditional games 
 ## Current verified live state
 - **Shithead** live: owner-custom cards and 3/Joker/7/2/10 mechanisms; preserve authoritative decisions in `docs/RULES.md`, `docs/DECISION_LOG.md` and `docs/source/`. Never substitute standard card rules.
 - **Ludo** live: two–four players; server-controlled dice, blockades, rematches and recovery.
+- **Awalé** live: two players, authoritative 12-pit Abapa engine. PR #15 merged after PR #16 safe catalogue and 364 passing regressions; deployed commit `30c44ed47af4f09b1ade162c8302603d408b86f7` via Railway deployment `5a1244b3-7b03-4dd2-bdd4-f59878dbba15`, SUCCESS, 1/1 online. Real live-device full-playthrough not independently evidenced.
 - **Unified dark/gold redesign** merged via PR #14, merge `241a347b4b9f12f8b12d2f2eb78f528cf1ce5c7c`; Railway deployment `ca34d9ae-52a7-456b-854e-9b290f1ef969` reported **SUCCESS**, online 1/1 on 2026-10-30. This is a server-health report, NOT proof of hands-on device visual QA.
 - Earlier Ludo browser review: `docs/LUDO_RELEASE_REVIEW_2026-10-30.md` contains actual Chromium runs with 2, 3 and 4 players. Historical evidence, not the current CI state.
 
-## ONE ACTIVE DEVELOPMENT GAME — keep only unfinished work in this section
-### Awalé (Côte d'Ivoire / West Africa) — PR #15, IN REVIEW / NOT LIVE
-Branch: `feature/awale-third-game-20261030`.
-Game: 2-player Oware / Awalé Abapa rules; 12 houses, 48 seeds, sowing, feeding, opposing 2/3 capture chains, cancelled grand-slam captures, scoring, repeat-end logic; independent server engine `server/app/awale.py`. Integrates `server/app/lobby.py`, `server/app/main.py`, `server/app/static/client.js`, responsive wooden board and rules `server/app/static/index.html`, `server/app/static/awale.js`; focused tests `server/tests/test_awale_platform.py`.
+## ONE ACTIVE DEVELOPMENT GAME — Dara (Nigeria / Sahel), Game 04
+**Status: independent development branch, NOT MERGED/NOT LIVE.**
+Branch: `feature/dara-game04-20261030`. Independent server-authoritative engine `server/app/dara.py`; uses existing room infrastructure with `room.dara` isolated state, new `/dara.js` browser renderer and themed 5x6 UI. `server/tests/test_dara_platform.py` covers rules, persistence and old-game room creation. **Do not claim verification before the latest CI and browser playthrough actually succeed.**
 
-Verified earlier CI at `e3c56ba`: **350 passed**, JS checks on Shithead/Ludo passed. After that, added extra safety tests starting at commit `deb25ffe` for 80 complete random-play games and UI served paths. A proposed two-client WebSocket test stalled CI and was removed at `7516daac`; **reliable two-client WebSocket and browser full-playthrough testing is still an explicit release blocker**, not a passed check. **All remaining new tests MUST pass CI before anyone can merge**; mobile visual QA and independent rules review also remain release gates. Never claim these passed without actual evidence.
+**Selected variant:** Maths Week Scotland-style 5x6 12 pieces/player, placement without lines of three, then orthogonal single-step movement, line-of-three captures, prohibited four-plus rows and loss below three pieces. Rules vary by region/source (some allow 3 during placement; some pass on blocked moves rather than losing). The present draft chooses blocked-player loss, threefold repetition draw, and protects opposing lines of three when other captures exist. **Review these explicit variant choices against sources and user expectations before release**; adapt code, rules screen and tests together, never silently.
 
-**Risks / checks + proposed solutions:**
-1. Abapa variant edge cases (grand slam, no-feeding, repeated states, scoring/48 seed conservation): review authoritative published Oware rules, run seeded complete games, document edge-case decisions. Do not quietly change rules to satisfy tests.
-2. Two-user browser progression, turns, illegal actions, rematch, reconnect, refresh: exercise independently authenticated WebSockets and real Chromium contexts. Existing `scripts/qa_ludo_browser.py` provides a pattern; write Awalé-specific repeatable smoke with screenshots at mobile/desktop widths.
-3. UI orientation: south houses 0..5 are player 1, top houses 11..6 are player 2; render count/selection must correspond to server seat and remain usable on small screens.
-4. Merging into existing live branch: inspect full diff, validate no Shithead/Ludo engine changes or jester asset modifications, run full regression CI. Only merge with owner consent; only release if safe. Verify Railway commit SHA, running replica, volume and actual game smoke after deploy. Previous release is rollback target.
-5. Roadmap docs and onboarding may be stale; use this file for CURRENT direction; preserve source decisions and provenance without treating historical status text as live instructions.
+**Release blockers / mitigations:**
+1. Ensure full Python suite + JS syntax checks pass for ALL four games; repair any Dara regressions in the branch, preserve older engines byte-for-byte.
+2. Run 2 authenticated player WebSocket complete-match, illegal-action, rematch and SQLite restart/reconnect tests. Add deterministic flows before claiming readiness.
+3. Run local Chromium mobile 390px/360px and desktop screenshots, verify token selection and touch targets, no overflow, rules navigation and original logo.
+4. Independently review differences in Dara published variants, capture and blocked-turn logic. Correct implementation and its explainer to one sourced rule contract.
+5. Review shared `main.py`, `lobby.py`, `client.js` diff for isolated Dara routing, no changed behavior for prior games, proper seat limit and old SQLite restores.
+6. Owner approval required separately before merge and Railway deployment. Verify actual deployed SHA + health, /data persistent volume and browser matches afterwards.
 
-When **Awalé is successfully finished and shipped**, remove its entire active-development subsection from this handover; move one brief completion line into the live-state section with PR, commit, tests and Railway deployment evidence. Do not leave completed work as 'to do'. Promote next approved game below.
-
-## Root-cause prevention (safe modularisation; NOT YET MERGED)
-Development review PR #16 targets the Awalé branch from `refactor/safe-game-catalog-20261030`.
-- Read-only game catalogue: `server/app/game_catalog.py` declares supported game names and min/max seats. It does not alter any rules engine, WebSocket action payload, serialization, session tokens or client renderer.
-- Main integration substitutes precisely two duplicated server seat-capacity calculations with catalogue lookups, preserving Shithead 2–6, Ludo 2–4, Awalé exactly 2 and existing switch semantics. Focused tests in `server/tests/test_game_catalog.py`.
-- **Do not rewrite the working engines or dynamically dispatch their actions merely to make code look generic.** First establish game-specific full-match and recovery contract tests and review every public state payload. Any further abstraction gets its own independently tested PR.
-- Before merging PR #16 into PR #15: confirm CI at the exact latest head, inspect diff, and verify existing Ludo/Shithead results plus Awalé 2-user browser QA. PR #15/16 must remain unmerged until review and owner approval.
+**At completion:** remove this active subsection, add concise verified completion record under live games, then promote only next approved game (Yoté) after owner go-ahead.
 
 ## LOCKED FUTURE GAME QUEUE — do not build simultaneously
-1. **Dara** — Nigeria / Sahel; NEXT immediately after verified Awalé release. Two players; placement then movement and captures by rows of three. Research rule variants, teach owner basic gameplay via short examples, select source-backed rules and complete tests before implementing. Develops planning, pattern recognition and restraint.
-2. **Yoté** — West African traditional game; sacrifice, tactics. Pending rule research and owner go-ahead.
-3. **Dominoes** — cross-cultural; proposed cooperative/team mode, approachable rules. Choose precise format before implementation.
-4. **Morabaraba** — Southern Africa; pattern recognition and long-range planning. Research first; not yet approved for implementation.
+1. **Yoté** — West African traditional game; sacrifice, tactics. Pending rule research and owner go-ahead.
+2. **Dominoes** — cross-cultural; proposed cooperative/team mode, approachable rules. Choose precise format before implementation.
+3. **Morabaraba** — Southern Africa; pattern recognition and long-range planning. Research first; not yet approved for implementation.
 
 **DO NOT BUILD:** Fanorona (specifically removed by owner as too complex / not worth learning to validate). Do not sneak it into the backlog. Do not add other complex games including chess to the near-term queue. No new game beyond these selections without explicit owner discussion. Research can cover queued games but **develop and deploy one game at a time**.
 

@@ -6,9 +6,9 @@ from server.app.main import create_app
 
 
 def test_supported_games_and_caps_are_exact():
-    assert set(GAMES) == {"shithead", "ludo", "awale"}
+    assert set(GAMES) == {"shithead", "ludo", "awale", "dara"}
     assert [capacity_options(k) for k in GAMES] == [
-        (2, 3, 4, 5, 6), (2, 3, 4), (2,)
+        (2, 3, 4, 5, 6), (2, 3, 4), (2,), (2,)
     ]
     for key, spec in GAMES.items():
         assert spec.key == key
@@ -29,7 +29,7 @@ def test_lobby_capacity_remains_compatible(game, current, seats, expected):
     assert capacity_after_switch(game, current, seats) == expected
 
 
-@pytest.mark.parametrize("game,occupied", [("ludo", 5), ("awale", 3)])
+@pytest.mark.parametrize("game,occupied", [("ludo", 5), ("awale", 3), ("dara", 3)])
 def test_overfilled_switch_refused(game, occupied):
     with pytest.raises(ValueError):
         capacity_after_switch(game, 6, occupied)
@@ -37,7 +37,7 @@ def test_overfilled_switch_refused(game, occupied):
 
 def test_existing_games_still_accept_and_limit_seats(tmp_path):
     with TestClient(create_app(db_path=tmp_path/"catalog.db")) as app:
-        for game, max_seats in [("shithead", 6), ("ludo", 4), ("awale", 2)]:
+        for game, max_seats in [("shithead", 6), ("ludo", 4), ("awale", 2), ("dara", 2)]:
             made = app.post("/api/rooms", json={"name":"Host", "capacity":max_seats, "game_type":game})
             assert made.status_code == 201
             code = made.json()["room_id"]
