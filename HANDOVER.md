@@ -1,5 +1,5 @@
 # SHITHEAD GAMES — SINGLE ACTIVE HANDOVER
-Updated: 2026-10-30 (Dara development) | Owner: Africa | Read this BEFORE changes.
+Updated: 2026-10-30 (five-game milestone) | Owner: Africa | Read this BEFORE changes.
 
 ## Platform purpose (owner-approved)
 SHITHEAD Games is an online multiplayer home for approachable traditional games from different cultures. Each game should invite and develop a distinct quality through play: adaptation, patience, foresight, sacrifice, pattern recognition or collaboration. Entertaining human-to-human play is the priority, not a classroom or a clone of chess. Accessible rules are non-negotiable: the owner should be able to understand/test a game without learning highly complex systems.
@@ -12,27 +12,21 @@ SHITHEAD Games is an online multiplayer home for approachable traditional games 
 ## Current verified live state
 - **Shithead** live: owner-custom cards and 3/Joker/7/2/10 mechanisms; preserve authoritative decisions in `docs/RULES.md`, `docs/DECISION_LOG.md` and `docs/source/`. Never substitute standard card rules.
 - **Ludo** live: two–four players; server-controlled dice, blockades, rematches and recovery.
+- **Yoté** live: 2-player West African 5x6 tactical board game with placements and jump/bonus captures; merged PR #18 as commit `c1de263e9ff908013bcecb504517938bfea4b68d`. Railway deployment `7ae9aae4-99e6-4310-98d7-7e143c473211` reported SUCCESS. One full CI run at the exact release head passed **383 tests** and all five JavaScript syntax checks. See risk notes for one intermittent legacy CI failure and browser QA remaining.
 - **Dara** live: 2-player 5x6 Nigerian strategy game; merged PR #17 as commit `244b66a5b734b5cdd057add6145b72da3ee771b3`, Railway reported SUCCESS. CI on PR head `14dbaa36` passed 374 tests, four JS syntax checks. Still require manual live-device playthrough for end-to-end visual confirmation.
 - **Awalé** live: two players, authoritative 12-pit Abapa engine. PR #15 merged after PR #16 safe catalogue and 364 passing regressions; deployed commit `30c44ed47af4f09b1ade162c8302603d408b86f7` via Railway deployment `5a1244b3-7b03-4dd2-bdd4-f59878dbba15`, SUCCESS, 1/1 online. Real live-device full-playthrough not independently evidenced.
 - **Unified dark/gold redesign** merged via PR #14, merge `241a347b4b9f12f8b12d2f2eb78f528cf1ce5c7c`; Railway deployment `ca34d9ae-52a7-456b-854e-9b290f1ef969` reported **SUCCESS**, online 1/1 on 2026-10-30. This is a server-health report, NOT proof of hands-on device visual QA.
 - Earlier Ludo browser review: `docs/LUDO_RELEASE_REVIEW_2026-10-30.md` contains actual Chromium runs with 2, 3 and 4 players. Historical evidence, not the current CI state.
 
-## ONE ACTIVE DEVELOPMENT GAME — Yoté (West Africa), Game 05
-**Status: independent feature branch, not deployed, do not assume finished.**
-Branch `feature/yote-game05-20261030` based on verified deployed Dara commit `244b66a5b734b5cdd057add6145b72da3ee771b3`.
+## Current development queue
+**No game is under active construction.** Five games are merged and deployed. Future games remain research candidates; begin only one new game after selecting and documenting its exact rules with the owner.
 
-Engine `server/app/yote.py`: board 5x6, 12 reserve stones per player, optional placement or orthogonal movement, jumping captures plus one chosen bonus removal, private legal actions, repetition and finish checks; independent save key `yote`. Browser implementation `server/app/static/yote.js`, UI in `index.html`, isolated room routing and catalogue entry. Tests `server/tests/test_yote_platform.py`; full five-game CI must pass before merge.
-
-**Variant note:** Yoté is played with regional variants. The draft currently allows a single jump per turn, bonus removal only when an opponent piece remains, threefold repetition draw. Independently verify movement, jump chaining, when placement is permitted, end-game adjudication, and bonus removal against published rules. Do not silently diverge from documentation.
-
-**Risk and mitigation checklist:**
-1. CI must cover all five engines, all five JS files, legacy persistence/reconnect; fix any errors before PR review.
-2. Add two authenticated WebSocket players, complete game/move/jump/bonus/rematch, duplicate-message and reconnect tests; actual visual/browser smoke on mobile and desktop must still be performed.
-3. Review shared main/lobby/client integration so all four earlier game engines and UI remain unchanged; verify `/data` volume stays attached.
-4. Confirm Yoté no-move and all-pieces-removed conditions, including reserve versus on-board stones, draw loops, and bonus capture when no opponent remains.
-5. Only merge and deploy after owner approval; never treat GitHub CI alone as proof of browser gameplay.
-
-After Yoté release, remove this section from active work, record verified deployed SHA/tests in Live, and keep remaining queue compact.
+## Post-release verification / known risks and proposed solutions
+1. **Yoté manual gameplay:** GitHub passed 383 tests and five JS checks, including two authenticated players and illegal-action/reconnect contracts. No independent post-deploy multi-device browser playthrough is recorded. Mitigation: repeat real 2-device game including captures, bonus removal, rematch, refresh and 360px/390px mobile screenshots; correct issues on a separate branch.
+2. **Flaky legacy Shithead start:** One Yoté CI run at the identical head returned a failure in the existing Shithead refresh-resync fixture because the starting-match object was None after readiness; another run at that same head passed 383. Likely D-019 random start-tie test nondeterminism. Mitigation: independently reproduce and fix the test setup in isolation, without changing D-019 gameplay or tie policy. Do not conceal the intermittent failure.
+3. **Regional Yoté variant:** Document that our version uses one jump followed by one chosen bonus removal, with no automatic capture chaining and threefold repetition draw. Mitigation: compare against primary published rules and adjust only through owner-approved, separately tested changes.
+4. **Platform integration scaling:** Each new game still needs minimal cases in main/lobby/client. Mitigation: retain independent reducers and immutable game catalogue; add contract tests before extracting any further shared routing abstractions. Do not refactor working games merely for abstraction.
+5. **Deployment/data:** Railway successful for all five, mounted `match-data` at `/data`. Mitigation: verify mount/replicas and existing room restores after future releases; never replace the volume.
 
 ## LOCKED FUTURE GAME QUEUE — do not build simultaneously
 1. **Dominoes** — cross-cultural; proposed cooperative/team mode, approachable rules. Choose precise format before implementation.
