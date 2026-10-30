@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#15120f">
+<meta name="theme-color" content="#0b0b0e">
 <title>Shithead Games — Shithead &amp; Ludo</title>
 <link rel="icon" href="/brand/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/brand/shithead-logo-180.png">
@@ -328,6 +328,7 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
 #screen-home .btn-row{gap:10px}
 #ludo-status{min-height:18px;text-align:center;color:var(--amber);font-size:13px}
 </style>
+<link rel="stylesheet" href="/theme.css">
 </head>
 <body>
 <div id="app">
@@ -335,25 +336,28 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
 
 <!-- ============================================================ HOME -->
 <section id="screen-home" class="shell">
+  <div class="home-topline"><span><span class="home-crown" aria-hidden="true">♕</span> SHITHEAD GAMES</span><span class="home-live">GAME NIGHT IS ON</span></div>
   <header class="brand">
     <img class="mark" id="logo-slot" src="/brand/shithead-logo.png"
          srcset="/brand/shithead-logo-180.png 180w, /brand/shithead-logo.png 512w"
          sizes="290px" width="512" height="512" alt="Shithead" decoding="async">
     <h1>SHITHEAD</h1>
     <p>Multiplayer game night</p>
+    <p class="brand-strapline">Outplay. Outsmart. Don\'t be the Shithead.</p>
   </header>
   <section id="game-picker" class="panel" aria-labelledby="games-pick-title">
     <h2 id="games-pick-title">Choose your game</h2>
     <div class="game-choices">
       <button type="button" class="game-choice active" data-game="shithead" aria-pressed="true">
-        <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="5" width="26" height="37" rx="4" fill="#f4eee4" transform="rotate(-12 20 24)"/><rect x="19" y="7" width="25" height="36" rx="4" fill="#fff8ef" transform="rotate(10 31 25)"/><path d="M31 32 23 24c-7-8 3-12 8-5 5-7 15-3 8 5Z" fill="#b5262e"/></svg><strong>Shithead</strong><small>2–6 players</small>
+        <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="5" width="26" height="37" rx="4" fill="#f4eee4" transform="rotate(-12 20 24)"/><rect x="19" y="7" width="25" height="36" rx="4" fill="#fff8ef" transform="rotate(10 31 25)"/><path d="M31 32 23 24c-7-8 3-12 8-5 5-7 15-3 8 5Z" fill="#b5262e"/></svg><strong>Shithead</strong><small>2–6 players</small><span class="choice-tagline">Outsmart your mates</span>
       </button>
       <button type="button" class="game-choice" data-game="ludo" aria-pressed="false">
-        <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="5" y="5" width="38" height="38" rx="8" fill="#f4eee4"/><g fill="#20252b"><circle cx="15" cy="15" r="3"/><circle cx="33" cy="15" r="3"/><circle cx="24" cy="24" r="3"/><circle cx="15" cy="33" r="3"/><circle cx="33" cy="33" r="3"/></g></svg><strong>Ludo</strong><small>2–4 players</small>
+        <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="5" y="5" width="38" height="38" rx="8" fill="#f4eee4"/><g fill="#20252b"><circle cx="15" cy="15" r="3"/><circle cx="33" cy="15" r="3"/><circle cx="24" cy="24" r="3"/><circle cx="15" cy="33" r="3"/><circle cx="33" cy="33" r="3"/></g></svg><strong>Ludo</strong><small>2–4 players</small><span class="choice-tagline">Roll. Race. Rule.</span>
       </button>
     </div>
   </section>
   <div class="panel">
+    <h2 class="seat-heading">Take your seat</h2>
     <label class="field" for="name"><span>Enter your name</span>
       <input id="name" placeholder="Player name" maxlength="32" autocomplete="nickname">
     </label>
@@ -380,9 +384,10 @@ input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
     <button id="join" class="btn btn-primary" type="button">Join room</button>
   </div>
 
-  <button id="go-rules" class="btn btn-ghost" type="button">Rules</button>
+  <button id="go-rules" class="btn btn-ghost" type="button">How to play &amp; rules</button>
   <p id="status" role="status" aria-live="polite"></p>
   <noscript><p>JavaScript is required to play.</p></noscript>
+  <p class="home-footer">PLAY.SHITHEAD.GAMES</p>
 </section>
 
 <!-- =========================================================== LOBBY -->
