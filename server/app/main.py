@@ -148,20 +148,20 @@ def create_app(
     async def seat_player(room, name: str) -> dict:
         """Take the next free seat and issue that seat's private token."""
         async with room.lock:
-            max_seats = {"ludo": 4, "awale": 2}.get(room.game_type, 6)
-            if len(room.seats) >= (max_seats if (room.ludo is not None or room.awale is not None or room.match is not None) else room.capacity):
+            max_seats = {"ludo":4,"awale":2}.get(room.game_type,6)
+            if len(room.seats) >= (max_seats if (room.ludo is not None or room.match is not None) else room.capacity):
                 raise HTTPException(status_code=409, detail="room is full")
             raw_token = secrets.token_urlsafe(24)
             index = len(room.seats)
             room.seats.append(Seat(name=name, token_digest=token_digest(raw_token)))
-            if room.match is not None or room.ludo is not None:
+            if room.match is not None or room.ludo is not None or room.awale is not None:
                 room.pending_joiners.append(index)
                 room.capacity = max(room.capacity, len(room.seats))
             room.version += 1
             store.persist(room)
         await broadcast(room)
         return {"room_id": room.id, "seat": index, "token": raw_token,
-                "waiting_next_match": room.match is not None or room.ludo is not None}
+                "waiting_next_match": room.match is not None or room.ludo is not None or room.awale is not None}
 
     @app.post("/api/rooms", status_code=201)
     async def create_room(payload: CreateRoom):
@@ -328,7 +328,7 @@ def create_app(
                     elif kind == "select_game":
                         if index != room.host_seat:
                             error = "host_only"
-                        elif room.match is not None or room.ludo is not None:
+                        elif room.match is not None or room.ludo is not None or room.awale is not None:
                             error = "wrong_phase"
                         elif action["game_type"] == "awale" and len(room.seats) > 2:
                             error = "too_many_players"
@@ -336,7 +336,7 @@ def create_app(
                             error = "too_many_players"
                         else:
                             room.game_type = action["game_type"]
-                            room.capacity = (2 if room.game_type == "awale" else max(len(room.seats), min(room.capacity, 4)) if room.game_type == "ludo" else max(2, room.capacity))
+                            room.capacity = 2 if room.game_type == "awale" else max(len(room.seats), min(room.capacity, 4)) if room.game_type == "ludo" else max(2, room.capacity)
                             for player in room.seats:
                                 player.ready = False
                             room.version += 1
@@ -346,7 +346,7 @@ def create_app(
                         new_capacity = action.get("capacity")
                         if index != room.host_seat:
                             error = "host_only"
-                        elif room.match is not None or room.ludo is not None:
+                        elif room.match is not None or room.ludo is not None or room.awale is not None:
                             error = "wrong_phase"
                         elif (type(new_capacity) is not int
                               or not len(room.seats) <= new_capacity <= (2 if room.game_type == "awale" else 4 if room.game_type == "ludo" else 6)
@@ -362,7 +362,7 @@ def create_app(
                     elif kind == "host_join_decision":
                         if index != room.host_seat:
                             error = "host_only"
-                        elif not room.pending_joiners or (room.match is None and room.ludo is None):
+                        elif not room.pending_joiners or (room.match is None and room.ludo is None and room.awale is None):
                             error = "no_pending_joiners"
                         elif action["decision"] == "finish_current":
                             room.pending_joiners.clear()
@@ -372,31 +372,13 @@ def create_app(
                             changed = True
                         else:
                             try:
-                                fresh = (make_awale_match() if room.game_type == "awale" else make_ludo_match(len(room.seats)) if room.game_type == "ludo" else make_match(len(room.seats)))
+                                fresh = make_awale_match() if room.game_type == "awale" else make_ludo_match(len(room.seats)) if room.game_type == "ludo" else make_match(len(room.seats))
                             except UndecidedStartTie:
                                 error = "starting_tie_unresolved"
                             else:
                                 if room.game_type == "awale":
                                     room.awale = fresh
-                                elif room.game_type == "awale":
-                        if kind != "awale":
-                            error = "wrong_game"
-                        elif room.awale is None:
-                            error = "wrong_phase"
-                        elif index >= 2:
-                            error = "waiting_next_match"
-                        else:
-                            try:
-                                next_match = apply_awale_action(room.awale, index, action["kind"], pit=action.get("pit"))
-                            except IllegalAwaleMove as exc:
-                                error = "illegal_action"
-                                reason = str(exc)
-                            else:
-                                room.awale = next_match
-                                room.version += 1
-                                remember_request(seat, request_id)
-                                changed = True
-                    elif room.game_type == "ludo":
+                                elif room.game_type == "ludo":
                                     room.ludo = fresh
                                 else:
                                     room.match = fresh
@@ -409,7 +391,7 @@ def create_app(
                                 remember_request(seat, request_id)
                                 changed = True
                     elif kind == "rematch":
-                        if (room.match is None and room.ludo is None) or room.public_view()["phase"] != "FINISHED":
+                        if (room.match is None and room.ludo is None and room.awale is None) or room.public_view()["phase"] != "FINISHED":
                             error = "wrong_phase"
                         else:
                             remember_request(seat, request_id)
@@ -419,7 +401,7 @@ def create_app(
                                 changed = True
                             if len(room.rematch_votes) == len(room.seats) and len(room.seats) >= 2:
                                 try:
-                                    fresh = (make_awale_match() if room.game_type == "awale" else make_ludo_match(len(room.seats)) if room.game_type == "ludo" else make_match(len(room.seats)))
+                                    fresh = make_awale_match() if room.game_type == "awale" else make_ludo_match(len(room.seats)) if room.game_type == "ludo" else make_match(len(room.seats))
                                 except UndecidedStartTie:
                                     # Leave the match finished and permit a new
                                     # unanimous retry without a deadlocked vote.
@@ -430,25 +412,7 @@ def create_app(
                                 else:
                                     if room.game_type == "awale":
                                         room.awale = fresh
-                                    elif room.game_type == "awale":
-                        if kind != "awale":
-                            error = "wrong_game"
-                        elif room.awale is None:
-                            error = "wrong_phase"
-                        elif index >= 2:
-                            error = "waiting_next_match"
-                        else:
-                            try:
-                                next_match = apply_awale_action(room.awale, index, action["kind"], pit=action.get("pit"))
-                            except IllegalAwaleMove as exc:
-                                error = "illegal_action"
-                                reason = str(exc)
-                            else:
-                                room.awale = next_match
-                                room.version += 1
-                                remember_request(seat, request_id)
-                                changed = True
-                    elif room.game_type == "ludo":
+                                    elif room.game_type == "ludo":
                                         room.ludo = fresh
                                     else:
                                         room.match = fresh
@@ -460,7 +424,7 @@ def create_app(
                                     room.version += 1
                                     changed = True
                     elif kind == "ready":
-                        if room.match is not None or room.ludo is not None:
+                        if room.match is not None or room.ludo is not None or room.awale is not None:
                             error = "wrong_phase"
                         else:
                             remember_request(seat, request_id)
@@ -471,7 +435,7 @@ def create_app(
                             if (len(room.seats) == room.capacity
                                     and all(s.ready for s in room.seats)):
                                 try:
-                                    candidate = (make_awale_match() if room.game_type == "awale" else make_ludo_match(room.capacity) if room.game_type == "ludo" else make_match(room.capacity))
+                                    candidate = make_awale_match() if room.game_type == "awale" else make_ludo_match(room.capacity) if room.game_type == "ludo" else make_match(room.capacity)
                                 except UndecidedStartTie:
                                     # No owner-approved fallback for an exact
                                     # D-019 three-card tie: keep lobby recoverable.
@@ -481,25 +445,7 @@ def create_app(
                                 else:
                                     if room.game_type == "awale":
                                         room.awale = candidate
-                                    elif room.game_type == "awale":
-                        if kind != "awale":
-                            error = "wrong_game"
-                        elif room.awale is None:
-                            error = "wrong_phase"
-                        elif index >= 2:
-                            error = "waiting_next_match"
-                        else:
-                            try:
-                                next_match = apply_awale_action(room.awale, index, action["kind"], pit=action.get("pit"))
-                            except IllegalAwaleMove as exc:
-                                error = "illegal_action"
-                                reason = str(exc)
-                            else:
-                                room.awale = next_match
-                                room.version += 1
-                                remember_request(seat, request_id)
-                                changed = True
-                    elif room.game_type == "ludo":
+                                    elif room.game_type == "ludo":
                                         room.ludo = candidate
                                     else:
                                         room.match = candidate
