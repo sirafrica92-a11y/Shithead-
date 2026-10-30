@@ -105,3 +105,90 @@ def test_other_games_still_accepted(tmp_path):
             r=client.post("/api/rooms",json={"name":"A","capacity":capacity,"game_type":game})
             assert r.status_code==201
             assert r.json()["game_type"]==game
+
+
+def test_many_complete_awale_matches_respect_all_48_seeds_and_legal_turns():
+    """Repeat real random strategies, not a fabricated fixed winner."""
+    import random
+    from server.app.awale import assert_awale_invariants
+    for seed in range(80):
+        rng = random.Random(seed)
+        match = make_awale_match(seed=seed)
+        for _ in range(2000):
+            assert_awale_invariants(match)
+            assert sum(match.pits)+sum(match.captured)==48
+            assert match.captured[0] + match.captured[1] <= 48
+            if match.finished:
+                break
+            actor=match.actor
+            allowed=legal_awale_pits(match,actor)
+            assert allowed, f"game cannot be left active with no legal moves, seed={seed}"
+            chosen=rng.choice(allowed)
+            before=match.captured[actor]
+            match=apply_awale_action(match,actor,"sow",pit=chosen)
+            assert match.turn_number > 0
+            assert match.captured[actor] >= before
+            assert len(match.last_capture) <= 5
+        else:
+            pytest.fail(f"nonterminating Awalé match, seed={seed}")
+        assert match.finished
+        assert (match.winner is None or
+                match.captured[match.winner] > match.captured[1-match.winner])
+
+
+def test_two_authenticated_awale_players_ready_move_and_reject_other_turn(tmp_path):
+    """Exercise the real WebSocket ready→start→sow→broadcast contract."""
+    with TestClient(create_app(db_path=tmp_path/"live-awale.db")) as client:
+        host=client.post("/api/rooms",json={"capacity":2,"game_type":"awale","name":"Host"}).json()
+        guest=client.post(f"/api/rooms/{host['room_id']}/join",json={"name":"Guest"}).json()
+        code=host["room_id"]
+        with client.websocket_connect(f"/ws/{code}") as a:
+            a.send_json({"type":"auth","token":host["token"]})
+            h=a.receive_json()
+            with client.websocket_connect(f"/ws/{code}") as b:
+                b.send_json({"type":"auth","token":guest["token"]})
+                g=b.receive_json()
+                h=a.receive_json()  # guest authenticated; version increased
+                assert h["version"]==g["version"]
+                a.send_json({"type":"ready","ready":True,"expected_version":h["version"],"request_id":"a-ready"})
+                h=a.receive_json()
+                g=b.receive_json()
+                assert h["version"]==g["version"]
+                b.send_json({"type":"ready","ready":True,"expected_version":g["version"],"request_id":"b-ready"})
+                h=a.receive_json()
+                g=b.receive_json()
+                assert h["phase"]=="PLAYING" and g["phase"]=="PLAYING"
+                assert h["game_type"]==g["game_type"]=="awale"
+                actor=h["game"]["actor"]
+                mover=a if actor==0 else b
+                view=h if actor==0 else g
+                legal=view["game"]["your_legal_pits"]
+                assert len(legal)==6
+                assert not (g if actor==0 else h)["game"]["your_legal_pits"]
+                mover.send_json({"type":"awale","kind":"sow","pit":legal[0],
+                                 "expected_version":view["version"],"request_id":"move-1"})
+                h=a.receive_json()
+                g=b.receive_json()
+                assert h["version"]==g["version"]
+                assert h["game"]["turn_number"]==g["game"]["turn_number"]==1
+                assert sum(h["game"]["pits"])+sum(h["game"]["captured"])==48
+                # The actor has changed, so the same player cannot move again.
+                mover.send_json({"type":"awale","kind":"sow","pit":legal[0],
+                                 "expected_version":h["version"],"request_id":"wrong-turn"})
+                refused=mover.receive_json()
+                assert refused["type"]=="error"
+                assert refused["reasonCode"]=="illegal_action"
+                assert refused["stateSnapshot"]["version"]==h["version"]
+
+
+def test_awale_home_rules_and_brand_paths_are_present(tmp_path):
+    with TestClient(create_app(db_path=tmp_path/"html.db")) as client:
+        html=client.get("/").text
+        assert '/brand/shithead-logo.png' in html
+        assert 'data-game="awale"' in html
+        for required in ("screen-awale","screen-awale-rules","awale-board",
+                         "awale-room","awale-refresh","awale-rematch"):
+            assert 'id="'+required+'"' in html
+        js=client.get("/awale.js")
+        assert js.status_code==200
+        assert "renderAwale" in js.text
