@@ -32,3 +32,4 @@ jobs:
       - run: python -m py_compile run_local.py
       - run: node --check server/app/static/client.js
       - run: node --check server/app/static/ludo.js
+      - run: node --check server/app/static/awale.js
