@@ -19,7 +19,9 @@ SHITHEAD Games is an online multiplayer home for approachable traditional games 
 - Earlier Ludo browser review: `docs/LUDO_RELEASE_REVIEW_2026-10-30.md` contains actual Chromium runs with 2, 3 and 4 players. Historical evidence, not the current CI state.
 
 ## Current development queue
-**No game is under active construction.** Five games are merged and deployed. Future games remain research candidates; begin only one new game after selecting and documenting its exact rules with the owner.
+**Game 06 — Jamaican Partner Dominoes: in development; not merged or deployed.** Owner requested a sixth culturally grounded game from Jamaica after five-game milestone. Working branch: `feature/jamaican-partner-dominoes-game06-20261030`. Four players, 0+2 vs 1+3, double-six set, seven private bones per seat, matching ends, pass when blocked, six-love rounds. Independent engine `server/app/dominoes.py`, UI `server/app/static/dominoes.js`, room persistence/WebSocket integration and tests. **All changes in development branch only; five-game production must remain unchanged until independent review.**
+
+Rule decisions requiring review before approval: exact Jamaican six-love scoring and reset, disputed hand tie, pose rights, optional key-bone double point, blocking count and seat direction. Current implementation is a declared variant, **not a claim all Jamaican tables play identically**. Verify with trustworthy Jamaican rules sources and the owner before release. Release gate: passing full CI (including all existing games and new four-seat private-hand WebSocket), full match simulations, JS syntax, 4-browser mobile/desktop smoke, security/seat isolation, persistence/restart, privacy, branding diff, owner merge consent. On success, move this entry to verified live games and remove it from active tasks.
 
 ## Post-release verification / known risks and proposed solutions
 1. **Yoté manual gameplay:** GitHub passed 383 tests and five JS checks, including two authenticated players and illegal-action/reconnect contracts. No independent post-deploy multi-device browser playthrough is recorded. Mitigation: repeat real 2-device game including captures, bonus removal, rematch, refresh and 360px/390px mobile screenshots; correct issues on a separate branch.
@@ -29,8 +31,7 @@ SHITHEAD Games is an online multiplayer home for approachable traditional games 
 5. **Deployment/data:** Railway successful for all five, mounted `match-data` at `/data`. Mitigation: verify mount/replicas and existing room restores after future releases; never replace the volume.
 
 ## LOCKED FUTURE GAME QUEUE — do not build simultaneously
-1. **Dominoes** — cross-cultural; proposed cooperative/team mode, approachable rules. Choose precise format before implementation.
-2. **Morabaraba** — Southern Africa; pattern recognition and long-range planning. Research first; not yet approved for implementation.
+1. **Morabaraba** — Southern Africa; pattern recognition and long-range planning. Research first; not yet approved for implementation.
 
 **DO NOT BUILD:** Fanorona (specifically removed by owner as too complex / not worth learning to validate). Do not sneak it into the backlog. Do not add other complex games including chess to the near-term queue. No new game beyond these selections without explicit owner discussion. Research can cover queued games but **develop and deploy one game at a time**.
 
