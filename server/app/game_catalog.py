@@ -24,6 +24,7 @@ GAMES: dict[str, GameSpec] = {
     "awale": GameSpec("awale", "Awalé", 2, 2),
     "dara": GameSpec("dara", "Dara", 2, 2),
     "yote": GameSpec("yote", "Yoté", 2, 2),
+    "dominoes": GameSpec("dominoes", "Jamaican Partner Dominoes", 4, 4),
 }
 
 
@@ -42,6 +43,8 @@ def capacity_after_switch(game_type: str, current: int, occupied: int) -> int:
         raise ValueError("too_many_players")
     if game_type == "shithead":
         return max(2, current)
+    if game_type == "dominoes":
+        return spec.min_players
     if game_type == "ludo":
         return max(occupied, min(current, spec.max_players))
     return spec.min_players

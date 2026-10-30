@@ -925,6 +925,30 @@ select option { color:var(--cream);background:var(--surface); }
 #yote-reactions button{min-width:44px;min-height:44px;border-radius:9px;border:1px solid var(--border-gold);background:var(--surface);font-size:21px}
 @media(max-width:390px){.yote-board{gap:4px;padding:7px;border-width:3px}}
 
+
+/* Jamaican partner dominoes: dark table, cream tiles, team scores. */
+#screen-dominoes{max-width:890px;gap:12px}
+.domino-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.domino-top strong{font:italic 850 27px Georgia,serif;color:var(--gold-bright)}
+.domino-turn,.domino-score{padding:12px;border:1px solid var(--border-gold);border-radius:12px;background:var(--surface);text-align:center;font-weight:700}
+.domino-score{font-size:13px;color:var(--gold-bright)}
+.domino-players{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.domino-player{font-size:12px;background:var(--surface);border:1px solid var(--border-gold);border-radius:8px;padding:8px;text-align:center}
+.domino-table{padding:18px 9px;border:6px solid #684126;border-radius:18px;background:radial-gradient(circle at center,#174f3c,#0b3027 75%);box-shadow:inset 0 8px 22px #0008,0 10px 22px #0006}
+.domino-chain{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:5px;min-height:115px;color:#d8c49e;font-size:14px}
+.domino-ends{margin-top:12px;color:#ead2a4;text-align:center;font-weight:700}
+.domino-bone{display:inline-flex;align-items:center;flex-shrink:0;background:#f7f0df;color:#211a16;border:2px solid #cab78f;border-radius:5px;box-shadow:0 3px 6px #0006;overflow:hidden;font:800 18px Georgia,serif;min-height:41px}
+.domino-half{display:grid;place-items:center;min-width:30px;min-height:39px;padding:3px 5px}
+.domino-half+.domino-half{border-left:2px solid #28211b}
+.domino-hand{display:flex;flex-wrap:wrap;gap:9px;justify-content:center}
+.domino-choice{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-radius:10px;background:var(--surface);border:1px solid #4c4031;min-width:79px}
+.domino-play{font-size:11px;padding:6px 9px;min-height:35px}
+.domino-actions{display:grid;gap:9px}
+#domino-event,#domino-status{text-align:center;min-height:20px;color:var(--beige)}
+#domino-reactions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+#domino-reactions button{min-width:44px;min-height:44px;border-radius:9px;border:1px solid var(--border-gold);background:var(--surface);font-size:21px}
+@media(max-width:380px){.domino-bone{font-size:16px}.domino-half{min-width:25px;min-height:33px}.domino-choice{min-width:72px}}
+
 </style>
 </head>
 <body>
@@ -956,6 +980,7 @@ select option { color:var(--cream);background:var(--surface); }
       </button>
       <button type="button" class="game-choice" data-game="dara" aria-pressed="false"><span class="game-emoji" aria-hidden="true">◈</span><strong>Dara</strong><small>2 players</small><span class="choice-tagline">Think. Align. Capture.</span></button>
       <button type="button" class="game-choice" data-game="yote" aria-pressed="false"><span class="game-emoji" aria-hidden="true">◆</span><strong>Yoté</strong><small>2 players</small><span class="choice-tagline">Risk. Leap. Capture.</span></button>
+      <button type="button" class="game-choice" data-game="dominoes" aria-pressed="false"><span class="game-emoji" aria-hidden="true">🇯🇲</span><strong>Jamaican Dominoes</strong><small>4 players · teams</small><span class="choice-tagline">Partner up. Six Love.</span></button>
     </div>
   </section>
   <div class="panel">
@@ -974,6 +999,7 @@ select option { color:var(--cream);background:var(--surface); }
     <label class="field" for="capacity"><span>Players</span>
       <select id="capacity"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
     </label>
+    <label id="domino-home-options" class="field hidden" for="domino-home-mode"><span>Dominoes mode</span><select id="domino-home-mode"><option value="partner">Partner (2 vs 2) — recommended</option><option value="cutthroat">Cut Throat — everyone for themselves</option></select></label>
     <button id="create" class="btn btn-primary" type="button">Create room</button>
   </div>
 
@@ -1006,9 +1032,10 @@ select option { color:var(--cream);background:var(--surface); }
   <p id="lobby-game-label" class="game-label">Selected game: Shithead</p>
   <div id="lobby-switch" class="hidden">
     <label class="field" for="lobby-game"><span>Host: choose next game</span>
-      <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option><option value="awale">Awalé</option><option value="dara">Dara</option><option value="yote">Yoté</option></select>
+      <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option><option value="awale">Awalé</option><option value="dara">Dara</option><option value="yote">Yoté</option><option value="dominoes">Jamaican Dominoes</option></select>
     </label>
     <button id="switch-game" class="btn btn-ghost" type="button">Change game</button>
+    <div id="domino-lobby-options" class="hidden"><label class="field" for="lobby-domino-mode"><span>Host: dominoes format</span><select id="lobby-domino-mode"><option value="partner">Partner (2 vs 2)</option><option value="cutthroat">Cut Throat — each for themselves</option></select></label><button id="set-domino-mode" class="btn btn-ghost" type="button">Change dominoes mode</button></div>
     <label class="field" for="lobby-capacity" style="margin-top:12px"><span>Players in next match</span>
       <select id="lobby-capacity"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
     </label>
@@ -1216,6 +1243,43 @@ select option { color:var(--cream);background:var(--surface); }
   <div class="panel rules-block"><h3 class="r-head">Winning</h3><p>Win when your opponent has no pieces available to play or no legal action. Repeating a board position three times results in a draw.</p></div>
 </section>
 
+
+<!-- =================================================== JAMAICAN DOMINOES -->
+<section id="screen-dominoes" class="shell hidden">
+  <div class="domino-top"><div class="room-chip">ROOM <b id="domino-room"></b></div>
+    <strong>DOMINOES 🇯🇲</strong><button id="domino-refresh" class="icon-btn" type="button" aria-label="Refresh dominoes">↻</button></div>
+  <div id="domino-mode-label" class="domino-score">Partner · 2 vs 2</div>
+  <div id="domino-score" class="domino-score"></div>
+  <div id="domino-turn" class="domino-turn" aria-live="polite">Waiting for four players…</div>
+  <div id="domino-hand-counts" class="domino-players"></div>
+  <div id="domino-join-prompt" class="panel hidden"><h2>New player joined</h2><p id="domino-join-names"></p>
+    <div class="btn-row"><button id="domino-restart" class="btn btn-primary" type="button">Restart</button>
+    <button id="domino-finish" class="btn btn-ghost" type="button">Finish current</button></div></div>
+  <div class="domino-table"><div id="domino-chain" class="domino-chain" aria-label="Dominoes on the table"></div><div id="domino-ends" class="domino-ends"></div></div>
+  <h2 class="seat-heading">Your seven dominoes</h2>
+  <div id="domino-hand" class="domino-hand" aria-label="Your private dominoes"></div>
+  <p id="domino-event" role="status" aria-live="polite"></p>
+  <div id="domino-reactions"></div>
+  <div class="domino-actions">
+    <button id="domino-pass" class="btn btn-ghost hidden" type="button">Pass — no matching tile</button>
+    <button id="domino-next" class="btn btn-primary hidden" type="button">Deal next hand</button>
+    <button id="domino-open-rules" class="btn btn-ghost" type="button">How to play Jamaican Dominoes</button>
+    <button id="domino-rematch" class="btn btn-primary hidden" type="button">Play Six Love again</button>
+    <button id="domino-switch" class="btn btn-ghost hidden" type="button">Change game in this room</button>
+    <button id="domino-home" class="btn btn-ghost" type="button">Main menu</button>
+  </div>
+  <p id="domino-status" role="status" aria-live="polite"></p>
+</section>
+<section id="screen-dominoes-rules" class="shell hidden">
+  <div class="rules-top"><button id="domino-rules-back" class="icon-btn" type="button" aria-label="Back">←</button><h1 class="rules-title">Jamaican Dominoes</h1></div>
+  <div class="panel rules-block"><h3 class="r-head">Partner mode (recommended)</h3><p>Four players, two teams. Players 1 and 3 are partners; Players 2 and 4 are partners. Each player gets seven tiles from a double-six set of 28.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">First pose and turns</h3><p>The player holding double-six starts the opening hand by playing it. Follow the seat order. Play a tile that matches either open end of the domino chain. If you have no matching tile, pass.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Winning a hand</h3><p>Your team wins a hand if either partner plays their final tile. If nobody can play, the player holding the fewest pips wins for their team; a tie across teams is a drawn hand.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Six Love</h3><p>The aim is to reach six points without the other team interrupting your run. A normal winning hand scores one point. In this chosen variant, a last key-tile finish can count for two. If the other team wins a hand during the run, both scores reset. A member of the winning team chooses when to deal the next hand.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Cut Throat (optional)</h3><p>Four individual players. Everyone gets seven tiles and plays in seat order; the first hand starts with double-six. Win a hand by emptying your tiles, or, if everyone is blocked, by holding the fewest total pips. An exact lowest-pip tie is a drawn hand. Each won hand earns that player one point; first to six wins the match. No partner scoring, bonus key-bone points or interrupted-streak reset. The winning player opens the next hand, except after a draw when double-six opens.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Fair play</h3><p>Only you can see your own tiles. Team partners are not shown each other's hands. The server deals and checks every move. House rules can differ across Jamaican tables; this is the platform's selected four-player variant.</p></div>
+</section>
+
 <!-- ======================================================= LUDO RULES -->
 <section id="screen-ludo-rules" class="shell hidden">
   <div class="rules-top">
@@ -1327,4 +1391,5 @@ select option { color:var(--cream);background:var(--surface); }
 <script defer src="/awale.js"></script>
 <script defer src="/dara.js"></script>
 <script defer src="/yote.js"></script>
+<script defer src="/dominoes.js"></script>
 </body></html>

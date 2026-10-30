@@ -2,6 +2,8 @@ name: Shithead Python tests
 on:
   push:
     branches:
+      - feature/jamaican-cutthroat-option-game06-20261030
+      - feature/jamaican-partner-dominoes-game06-20261030
       - feature/yote-game05-20261030
       - feature/dara-game04-20261030
       - refactor/safe-game-catalog-20261030
@@ -39,3 +41,4 @@ jobs:
       - run: node --check server/app/static/awale.js
       - run: node --check server/app/static/dara.js
       - run: node --check server/app/static/yote.js
+      - run: node --check server/app/static/dominoes.js

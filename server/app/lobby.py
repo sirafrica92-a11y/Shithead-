@@ -29,6 +29,7 @@ from server.app.ludo import LudoMatch, dump_ludo, restore_ludo, public_ludo_view
 from server.app.awale import AwaleMatch, dump_awale, restore_awale, public_awale_view, private_awale_view
 from server.app.dara import DaraMatch, dump_dara, restore_dara, public_dara_view, private_dara_view
 from server.app.yote import YoteMatch, dump_yote, restore_yote, public_yote_view, private_yote_view
+from server.app.dominoes import DominoMatch, dump_domino, restore_domino, public_domino_view, private_domino_view
 
 
 # Codes are read aloud and typed by hand, so they are short, case-insensitive
@@ -100,6 +101,8 @@ class Room:
     awale: AwaleMatch | None = None
     dara: DaraMatch | None = None
     yote: YoteMatch | None = None
+    dominoes: DominoMatch | None = None
+    domino_mode: str = "partner"
     # Seat zero is the creator in the current one-click create-and-seat flow.
     # Older API-created unseated rooms grant this role to their first joiner.
     host_seat: int = 0
@@ -112,13 +115,15 @@ class Room:
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     def public_view(self) -> dict[str, Any]:
-        active_count = (len(self.ludo.players) if self.game_type == "ludo" and self.ludo
+        active_count = (4 if self.game_type == "dominoes" and self.dominoes
+                        else len(self.ludo.players) if self.game_type == "ludo" and self.ludo
                         else 2 if self.game_type == "yote" and self.yote
                         else 2 if self.game_type == "dara" and self.dara
                         else 2 if self.game_type == "awale" and self.awale
                         else len(self.match.state.players) if self.match else 0)
-        active = self.ludo if self.game_type == "ludo" else self.awale if self.game_type == "awale" else self.dara if self.game_type == "dara" else self.yote if self.game_type == "yote" else self.match
-        game = (public_ludo_view(self.ludo) if self.game_type == "ludo" and self.ludo
+        active = self.dominoes if self.game_type == "dominoes" else self.ludo if self.game_type == "ludo" else self.awale if self.game_type == "awale" else self.dara if self.game_type == "dara" else self.yote if self.game_type == "yote" else self.match
+        game = (public_domino_view(self.dominoes) if self.game_type == "dominoes" and self.dominoes
+                else public_ludo_view(self.ludo) if self.game_type == "ludo" and self.ludo
                 else public_awale_view(self.awale) if self.game_type == "awale" and self.awale
                 else public_dara_view(self.dara) if self.game_type == "dara" and self.dara
                 else public_yote_view(self.yote) if self.game_type == "yote" and self.yote
@@ -129,6 +134,7 @@ class Room:
             "room_id": self.id,
             "capacity": self.capacity,
             "game_type": self.game_type,
+            "domino_mode": self.domino_mode,
             "host_seat": self.host_seat,
             "pending_joiners": list(self.pending_joiners),
             "active_player_count": active_count,
@@ -157,7 +163,11 @@ class Room:
         """Private owner snapshot; only the authenticated seat sees its hand."""
         out = self.public_view()
         out["you"] = index
-        if self.game_type == "ludo" and self.ludo is not None:
+        if self.game_type == "dominoes" and self.dominoes is not None:
+            out["game"] = (private_domino_view(self.dominoes, index) if index < 4
+                           else public_domino_view(self.dominoes))
+            out["game"]["is_spectator"] = index >= 4
+        elif self.game_type == "ludo" and self.ludo is not None:
             out["game"] = (private_ludo_view(self.ludo, index) if index < len(self.ludo.players)
                            else public_ludo_view(self.ludo))
             out["game"]["is_spectator"] = index >= len(self.ludo.players)
@@ -216,6 +226,8 @@ class RoomStore:
                     awale=restore_awale(data["awale"]) if data.get("awale") else None,
                     dara=restore_dara(data["dara"]) if data.get("dara") else None,
                     yote=restore_yote(data["yote"]) if data.get("yote") else None,
+                    dominoes=restore_domino(data["dominoes"]) if data.get("dominoes") else None,
+                    domino_mode=data.get("domino_mode", data.get("dominoes", {}).get("mode", "partner") if data.get("dominoes") else "partner"),
                     host_seat=data.get("host_seat", 0),
                     pending_joiners=list(data.get("pending_joiners", [])),
                     room_notice=data.get("room_notice", ""),
@@ -245,6 +257,8 @@ class RoomStore:
             "awale": dump_awale(room.awale) if room.awale else None,
             "dara": dump_dara(room.dara) if room.dara else None,
             "yote": dump_yote(room.yote) if room.yote else None,
+            "dominoes": dump_domino(room.dominoes) if room.dominoes else None,
+            "domino_mode": room.domino_mode,
             "rematch_votes": sorted(room.rematch_votes),
             "reaction_seq": room.reaction_seq,
         }
