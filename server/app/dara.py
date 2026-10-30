@@ -112,6 +112,23 @@ def _finish_if_needed(m: DaraMatch) -> DaraMatch:
     return replace(m,history=hist)
 
 
+def _advance_placement(match: DaraMatch) -> DaraMatch:
+    """Avoid a placement-phase deadlock when a no-three rule blocks all squares.
+
+    Skip only a seat without a legal placement. If both are blocked, draw.
+    Never invent extra stones or permit three-in-a-row placements.
+    """
+    if match.phase != "PLACE":
+        return _finish_if_needed(match)
+    if legal_dara_moves(match,match.actor)["places"]:
+        return match
+    other=1-match.actor
+    if legal_dara_moves(replace(match,actor=other),other)["places"]:
+        return replace(match,actor=other,event=match.event+" Opponent has no legal placement and passes.")
+    return replace(match,finished=True,winner=None,
+                   event=match.event+" No legal placement remains: drawn game.")
+
+
 def apply_dara_action(match: DaraMatch, seat: int, kind: str, *, index: object=None,
                       source: object=None, destination: object=None) -> DaraMatch:
     legal=legal_dara_moves(match,seat)
@@ -127,7 +144,7 @@ def apply_dara_action(match: DaraMatch, seat: int, kind: str, *, index: object=N
                        phase="PLACE" if placing else "MOVE",actor=1-seat,
                        turn_number=match.turn_number+1,
                        event=f"Player {seat+1} placed a piece.")
-        return _finish_if_needed(result) if not placing else result
+        return _advance_placement(result)
     if kind=="move":
         if (type(source) is not int or type(destination) is not int or
             [source,destination] not in legal["moves"]):
