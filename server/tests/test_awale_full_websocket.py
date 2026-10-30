@@ -90,7 +90,9 @@ def test_two_seat_awale_full_match_rematch_and_restart_recovery(tmp_path):
                 send(sockets[actor], restarted_version, "awale", "once-only",
                      kind="sow", pit=pit)
                 views = [a.receive_json(), b.receive_json()]
-                after_once = views[0]["game"]
+                # Each seat sees its own private legal moves; compare the
+                # duplicate response to the SAME seat, not the other player.
+                after_once = views[actor]["game"]
                 assert after_once["turn_number"] == 1
                 send(sockets[actor], restarted_version, "awale", "once-only",
                      kind="sow", pit=pit)
