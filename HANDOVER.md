@@ -31,6 +31,13 @@ Verified earlier CI at `e3c56ba`: **350 passed**, JS checks on Shithead/Ludo pas
 
 When **Awalé is successfully finished and shipped**, remove its entire active-development subsection from this handover; move one brief completion line into the live-state section with PR, commit, tests and Railway deployment evidence. Do not leave completed work as 'to do'. Promote next approved game below.
 
+## Root-cause prevention (safe modularisation; NOT YET MERGED)
+Development review PR #16 targets the Awalé branch from `refactor/safe-game-catalog-20261030`.
+- Read-only game catalogue: `server/app/game_catalog.py` declares supported game names and min/max seats. It does not alter any rules engine, WebSocket action payload, serialization, session tokens or client renderer.
+- Main integration substitutes precisely two duplicated server seat-capacity calculations with catalogue lookups, preserving Shithead 2–6, Ludo 2–4, Awalé exactly 2 and existing switch semantics. Focused tests in `server/tests/test_game_catalog.py`.
+- **Do not rewrite the working engines or dynamically dispatch their actions merely to make code look generic.** First establish game-specific full-match and recovery contract tests and review every public state payload. Any further abstraction gets its own independently tested PR.
+- Before merging PR #16 into PR #15: confirm CI at the exact latest head, inspect diff, and verify existing Ludo/Shithead results plus Awalé 2-user browser QA. PR #15/16 must remain unmerged until review and owner approval.
+
 ## LOCKED FUTURE GAME QUEUE — do not build simultaneously
 1. **Dara** — Nigeria / Sahel; NEXT immediately after verified Awalé release. Two players; placement then movement and captures by rows of three. Research rule variants, teach owner basic gameplay via short examples, select source-backed rules and complete tests before implementing. Develops planning, pattern recognition and restraint.
 2. **Yoté** — West African traditional game; sacrifice, tactics. Pending rule research and owner go-ahead.
