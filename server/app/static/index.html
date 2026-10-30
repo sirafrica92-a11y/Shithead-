@@ -855,6 +855,30 @@ select option { color:var(--cream);background:var(--surface); }
   button:not(:disabled) {transition:none;}
 }
 
+
+/* Awalé game-specific surfaces, sharing existing gold/crimson brand tokens. */
+#screen-awale{max-width:760px;gap:14px;}
+.awale-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.awale-head strong{font:italic 850 29px Georgia,serif;color:var(--gold-bright);}
+.awale-turn,.awale-score{text-align:center;padding:12px;border:1px solid var(--border-gold);border-radius:10px;background:var(--surface);}
+.awale-turn{font-size:19px;font-weight:800;}
+.awale-score{color:var(--gold-bright);font-weight:700;font-size:14px;}
+.awale-board{display:flex;flex-direction:column;gap:13px;padding:clamp(11px,3vw,24px);border:6px solid #9b6c39;border-radius:25px;background:linear-gradient(130deg,#5c361c,#a2703e 30%,#724523 70%,#462717);box-shadow:inset 0 0 0 2px #e7bd78,0 12px 27px #0009;}
+.awale-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:clamp(3px,1.8vw,12px);}
+.awale-house{position:relative;aspect-ratio:1;min-width:0;min-height:0;padding:3px;border:2px solid rgba(236,181,102,.45);border-radius:50%;background:radial-gradient(circle at 45% 40%,#281711 0%,#3e2519 50%,#58351d 100%);box-shadow:inset 0 5px 11px #0009,0 2px 4px #0006;color:#ffdf9b;display:grid;place-items:center;overflow:hidden;}
+.awale-house strong{position:absolute;bottom:3px;right:16%;z-index:1;display:grid;place-items:center;min-width:22px;height:22px;padding:0 4px;border-radius:50%;background:#0c0a0adb;border:1px solid #e3b775;font-size:12px;}
+.awale-house.legal{border-color:#f5d99d;box-shadow:inset 0 5px 11px #0009,0 0 0 2px #d3323a,0 0 10px #ebc99690;cursor:pointer;}
+.awale-house.last{background:radial-gradient(circle at 45% 40%,#3b2419,#714520);}
+.awale-house:disabled{opacity:1;cursor:default;}
+.awale-seeds{width:78%;height:68%;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:2px;transform:rotate(-12deg);}
+.awale-grain{width:clamp(5px,1.6vw,12px);height:clamp(7px,2.2vw,16px);border-radius:45% 55% 50% 50%;transform:rotate(22deg);background:linear-gradient(105deg,#f2cc87,#b57e48 60%,#74431e);border:1px solid #57351b;}
+.awale-actions{display:grid;gap:10px;}
+#awale-event{text-align:center;color:var(--beige);min-height:20px;}
+#awale-status{text-align:center;color:var(--gold-bright);min-height:18px;}
+#awale-reactions{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;}
+#awale-reactions button{min-width:44px;min-height:44px;padding:8px;border-radius:10px;border:1px solid var(--border-gold);background:var(--surface);font-size:21px;}
+@media(max-width:390px){.awale-board{padding:7px;gap:8px;border-width:4px}.awale-row{gap:3px}.awale-house{border-width:1px}.awale-house strong{min-width:18px;height:18px;font-size:10px;right:9%;bottom:0;}.awale-grain{width:5px;height:8px;border-width:0;}}
+
 </style>
 </head>
 <body>
@@ -880,6 +904,9 @@ select option { color:var(--cream);background:var(--surface); }
       </button>
       <button type="button" class="game-choice" data-game="ludo" aria-pressed="false">
         <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="5" y="5" width="38" height="38" rx="8" fill="#f4eee4"/><g fill="#20252b"><circle cx="15" cy="15" r="3"/><circle cx="33" cy="15" r="3"/><circle cx="24" cy="24" r="3"/><circle cx="15" cy="33" r="3"/><circle cx="33" cy="33" r="3"/></g></svg><strong>Ludo</strong><small>2–4 players</small><span class="choice-tagline">Roll. Race. Rule.</span>
+      </button>
+      <button type="button" class="game-choice" data-game="awale" aria-pressed="false">
+        <span class="game-emoji" aria-hidden="true">🌱</span><strong>Awalé</strong><small>2 players</small><span class="choice-tagline">Think ahead. Sow wisely.</span>
       </button>
     </div>
   </section>
@@ -931,7 +958,7 @@ select option { color:var(--cream);background:var(--surface); }
   <p id="lobby-game-label" class="game-label">Selected game: Shithead</p>
   <div id="lobby-switch" class="hidden">
     <label class="field" for="lobby-game"><span>Host: choose next game</span>
-      <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option></select>
+      <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option><option value="awale">Awalé</option></select>
     </label>
     <button id="switch-game" class="btn btn-ghost" type="button">Change game</button>
     <label class="field" for="lobby-capacity" style="margin-top:12px"><span>Players in next match</span>
@@ -1045,6 +1072,42 @@ select option { color:var(--cream);background:var(--surface); }
   <button class="btn btn-ghost" id="ludo-home" type="button">Main menu</button>
 </section>
 
+
+<!-- ========================================================== AWALE -->
+<section id="screen-awale" class="shell hidden">
+  <div class="awale-head"><div class="room-chip">ROOM<b id="awale-room"></b></div><strong>AWALÉ</strong>
+    <button class="icon-btn" id="awale-refresh" type="button" aria-label="Refresh Awalé game">↻</button>
+  </div>
+  <div id="awale-turn" class="awale-turn">Waiting for players…</div>
+  <div id="awale-score" class="awale-score" aria-live="polite"></div>
+  <div id="awale-join-prompt" class="panel hidden"><h2>New player joined</h2><p id="awale-join-names"></p>
+    <p>Restart together or finish this match?</p>
+    <div class="btn-row"><button id="awale-restart" class="btn btn-primary" type="button">Restart</button><button id="awale-finish" class="btn btn-ghost" type="button">Finish current</button></div>
+  </div>
+  <div id="awale-board" class="awale-board" role="group" aria-label="Awalé board with twelve houses"></div>
+  <p id="awale-event" role="status" aria-live="polite"></p>
+  <div id="awale-reactions" aria-label="Quick reactions"></div>
+  <div class="awale-actions">
+    <button id="awale-open-rules" class="btn btn-ghost" type="button">How to play Awalé</button>
+    <button id="awale-rematch" class="btn btn-primary hidden" type="button">Play again in this room</button>
+    <button id="awale-switch" class="btn btn-ghost hidden" type="button">Change game in this room</button>
+    <button id="awale-home" class="btn btn-ghost" type="button">Main menu</button>
+  </div>
+  <p id="awale-status" role="status" aria-live="polite"></p>
+</section>
+<section id="screen-awale-rules" class="shell hidden">
+  <div class="rules-top"><button id="awale-rules-back" class="icon-btn" type="button" aria-label="Back">←</button>
+    <h1 class="rules-title">How to Play Awalé</h1></div>
+  <div class="panel rules-block"><h3 class="r-head">The aim</h3>
+    <p>Two players share twelve houses with four seeds in each. Capture 25 or more of the 48 seeds to win. At 24–24 it is a draw.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Sow seeds</h3>
+    <p>On your turn select one nonempty house on your own side. Pick up all its seeds and distribute them counterclockwise, one per following house. If you circle the board, skip the house you picked up from.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Capture</h3>
+    <p>If the final seed lands in an opponent's house containing exactly two or three seeds, capture that house. Continue capturing preceding opponent houses while each contains two or three. A capture that would empty your opponent's entire side is cancelled.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Feed the opponent</h3>
+    <p>If your opponent's side is empty, choose a move that gives them seeds. If no feeding move exists, the game ends and remaining seeds are counted. Repeated positions may also end the game.</p></div>
+</section>
+
 <!-- ======================================================= LUDO RULES -->
 <section id="screen-ludo-rules" class="shell hidden">
   <div class="rules-top">
@@ -1153,4 +1216,5 @@ select option { color:var(--cream);background:var(--surface); }
 </div>
 <script defer src="/client.js"></script>
 <script defer src="/ludo.js"></script>
+<script defer src="/awale.js"></script>
 </body></html>
