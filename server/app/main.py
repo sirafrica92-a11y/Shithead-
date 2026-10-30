@@ -35,6 +35,7 @@ REACTIONS = {"😂", "😏", "😭", "👀", "🔥", "💀"}
 class CreateRoom(BaseModel):
     capacity: int = Field(default=2, ge=2, le=6)
     game_type: str = "shithead"
+    domino_mode: str = "partner"
     # The host names themselves while creating, so one press both opens the
     # room and seats them. Optional, so an older client still works.
     name: str | None = Field(default=None, max_length=32)
@@ -186,6 +187,8 @@ def create_app(
             raise HTTPException(status_code=422, detail="unknown game")
         if payload.game_type in ("awale","dara","yote") and payload.capacity != 2:
             raise HTTPException(status_code=422, detail="Awalé requires two players")
+        if payload.domino_mode not in ("partner", "cutthroat") or (payload.game_type != "dominoes" and payload.domino_mode != "partner"):
+            raise HTTPException(status_code=422, detail="invalid dominoes mode")
         if payload.game_type == "dominoes" and payload.capacity != 4:
             raise HTTPException(status_code=422, detail="Jamaican partner dominoes requires four players")
         if payload.game_type == "ludo" and payload.capacity > 4:
@@ -193,10 +196,12 @@ def create_app(
         try:
             room = await store.create(payload.capacity)
             room.game_type = payload.game_type
+            room.domino_mode = payload.domino_mode
             store.persist(room)
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
-        body = {"room_id": room.id, "capacity": room.capacity, "game_type": room.game_type}
+        body = {"room_id": room.id, "capacity": room.capacity, "game_type": room.game_type,
+                "domino_mode": room.domino_mode}
         if name is not None:
             body.update(await seat_player(room, name))
         return body
@@ -278,7 +283,7 @@ def create_app(
                     continue
 
                 kind = action.get("type")
-                if kind not in ("ready", "game", "ludo", "awale", "dara", "yote", "dominoes", "rematch", "reaction", "host_join_decision", "select_game", "set_capacity", "return_lobby"):
+                if kind not in ("ready", "game", "ludo", "awale", "dara", "yote", "dominoes", "rematch", "reaction", "host_join_decision", "select_game", "set_capacity", "set_domino_mode", "return_lobby"):
                     await websocket.send_json({"type": "error", "reasonCode": "unknown_action"})
                     continue
 
@@ -290,6 +295,7 @@ def create_app(
                         or (kind == "ready" and type(ready) is not bool)
                         or (kind in ("game", "ludo", "awale", "dara", "yote", "dominoes") and not isinstance(action.get("kind"), str))
                         or (kind == "select_game" and action.get("game_type") not in ("ludo", "shithead", "awale", "dara", "yote", "dominoes"))
+                        or (kind == "set_domino_mode" and action.get("domino_mode") not in ("partner", "cutthroat"))
                         or (kind == "host_join_decision" and action.get("decision") not in
                             ("restart_now", "finish_current"))
                         or (kind == "reaction" and (not isinstance(action.get("emoji"), str)
@@ -365,6 +371,20 @@ def create_app(
                             room.version += 1
                             remember_request(seat, request_id)
                             changed = True
+                    elif kind == "set_domino_mode":
+                        if index != room.host_seat:
+                            error = "host_only"
+                        elif room.game_type != "dominoes" or room.dominoes is not None:
+                            error = "wrong_phase"
+                        elif room.domino_mode != action["domino_mode"]:
+                            room.domino_mode = action["domino_mode"]
+                            for player in room.seats:
+                                player.ready = False
+                            room.version += 1
+                            remember_request(seat, request_id)
+                            changed = True
+                        else:
+                            remember_request(seat, request_id)
                     elif kind == "set_capacity":
                         new_capacity = action.get("capacity")
                         if index != room.host_seat:
@@ -395,7 +415,7 @@ def create_app(
                             changed = True
                         else:
                             try:
-                                fresh = make_domino_match() if room.game_type == "dominoes" else make_yote_match() if room.game_type == "yote" else make_dara_match() if room.game_type == "dara" else make_awale_match() if room.game_type == "awale" else make_ludo_match(len(room.seats)) if room.game_type == "ludo" else make_match(len(room.seats))
+                                fresh = make_domino_match(mode=room.domino_mode) if room.game_type == "dominoes" else make_yote_match() if room.game_type == "yote" else make_dara_match() if room.game_type == "dara" else make_awale_match() if room.game_type == "awale" else make_ludo_match(len(room.seats)) if room.game_type == "ludo" else make_match(len(room.seats))
                             except UndecidedStartTie:
                                 error = "starting_tie_unresolved"
                             else:
@@ -430,7 +450,7 @@ def create_app(
                                 changed = True
                             if len(room.rematch_votes) == len(room.seats) and len(room.seats) >= 2:
                                 try:
-                                    fresh = make_domino_match() if room.game_type == "dominoes" else make_yote_match() if room.game_type == "yote" else make_dara_match() if room.game_type == "dara" else make_awale_match() if room.game_type == "awale" else make_ludo_match(len(room.seats)) if room.game_type == "ludo" else make_match(len(room.seats))
+                                    fresh = make_domino_match(mode=room.domino_mode) if room.game_type == "dominoes" else make_yote_match() if room.game_type == "yote" else make_dara_match() if room.game_type == "dara" else make_awale_match() if room.game_type == "awale" else make_ludo_match(len(room.seats)) if room.game_type == "ludo" else make_match(len(room.seats))
                                 except UndecidedStartTie:
                                     # Leave the match finished and permit a new
                                     # unanimous retry without a deadlocked vote.
@@ -470,7 +490,7 @@ def create_app(
                             if (len(room.seats) == room.capacity
                                     and all(s.ready for s in room.seats)):
                                 try:
-                                    candidate = make_domino_match() if room.game_type == "dominoes" else make_yote_match() if room.game_type == "yote" else make_dara_match() if room.game_type == "dara" else make_awale_match() if room.game_type == "awale" else make_ludo_match(room.capacity) if room.game_type == "ludo" else make_match(room.capacity)
+                                    candidate = make_domino_match(mode=room.domino_mode) if room.game_type == "dominoes" else make_yote_match() if room.game_type == "yote" else make_dara_match() if room.game_type == "dara" else make_awale_match() if room.game_type == "awale" else make_ludo_match(room.capacity) if room.game_type == "ludo" else make_match(room.capacity)
                                 except UndecidedStartTie:
                                     # No owner-approved fallback for an exact
                                     # D-019 three-card tie: keep lobby recoverable.
