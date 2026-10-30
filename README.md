@@ -1,17 +1,34 @@
-# Shithead / Shit Face
+# SHITHEAD Games
 
-A multiplayer card-game project built around Africa's custom Shithead rules.
+**Live multiplayer platform:** [play.shithead.games](https://play.shithead.games)
 
-**Status:** Repository initialised; game foundation and implementation are being prepared for review. **There is no playable build yet.**
+Shithead Games brings approachable traditional games from different cultures into one mobile-friendly multiplayer home. The original Shithead card game has grown into a multi-game platform while retaining its original jester logo and dark, gold and crimson visual identity.
 
-- **Shithead:** The core strategic card game for 2–6 players.
-- **Shit Face:** An optional drinking-mode presentation layer. Drinking rules must never change game logic.
-- **Key mechanic:** 3s and Jokers can redirect the playing pile; players may counterattack and strategically manipulate turn order.
+## Verified status — 30 October 2026
 
-The detailed rulebook, test cases, technical architecture, and development handover will be proposed on a separate foundation branch before being adopted as canonical.
+| Game | Players | Status |
+| --- | --- | --- |
+| Shithead | 2–6 | Live; owner-defined card rules, including 3/Joker counterplay |
+| Ludo | 2–4 | Live; server-controlled dice, blockades and rematches |
+| Awalé (Oware Abapa) | 2 | Live; 12-pit sowing, feeding, captures and scoring |
+| Dara | 2 | In development, **not live**; draft PR #17 |
 
-## Ownership and project boundaries
+The live Railway deployment is commit `30c44ed47af4f09b1ade162c8302603d408b86f7` on `deploy/railway-shithead-games-staging`. The release CI recorded **364 passing Python tests** plus JavaScript syntax checks. Railway reported a successful deployment and healthy replica. This does **not** replace independent real-device multiplayer testing.
 
-This repository is the source of truth for the card game. SOUL and Claude Code can work on it, but neither may silently invent or override game rules. The SOUL application is a **separate** project and must not be modified as part of this game's setup.
+## Repository layout and development status
 
-> This repository is **public**. Do not commit secrets, API keys, personal information, or unreleased private assets.
+**Important:** GitHub's default `main` branch is an initial historical snapshot, **not the live application's source code**. Inspect the [active deployment branch](https://github.com/sirafrica92-a11y/Shithead-/tree/deploy/railway-shithead-games-staging) for the actual server, frontend, tests, rules and [single living handover](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md).
+
+- `server/app/` — FastAPI multiplayer rooms, authenticated WebSockets and separate server-authoritative game engines.
+- `server/app/static/` — branded responsive game interfaces.
+- `server/tests/` — rule, multiplayer, recovery and existing-game regression tests.
+- `docs/RULES.md`, `docs/DECISION_LOG.md` — authoritative custom Shithead decisions; do not substitute standard rules.
+- `HANDOVER.md` — current game roadmap, safe integration rules and release gates.
+
+Dara is being developed independently. Its draft PR's latest CI passed **374 tests**, but rules-variant review and browser checks remain release gates. Do not call it shipped.
+
+## Engineering principles
+
+Preserve existing games while adding new ones: isolated game engines, shared room/seat infrastructure, private player state, persistent match recovery, reviewable pull requests and regression testing. Never merge or deploy unfinished games without owner approval. The live SQLite volume must remain attached at `/data`.
+
+**Portfolio note:** This is a functioning, deployed product, not just a proposed game. The public default branch is deliberately documented as a historical pointer until the live application is safely reconciled with it.
