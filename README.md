@@ -1,34 +1,109 @@
 # SHITHEAD Games
 
-**Live multiplayer platform:** [play.shithead.games](https://play.shithead.games)
+**Five traditional games. One multiplayer home.**
 
-Shithead Games brings approachable traditional games from different cultures into one mobile-friendly multiplayer home. The original Shithead card game has grown into a multi-game platform while retaining its original jester logo and dark, gold and crimson visual identity.
+Play online: **[play.shithead.games](https://play.shithead.games)**
 
-## Verified status — 30 October 2026
+SHITHEAD Games is a browser-based, mobile-friendly collection of traditional social games from different cultures. Start a room, share its four-character code and play together. The focus is on accessible games with personality, strategy and human interaction—not a complicated competitive platform.
 
-| Game | Players | Status |
-| --- | --- | --- |
-| Shithead | 2–6 | Live; owner-defined card rules, including 3/Joker counterplay |
-| Ludo | 2–4 | Live; server-controlled dice, blockades and rematches |
-| Awalé (Oware Abapa) | 2 | Live; 12-pit sowing, feeding, captures and scoring |
-| Dara | 2 | In development, **not live**; draft PR #17 |
+What began as a custom multiplayer **Shithead** card game has grown into a five-game platform while keeping the original jester logo and dark, antique-gold, cream and crimson identity.
 
-The live Railway deployment is commit `30c44ed47af4f09b1ade162c8302603d408b86f7` on `deploy/railway-shithead-games-staging`. The release CI recorded **364 passing Python tests** plus JavaScript syntax checks. Railway reported a successful deployment and healthy replica. This does **not** replace independent real-device multiplayer testing.
+> **Current status (30 October 2026):** Five games merged and deployed as a public preview. This is a **working application**, not a proposed concept. Live-server health and automated tests are verified; independent real-device playthroughs of every new game are still a release-quality follow-up.
 
-## Repository layout and development status
+## Play the games
 
-**Important:** GitHub's default `main` branch is an initial historical snapshot, **not the live application's source code**. Inspect the [active deployment branch](https://github.com/sirafrica92-a11y/Shithead-/tree/deploy/railway-shithead-games-staging) for the actual server, frontend, tests, rules and [single living handover](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md).
+| Game | Players | What you play | What it rewards |
+| --- | --- | --- | --- |
+| **Shithead** | 2–6 | The original card game, with owner-defined 3/Joker hand-offs and counter-chains, 7 locks, 2 resets, 10 clears and tactical pile pickups | Adaptation, reading opponents and timing |
+| **Ludo** | 2–4 | Race four tokens home using server-rolled dice, safe squares, blockades, captures and extra turns | Patience, risk and opportunity |
+| **Awalé** | 2 | West African Oware/Abapa-style seed sowing across 12 houses, with feeding and two-or-three-seed captures | Foresight and calculation |
+| **Dara** | 2 | Nigerian 5×6 board strategy: place stones, move orthogonally, form new lines of three and capture | Pattern recognition and positioning |
+| **Yoté** | 2 | West African 5×6 tactical game: place stones, move and jump-capture, then choose a bonus removal | Tactics and sacrifice |
 
-- `server/app/` — FastAPI multiplayer rooms, authenticated WebSockets and separate server-authoritative game engines.
-- `server/app/static/` — branded responsive game interfaces.
-- `server/tests/` — rule, multiplayer, recovery and existing-game regression tests.
-- `docs/RULES.md`, `docs/DECISION_LOG.md` — authoritative custom Shithead decisions; do not substitute standard rules.
-- `HANDOVER.md` — current game roadmap, safe integration rules and release gates.
+Each game has its own on-site **How to play** screen. Traditional games have regional variants; the implementation follows the rules documented for **this platform**, not necessarily every local version. The exact custom Shithead rules are recorded in [RULES.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/docs/RULES.md) and [DECISION_LOG.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/docs/DECISION_LOG.md).
 
-Dara is being developed independently. Its draft PR's latest CI passed **374 tests**, but rules-variant review and browser checks remain release gates. Do not call it shipped.
+## Playing together
 
-## Engineering principles
+1. Open [play.shithead.games](https://play.shithead.games), choose a game and enter a player name.
+2. **Create a room** and share its four-character code; friends choose **Join room** and enter that code.
+3. When everyone is in, mark yourselves **Ready** to start.
+4. Play in real time. The server validates the rules and whose turn it is.
+5. After a match, vote for a rematch or, where permitted, have the host switch games within the room.
 
-Preserve existing games while adding new ones: isolated game engines, shared room/seat infrastructure, private player state, persistent match recovery, reviewable pull requests and regression testing. Never merge or deploy unfinished games without owner approval. The live SQLite volume must remain attached at `/data`.
+**Platform features:** guest access without registration; room codes; server-authoritative turns; per-seat tokens and private views where applicable; refresh/reconnection; saved room/match state; rematch voting; quick reactions; and mobile-oriented game boards. Some game and mid-match-joining behaviours intentionally differ by game.
 
-**Portfolio note:** This is a functioning, deployed product, not just a proposed game. The public default branch is deliberately documented as a historical pointer until the live application is safely reconciled with it.
+## Built and running
+
+- **Backend:** Python, FastAPI, authenticated WebSockets and server-owned game logic.
+- **Five isolated rule engines:** `gameplay.py` (Shithead), `ludo.py`, `awale.py`, `dara.py` and `yote.py`.
+- **Shared foundation:** lobby, seat management, room state, message validation, reconnection, rematches and a small game-capacity catalogue.
+- **Frontend:** HTML, CSS and vanilla JavaScript with dedicated boards/renderers for the non-card games.
+- **Persistence:** SQLite for saved rooms, seats and matches; Railway's persistent volume mounted at `/data`.
+- **Hosting:** Railway, with a single application worker and a health endpoint at `/health`.
+
+Game rules and state transitions remain separate from the shared multiplayer infrastructure. New additions should not change existing games merely to reuse their code.
+
+### Repository layout
+
+**Important:** The GitHub default `main` branch currently contains **only this README**. It is *not* the live application code. The implementation, tests and active handover live on **[`deploy/railway-shithead-games-staging`](https://github.com/sirafrica92-a11y/Shithead-/tree/deploy/railway-shithead-games-staging)**.
+
+| Path on the deployment branch | Purpose |
+| --- | --- |
+| `server/app/main.py` | FastAPI routes, authenticated multiplayer WebSockets and game actions |
+| `server/app/lobby.py` | Room and seat lifecycle, broadcasting, SQLite persistence |
+| `server/app/gameplay.py`, `server/app/rules/` | Custom Shithead engine and rule boundaries |
+| `server/app/{ludo,awale,dara,yote}.py` | Separate server-authoritative game engines |
+| `server/app/game_catalog.py` | Supported game names and player-capacity contracts |
+| `server/app/static/` | Responsive interfaces, individual game renderers and original brand assets |
+| `server/tests/` | Rule contracts, game simulations, WebSocket, recovery and regression tests |
+| `docs/` | Rule decisions, architecture, scenarios and verification history |
+| `HANDOVER.md` | Single current platform handover, risks, remaining QA and proposed next steps |
+| `railway.json` | Railway build, start command and health-check configuration |
+
+## Run locally
+
+Use Python 3.12 (the version tested in CI), then run:
+
+~~~bash
+git clone https://github.com/sirafrica92-a11y/Shithead-.git
+cd Shithead-
+git checkout deploy/railway-shithead-games-staging
+python -m pip install -r requirements.txt
+python run_local.py
+~~~
+
+The launcher starts the local server at **http://127.0.0.1:8000** and opens a browser. A Windows `Start Shithead.bat` launcher is also included. The local-only launcher binds to localhost; the hosted website is the intended way to play remotely with friends.
+
+Run the complete automated checks from the deployment branch:
+
+~~~bash
+python -m pytest -q server/tests
+python -m py_compile run_local.py
+node --check server/app/static/client.js
+node --check server/app/static/ludo.js
+node --check server/app/static/awale.js
+node --check server/app/static/dara.js
+node --check server/app/static/yote.js
+~~~
+
+At the **five-game milestone** on 30 October 2026, GitHub CI for application/documentation release commit `20f92c6` reported **383 passing Python tests**, 31 warnings and successful JavaScript syntax checks for all five client files. The project also has specific complete-game, multiplayer, persistence and regression tests.
+
+**Known verification limits:** an intermittent legacy Shithead start-tie test failure was observed on one earlier CI run, although the verified five-game release run passed. Full manual two-device/mobile-browser playthroughs for the newest games are not yet independently recorded. See [HANDOVER.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md) for reproducible concerns and follow-up checks. Automated green checks and a healthy server do not by themselves establish zero gameplay issues.
+
+## Safe development and deployment
+
+- **Production source:** `deploy/railway-shithead-games-staging`, **not `main`**.
+- **Infrastructure:** Railway service `shithead-web` uses an attached `match-data` volume at `/data`. Preserve this volume and existing rooms.
+- **Rules:** Owner-defined Shithead behaviour must not be replaced with assumed standard rules. Each additional game must have its own rules contract, engine and tests.
+- **Release discipline:** work in a branch, inspect the changed files, run the existing regression suite and new game's full-match/recovery checks, review browser behaviour, then merge and verify the exact Railway deployment.
+- **Ownership:** the project's concepts, game choices, product requirements and rules decisions are owner-led; AI coding assistance is used for implementation and testing under review.
+
+This is an accessible **public preview** rather than a mature account-based games service. Guest room codes are not accounts; full moderation, real user accounts and wider operational safeguards are not implemented. Don't commit secrets, private credentials or personal information to this public repository.
+
+### What's next?
+
+The five-game target has been reached. The current priority is **hands-on testing and polish**, not adding games at the expense of stability. **Dominoes** and **Morabaraba** are research candidates, not implemented games. Fanorona is explicitly excluded from the current roadmap.
+
+---
+
+**[Play SHITHEAD Games](https://play.shithead.games)** · [Live application code](https://github.com/sirafrica92-a11y/Shithead-/tree/deploy/railway-shithead-games-staging) · [Platform handover](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md)
