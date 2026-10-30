@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 from server.app.main import create_app
 
 
-def send(ws, version, kind, request_id, **extra):
-    ws.send_json({"type": kind, "expected_version": version,
+def send(ws, version, action_type, request_id, **extra):
+    ws.send_json({"type": action_type, "expected_version": version,
                   "request_id": request_id, **extra})
 
 
