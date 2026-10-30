@@ -879,6 +879,29 @@ select option { color:var(--cream);background:var(--surface); }
 #awale-reactions button{min-width:44px;min-height:44px;padding:8px;border-radius:10px;border:1px solid var(--border-gold);background:var(--surface);font-size:21px;}
 @media(max-width:390px){.awale-board{padding:7px;gap:8px;border-width:4px}.awale-row{gap:3px}.awale-house{border-width:1px}.awale-house strong{min-width:18px;height:18px;font-size:10px;right:9%;bottom:0;}.awale-grain{width:5px;height:8px;border-width:0;}}
 
+
+/* Dara: 5x6 premium wooden tactical board, existing SHITHEAD theme. */
+#screen-dara{max-width:740px;gap:13px;}
+.dara-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.dara-top strong{color:var(--gold-bright);font:italic 850 28px Georgia,serif}
+.dara-board{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:clamp(4px,1.6vw,11px);padding:clamp(12px,3vw,24px);border:5px ridge #b28a53;border-radius:12px;background:repeating-linear-gradient(88deg,transparent 0 16px,#0000000b 16px 17px),linear-gradient(125deg,#4a2f20,#936237 48%,#543522);box-shadow:0 12px 30px #0008,inset 0 0 0 2px #cfaa73}
+.dara-square{position:relative;min-width:0;aspect-ratio:1;border:1px solid #ad8456;border-radius:7px;background:linear-gradient(135deg,#3c271f,#5a3b27);box-shadow:inset 0 3px 5px #0007;display:grid;place-items:center}
+.dara-square:nth-child(12n+1),.dara-square:nth-child(12n+3),.dara-square:nth-child(12n+5),.dara-square:nth-child(12n+8),.dara-square:nth-child(12n+10),.dara-square:nth-child(12n+12){background:linear-gradient(135deg,#654429,#815636)}
+.dara-square.legal{border:2px solid #f0cd89;box-shadow:0 0 0 2px var(--crimson),inset 0 2px 5px #0007;cursor:pointer}
+.dara-square.selected{border:3px solid var(--gold-bright);box-shadow:0 0 0 3px #d3323a,0 0 14px #ebc99699}
+.dara-square:disabled{opacity:1;cursor:default}
+.dara-piece{width:74%;aspect-ratio:1;border-radius:50%;border:2px solid #0007;box-shadow:inset -5px -6px 8px #0007,inset 3px 3px 5px #fff5,0 4px 5px #0009}
+.dara-p1 .dara-piece{background:radial-gradient(circle at 30% 25%,#f9e6bd,#bc8a50 64%,#67401f)}
+.dara-p2 .dara-piece{background:radial-gradient(circle at 30% 25%,#aa7374,#962b36 65%,#41151e)}
+.dara-turn,.dara-progress{text-align:center;padding:11px;border:1px solid var(--border-gold);border-radius:10px;background:var(--surface)}
+.dara-turn{font-size:19px;font-weight:800}
+.dara-progress{font-size:12px;color:var(--gold-bright)}
+#dara-event,#dara-status{text-align:center;min-height:20px;color:var(--beige)}
+.dara-actions{display:grid;gap:9px}
+#dara-reactions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+#dara-reactions button{min-width:44px;min-height:44px;border-radius:9px;border:1px solid var(--border-gold);background:var(--surface);font-size:21px}
+@media(max-width:390px){.dara-board{gap:4px;padding:7px;border-width:3px}.dara-square{border-radius:4px}.dara-piece{border-width:1px}}
+
 </style>
 </head>
 <body>
@@ -908,6 +931,7 @@ select option { color:var(--cream);background:var(--surface); }
       <button type="button" class="game-choice" data-game="awale" aria-pressed="false">
         <span class="game-emoji" aria-hidden="true">🌱</span><strong>Awalé</strong><small>2 players</small><span class="choice-tagline">Think ahead. Sow wisely.</span>
       </button>
+      <button type="button" class="game-choice" data-game="dara" aria-pressed="false"><span class="game-emoji" aria-hidden="true">◈</span><strong>Dara</strong><small>2 players</small><span class="choice-tagline">Think. Align. Capture.</span></button>
     </div>
   </section>
   <div class="panel">
@@ -958,7 +982,7 @@ select option { color:var(--cream);background:var(--surface); }
   <p id="lobby-game-label" class="game-label">Selected game: Shithead</p>
   <div id="lobby-switch" class="hidden">
     <label class="field" for="lobby-game"><span>Host: choose next game</span>
-      <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option><option value="awale">Awalé</option></select>
+      <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option><option value="awale">Awalé</option><option value="dara">Dara</option></select>
     </label>
     <button id="switch-game" class="btn btn-ghost" type="button">Change game</button>
     <label class="field" for="lobby-capacity" style="margin-top:12px"><span>Players in next match</span>
@@ -1108,6 +1132,39 @@ select option { color:var(--cream);background:var(--surface); }
     <p>If your opponent's side is empty, choose a move that gives them seeds. If no feeding move exists, the game ends and remaining seeds are counted. Repeated positions may also end the game.</p></div>
 </section>
 
+
+<!-- ============================================================ DARA -->
+<section id="screen-dara" class="shell hidden">
+  <div class="dara-top"><div class="room-chip">ROOM <b id="dara-room"></b></div>
+    <strong>DARA</strong><button id="dara-refresh" class="icon-btn" type="button" aria-label="Refresh Dara game">↻</button></div>
+  <div id="dara-turn" class="dara-turn" aria-live="polite">Waiting for players…</div>
+  <div id="dara-progress" class="dara-progress"></div>
+  <div id="dara-join-prompt" class="panel hidden"><h2>New player joined</h2>
+    <p id="dara-join-names"></p><div class="btn-row">
+      <button id="dara-restart" class="btn btn-primary" type="button">Restart</button>
+      <button id="dara-finish" class="btn btn-ghost" type="button">Finish current</button>
+    </div></div>
+  <div id="dara-board" class="dara-board" role="group" aria-label="Dara board with thirty squares"></div>
+  <p id="dara-event" role="status" aria-live="polite"></p>
+  <div id="dara-reactions"></div>
+  <div class="dara-actions">
+    <button id="dara-open-rules" class="btn btn-ghost" type="button">How to play Dara</button>
+    <button id="dara-rematch" class="btn btn-primary hidden" type="button">Play again in this room</button>
+    <button id="dara-switch" class="btn btn-ghost hidden" type="button">Change game in this room</button>
+    <button id="dara-home" class="btn btn-ghost" type="button">Main menu</button>
+  </div>
+  <p id="dara-status" role="status" aria-live="polite"></p>
+</section>
+<section id="screen-dara-rules" class="shell hidden">
+  <div class="rules-top"><button id="dara-rules-back" class="icon-btn" type="button" aria-label="Back">←</button>
+    <h1 class="rules-title">How to Play Dara</h1></div>
+  <div class="panel rules-block"><h3 class="r-head">The aim</h3><p>Two players each start with 12 pieces. Form lines of exactly three to capture an opponent's pieces. Win when the opponent has fewer than three pieces or no legal moves.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Placement</h3><p>Take turns placing one piece on an empty square of the 5 by 6 board. You cannot create three in a row during placement; no captures occur until all 24 pieces are placed.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Movement</h3><p>Take turns moving one of your pieces one square horizontally or vertically into an empty square. No diagonal moves. You may not make a row or column of four or more.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Capturing</h3><p>When your move forms a new line of exactly three, choose an opponent's piece to remove. Pieces already in a line of three are protected unless every remaining opponent piece is protected.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Ending</h3><p>The game ends when an opponent has fewer than three pieces or no legal moves. Three repetitions of the same position and turn result in a draw.</p></div>
+</section>
+
 <!-- ======================================================= LUDO RULES -->
 <section id="screen-ludo-rules" class="shell hidden">
   <div class="rules-top">
@@ -1217,4 +1274,5 @@ select option { color:var(--cream);background:var(--surface); }
 <script defer src="/client.js"></script>
 <script defer src="/ludo.js"></script>
 <script defer src="/awale.js"></script>
+<script defer src="/dara.js"></script>
 </body></html>
