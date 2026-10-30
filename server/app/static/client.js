@@ -146,6 +146,8 @@ function render(x) {
   el("lobby-game-label").textContent = "Selected game: " + (isDominoes ? "Jamaican Dominoes" : isYote ? "Yoté" : isDara ? "Dara" : isAwale ? "Awalé" : isLudo ? "Ludo" : "Shithead");
   el("lobby-switch").classList.toggle("hidden", seatIndex !== x.host_seat);
   el("lobby-game").value = x.game_type || "shithead";
+  el("domino-lobby-options").classList.toggle("hidden", !isDominoes || seatIndex !== x.host_seat);
+  el("lobby-domino-mode").value = x.domino_mode || "partner";
   const limit = isAwale || isDara || isYote ? 2 : isLudo || isDominoes ? 4 : 6;
   const picker = el("lobby-capacity");
   if (picker.options.length !== limit - 1) picker.replaceChildren(...Array.from({length:isDominoes?1:limit-1},(_,i)=>{const o=document.createElement("option");o.value=String(i+(isDominoes?4:2));o.textContent=o.value;return o;}));
@@ -548,11 +550,12 @@ function selectHomeGame(game) {
     button.classList.toggle("active", active);
     button.setAttribute("aria-pressed", String(active));
   });
+  el("domino-home-options").classList.toggle("hidden", game!=="dominoes");
   const capacity = el("capacity");
   const oldValue = Number(capacity.value);
   capacity.replaceChildren(...Array.from({length:((game==="awale"||game==="dara"||game==="yote"||game==="dominoes")?1:game==="ludo"?3:5)},(_,i)=>{
     const option=document.createElement("option"); option.value=String(i+(game==="dominoes"?4:2));
-    option.textContent=String(i+2);return option;
+    option.textContent=option.value;return option;
   }));
   capacity.value=String(((game==="awale"||game==="dara"||game==="yote")?2:game==="dominoes"?4:Math.min(oldValue,game==="ludo"?4:6)));
 }
@@ -560,6 +563,7 @@ document.querySelectorAll(".game-choice").forEach(btn=>{
   btn.onclick=()=>selectHomeGame(btn.dataset.game);
 });
 el("switch-game").onclick=()=>sendRoomAction("select_game",{game_type:el("lobby-game").value});
+el("set-domino-mode").onclick=()=>sendRoomAction("set_domino_mode",{domino_mode:el("lobby-domino-mode").value});
 el("set-capacity").onclick=()=>sendRoomAction("set_capacity",{capacity:Number(el("lobby-capacity").value)});
 el("ludo-switch").onclick=()=>sendRoomAction("return_lobby");
 el("ludo-refresh").onclick=refreshGame;
@@ -655,7 +659,8 @@ el("create").onclick = async () => {
   const name = el("name").value.trim();
   if (!name) { status("Enter your name first."); el("name").focus(); return; }
   try {
-    const r = await request("/api/rooms", { capacity: Number(el("capacity").value), name, game_type: chosenGame });
+    const r = await request("/api/rooms", { capacity: Number(el("capacity").value), name, game_type: chosenGame,
+      domino_mode: chosenGame==="dominoes" ? el("domino-home-mode").value : "partner" });
     el("room").value = r.room_id;
     seatIndex = r.seat;
     saveSeat(r.room_id, r.token, r.seat, name);
