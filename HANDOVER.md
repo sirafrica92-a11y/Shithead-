@@ -12,30 +12,31 @@ SHITHEAD Games is an online multiplayer home for approachable traditional games 
 ## Current verified live state
 - **Shithead** live: owner-custom cards and 3/Joker/7/2/10 mechanisms; preserve authoritative decisions in `docs/RULES.md`, `docs/DECISION_LOG.md` and `docs/source/`. Never substitute standard card rules.
 - **Ludo** live: two–four players; server-controlled dice, blockades, rematches and recovery.
+- **Dara** live: 2-player 5x6 Nigerian strategy game; merged PR #17 as commit `244b66a5b734b5cdd057add6145b72da3ee771b3`, Railway reported SUCCESS. CI on PR head `14dbaa36` passed 374 tests, four JS syntax checks. Still require manual live-device playthrough for end-to-end visual confirmation.
 - **Awalé** live: two players, authoritative 12-pit Abapa engine. PR #15 merged after PR #16 safe catalogue and 364 passing regressions; deployed commit `30c44ed47af4f09b1ade162c8302603d408b86f7` via Railway deployment `5a1244b3-7b03-4dd2-bdd4-f59878dbba15`, SUCCESS, 1/1 online. Real live-device full-playthrough not independently evidenced.
 - **Unified dark/gold redesign** merged via PR #14, merge `241a347b4b9f12f8b12d2f2eb78f528cf1ce5c7c`; Railway deployment `ca34d9ae-52a7-456b-854e-9b290f1ef969` reported **SUCCESS**, online 1/1 on 2026-10-30. This is a server-health report, NOT proof of hands-on device visual QA.
 - Earlier Ludo browser review: `docs/LUDO_RELEASE_REVIEW_2026-10-30.md` contains actual Chromium runs with 2, 3 and 4 players. Historical evidence, not the current CI state.
 
-## ONE ACTIVE DEVELOPMENT GAME — Dara (Nigeria / Sahel), Game 04
-**Status: independent development branch, NOT MERGED/NOT LIVE.**
-Branch: `feature/dara-game04-20261030`. Independent server-authoritative engine `server/app/dara.py`; uses existing room infrastructure with `room.dara` isolated state, new `/dara.js` browser renderer and themed 5x6 UI. `server/tests/test_dara_platform.py` covers rules, persistence and old-game room creation. **Do not claim verification before the latest CI and browser playthrough actually succeed.**
+## ONE ACTIVE DEVELOPMENT GAME — Yoté (West Africa), Game 05
+**Status: independent feature branch, not deployed, do not assume finished.**
+Branch `feature/yote-game05-20261030` based on verified deployed Dara commit `244b66a5b734b5cdd057add6145b72da3ee771b3`.
 
-**Selected variant:** Maths Week Scotland-style 5x6 12 pieces/player, placement without lines of three, then orthogonal single-step movement, line-of-three captures, prohibited four-plus rows and loss below three pieces. Rules vary by region/source (some allow 3 during placement; some pass on blocked moves rather than losing). The present draft chooses blocked-player loss, threefold repetition draw, and protects opposing lines of three when other captures exist. **Review these explicit variant choices against sources and user expectations before release**; adapt code, rules screen and tests together, never silently.
+Engine `server/app/yote.py`: board 5x6, 12 reserve stones per player, optional placement or orthogonal movement, jumping captures plus one chosen bonus removal, private legal actions, repetition and finish checks; independent save key `yote`. Browser implementation `server/app/static/yote.js`, UI in `index.html`, isolated room routing and catalogue entry. Tests `server/tests/test_yote_platform.py`; full five-game CI must pass before merge.
 
-**Release blockers / mitigations:**
-1. Ensure full Python suite + JS syntax checks pass for ALL four games; repair any Dara regressions in the branch, preserve older engines byte-for-byte.
-2. Run 2 authenticated player WebSocket complete-match, illegal-action, rematch and SQLite restart/reconnect tests. Add deterministic flows before claiming readiness.
-3. Run local Chromium mobile 390px/360px and desktop screenshots, verify token selection and touch targets, no overflow, rules navigation and original logo.
-4. Independently review differences in Dara published variants, capture and blocked-turn logic. Correct implementation and its explainer to one sourced rule contract.
-5. Review shared `main.py`, `lobby.py`, `client.js` diff for isolated Dara routing, no changed behavior for prior games, proper seat limit and old SQLite restores.
-6. Owner approval required separately before merge and Railway deployment. Verify actual deployed SHA + health, /data persistent volume and browser matches afterwards.
+**Variant note:** Yoté is played with regional variants. The draft currently allows a single jump per turn, bonus removal only when an opponent piece remains, threefold repetition draw. Independently verify movement, jump chaining, when placement is permitted, end-game adjudication, and bonus removal against published rules. Do not silently diverge from documentation.
 
-**At completion:** remove this active subsection, add concise verified completion record under live games, then promote only next approved game (Yoté) after owner go-ahead.
+**Risk and mitigation checklist:**
+1. CI must cover all five engines, all five JS files, legacy persistence/reconnect; fix any errors before PR review.
+2. Add two authenticated WebSocket players, complete game/move/jump/bonus/rematch, duplicate-message and reconnect tests; actual visual/browser smoke on mobile and desktop must still be performed.
+3. Review shared main/lobby/client integration so all four earlier game engines and UI remain unchanged; verify `/data` volume stays attached.
+4. Confirm Yoté no-move and all-pieces-removed conditions, including reserve versus on-board stones, draw loops, and bonus capture when no opponent remains.
+5. Only merge and deploy after owner approval; never treat GitHub CI alone as proof of browser gameplay.
+
+After Yoté release, remove this section from active work, record verified deployed SHA/tests in Live, and keep remaining queue compact.
 
 ## LOCKED FUTURE GAME QUEUE — do not build simultaneously
-1. **Yoté** — West African traditional game; sacrifice, tactics. Pending rule research and owner go-ahead.
-2. **Dominoes** — cross-cultural; proposed cooperative/team mode, approachable rules. Choose precise format before implementation.
-3. **Morabaraba** — Southern Africa; pattern recognition and long-range planning. Research first; not yet approved for implementation.
+1. **Dominoes** — cross-cultural; proposed cooperative/team mode, approachable rules. Choose precise format before implementation.
+2. **Morabaraba** — Southern Africa; pattern recognition and long-range planning. Research first; not yet approved for implementation.
 
 **DO NOT BUILD:** Fanorona (specifically removed by owner as too complex / not worth learning to validate). Do not sneak it into the backlog. Do not add other complex games including chess to the near-term queue. No new game beyond these selections without explicit owner discussion. Research can cover queued games but **develop and deploy one game at a time**.
 

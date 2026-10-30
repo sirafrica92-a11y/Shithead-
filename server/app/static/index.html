@@ -902,6 +902,29 @@ select option { color:var(--cream);background:var(--surface); }
 #dara-reactions button{min-width:44px;min-height:44px;border-radius:9px;border:1px solid var(--border-gold);background:var(--surface);font-size:21px}
 @media(max-width:390px){.dara-board{gap:4px;padding:7px;border-width:3px}.dara-square{border-radius:4px}.dara-piece{border-width:1px}}
 
+
+/* Yoté individual game theme, retaining platform identity. */
+#screen-yote{max-width:740px;gap:13px}
+.yote-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.yote-top strong{color:var(--gold-bright);font:italic 850 28px Georgia,serif}
+.yote-turn,.yote-score{padding:12px;text-align:center;border:1px solid var(--border-gold);border-radius:10px;background:var(--surface)}
+.yote-turn{font-size:19px;font-weight:800}
+.yote-score{color:var(--gold-bright);font-size:13px}
+.yote-board{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:clamp(4px,1.5vw,10px);padding:clamp(11px,2.5vw,23px);border:5px ridge #9f7547;border-radius:15px;background:linear-gradient(135deg,#543522,#906237,#4a2d1b);box-shadow:0 12px 30px #0008,inset 0 0 0 2px #d6a66d}
+.yote-square{min-width:0;aspect-ratio:1;border:1px solid #af8051;border-radius:6px;background:linear-gradient(145deg,#33211b,#694629);display:grid;place-items:center}
+.yote-square:nth-child(2n){background:linear-gradient(145deg,#775033,#4b3324)}
+.yote-square.legal{border:2px solid #ebd29c;box-shadow:0 0 0 2px #cc3039;cursor:pointer}
+.yote-square.selected{outline:3px solid #f4e0a0;outline-offset:2px}
+.yote-square:disabled{opacity:1;cursor:default}
+.yote-piece{width:74%;aspect-ratio:1;border-radius:50%;border:2px solid #2d1d14;box-shadow:inset -5px -5px 8px #0008,inset 3px 3px 6px #fff5,0 3px 6px #0008}
+.yote-p1 .yote-piece{background:radial-gradient(circle at 30% 25%,#f6dfae,#bd8f51 68%,#6d4524)}
+.yote-p2 .yote-piece{background:radial-gradient(circle at 30% 25%,#a7818b,#a22e43 70%,#40151f)}
+.yote-actions{display:grid;gap:9px}
+#yote-status,#yote-event{text-align:center;color:var(--beige);min-height:20px}
+#yote-reactions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+#yote-reactions button{min-width:44px;min-height:44px;border-radius:9px;border:1px solid var(--border-gold);background:var(--surface);font-size:21px}
+@media(max-width:390px){.yote-board{gap:4px;padding:7px;border-width:3px}}
+
 </style>
 </head>
 <body>
@@ -932,6 +955,7 @@ select option { color:var(--cream);background:var(--surface); }
         <span class="game-emoji" aria-hidden="true">🌱</span><strong>Awalé</strong><small>2 players</small><span class="choice-tagline">Think ahead. Sow wisely.</span>
       </button>
       <button type="button" class="game-choice" data-game="dara" aria-pressed="false"><span class="game-emoji" aria-hidden="true">◈</span><strong>Dara</strong><small>2 players</small><span class="choice-tagline">Think. Align. Capture.</span></button>
+      <button type="button" class="game-choice" data-game="yote" aria-pressed="false"><span class="game-emoji" aria-hidden="true">◆</span><strong>Yoté</strong><small>2 players</small><span class="choice-tagline">Risk. Leap. Capture.</span></button>
     </div>
   </section>
   <div class="panel">
@@ -982,7 +1006,7 @@ select option { color:var(--cream);background:var(--surface); }
   <p id="lobby-game-label" class="game-label">Selected game: Shithead</p>
   <div id="lobby-switch" class="hidden">
     <label class="field" for="lobby-game"><span>Host: choose next game</span>
-      <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option><option value="awale">Awalé</option><option value="dara">Dara</option></select>
+      <select id="lobby-game"><option value="shithead">Shithead</option><option value="ludo">Ludo</option><option value="awale">Awalé</option><option value="dara">Dara</option><option value="yote">Yoté</option></select>
     </label>
     <button id="switch-game" class="btn btn-ghost" type="button">Change game</button>
     <label class="field" for="lobby-capacity" style="margin-top:12px"><span>Players in next match</span>
@@ -1165,6 +1189,33 @@ select option { color:var(--cream);background:var(--surface); }
   <div class="panel rules-block"><h3 class="r-head">Ending</h3><p>The game ends when an opponent has fewer than three pieces or no legal moves. Three repetitions of the same position and turn result in a draw. If a placement is impossible without forming an illegal line, that player passes; if neither can place, the match is drawn.</p></div>
 </section>
 
+
+<!-- ============================================================ YOTÉ -->
+<section id="screen-yote" class="shell hidden">
+  <div class="yote-top"><div class="room-chip">ROOM <b id="yote-room"></b></div>
+  <strong>YOTÉ</strong><button id="yote-refresh" class="icon-btn" type="button" aria-label="Refresh Yoté">↻</button></div>
+  <div id="yote-turn" class="yote-turn" aria-live="polite">Waiting for players…</div>
+  <div id="yote-score" class="yote-score"></div>
+  <div id="yote-board" class="yote-board" role="group" aria-label="Yoté board of thirty squares"></div>
+  <p id="yote-event" role="status" aria-live="polite"></p>
+  <div id="yote-reactions"></div>
+  <div class="yote-actions">
+    <button id="yote-open-rules" class="btn btn-ghost" type="button">How to play Yoté</button>
+    <button id="yote-rematch" class="btn btn-primary hidden" type="button">Play again in this room</button>
+    <button id="yote-switch" class="btn btn-ghost hidden" type="button">Change game in this room</button>
+    <button id="yote-home" class="btn btn-ghost" type="button">Main menu</button>
+  </div>
+  <p id="yote-status" role="status" aria-live="polite"></p>
+</section>
+<section id="screen-yote-rules" class="shell hidden">
+  <div class="rules-top"><button id="yote-rules-back" class="icon-btn" type="button" aria-label="Back">←</button>
+  <h1 class="rules-title">How to Play Yoté</h1></div>
+  <div class="panel rules-block"><h3 class="r-head">The goal</h3><p>Two players have 12 stones each and share a board of 30 squares. Remove your opponent's pieces through clever jumps.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Place or move</h3><p>On your turn, either place one reserve stone on any empty square, or move one stone already on the board to an adjacent empty square. Moves are horizontal or vertical, never diagonal.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Jump and capture</h3><p>Jump over an adjacent opposing stone, landing in the empty square directly beyond it. The jumped stone is removed, and you then remove one more opposing stone of your choice if any remain.</p></div>
+  <div class="panel rules-block"><h3 class="r-head">Winning</h3><p>Win when your opponent has no pieces available to play or no legal action. Repeating a board position three times results in a draw.</p></div>
+</section>
+
 <!-- ======================================================= LUDO RULES -->
 <section id="screen-ludo-rules" class="shell hidden">
   <div class="rules-top">
@@ -1275,4 +1326,5 @@ select option { color:var(--cream);background:var(--surface); }
 <script defer src="/ludo.js"></script>
 <script defer src="/awale.js"></script>
 <script defer src="/dara.js"></script>
+<script defer src="/yote.js"></script>
 </body></html>

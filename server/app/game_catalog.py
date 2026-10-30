@@ -23,6 +23,7 @@ GAMES: dict[str, GameSpec] = {
     "ludo": GameSpec("ludo", "Ludo", 2, 4),
     "awale": GameSpec("awale", "Awalé", 2, 2),
     "dara": GameSpec("dara", "Dara", 2, 2),
+    "yote": GameSpec("yote", "Yoté", 2, 2),
 }
 
 
