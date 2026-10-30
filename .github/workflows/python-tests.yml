@@ -2,6 +2,7 @@ name: Shithead Python tests
 on:
   push:
     branches:
+      - refactor/safe-game-catalog-20261030
       - fix/four-character-room-code-websocket-20261019
       - fix/room-passwords
       - deploy/railway-shithead-games-staging
