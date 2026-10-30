@@ -42,10 +42,15 @@ def test_capture_two_three_reverse_opposing_houses():
 
 
 def test_grand_slam_cancelled():
-    m = fixture([0,0,0,0,0,1,1,0,0,0,0,0], scores=(23,23))
+    # Six seeds from house 5 make every opposing house exactly two.
+    # Capturing all six would starve the opponent, so Abapa cancels
+    # the entire capture. Opponent still has a feeding move via house 11.
+    m = fixture([0,0,0,0,0,6,1,1,1,1,1,1], scores=(18,18))
     out = apply_awale_action(m, 0, "sow", pit=5)
-    assert out.captured == (23,23)
-    assert out.pits[6] == 2
+    assert out.captured == (18,18)
+    assert out.last_capture == ()
+    assert out.pits[6:] == (2,) * 6
+    assert out.finished is False
 
 
 def test_cannot_starve_unfed_opponent():
