@@ -19,7 +19,10 @@ const REACTIONS = ["😂", "😏", "😭", "👀", "🔥", "💀"];
 
 const roomCode = value => (value || "").trim().toUpperCase();
 function status(message) { el("status").textContent = message; }
-function tableStatus(message) { el("table-status").textContent = message; }
+function tableStatus(message) {
+  el("table-status").textContent = message;
+  el("ludo-status").textContent = message;
+}
 
 let screenBeforeRules = "screen-home";
 function show(screen) {
@@ -29,7 +32,8 @@ function show(screen) {
 function openRules() {
   screenBeforeRules = ["screen-home", "screen-lobby", "screen-table", "screen-ludo"]
     .find(id => !el(id).classList.contains("hidden")) || "screen-home";
-  show("screen-rules");
+  const game = screenBeforeRules === "screen-home" ? chosenGame : snap?.game_type;
+  show(game === "ludo" ? "screen-ludo-rules" : "screen-rules");
   window.scrollTo(0, 0);
 }
 
@@ -546,9 +550,9 @@ document.querySelectorAll(".game-choice").forEach(btn=>{
 el("switch-game").onclick=()=>sendRoomAction("select_game",{game_type:el("lobby-game").value});
 el("set-capacity").onclick=()=>sendRoomAction("set_capacity",{capacity:Number(el("lobby-capacity").value)});
 el("ludo-switch").onclick=()=>sendRoomAction("return_lobby");
-el("ludo-refresh").onclick=()=>{if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:"sync"}));};
-el("ludo-open-rules").onclick=()=>{show("screen-ludo-rules");window.scrollTo(0,0);};
-el("ludo-rules-back").onclick=()=>show("screen-ludo");
+el("ludo-refresh").onclick=refreshGame;
+el("ludo-open-rules").onclick=openRules;
+el("ludo-rules-back").onclick=()=>show(screenBeforeRules);
 selectHomeGame("shithead");
 
 el("go-create").onclick = () => {
