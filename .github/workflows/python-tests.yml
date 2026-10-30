@@ -12,6 +12,7 @@ on:
       - feature/w4-live-card-matches-20261018
   pull_request:
     branches:
+      - feature/awale-third-game-20261030
       - fix/four-character-room-code-websocket-20261019
       - deploy/railway-shithead-games-staging
       - fix/preflight-multiplayer-20261019
