@@ -1,4 +1,6 @@
-"""Jamaican Partner Dominoes (four seats, two opposing partnerships).
+"""Jamaican Dominoes: Partner (default) or four-player Cut Throat.
+
+Partner has two opposing partnerships; Cut Throat has four individual scores.
 
 Rule sources: pagat.com/domino/line/caribbean.html (Jamaica / Partner),
 jamaicans.com/dominoesjastyle/, and sixlove.app/partner-domino/.
@@ -27,6 +29,7 @@ class IllegalDominoMove(ValueError):
 @dataclass(frozen=True)
 class DominoMatch:
     hands: tuple[tuple[Bone, ...], ...]
+    mode: str = "partner"  # partner or cutthroat; immutable within a match
     chain: tuple[Bone, ...] = ()  # tiles oriented from left to right
     left_end: int | None = None
     right_end: int | None = None
@@ -40,6 +43,7 @@ class DominoMatch:
     last_hand_player: int | None = None
     last_hand_points: int = 0
     winner_team: int | None = None
+    winner_player: int | None = None  # Cut Throat match winner; no teams
     turn_number: int = 0
     event: str = ""
 
@@ -51,11 +55,17 @@ def _shuffled_hands(seed: int | None = None) -> tuple[tuple[Bone, ...], ...]:
     return tuple(tuple(tiles[i * 7:(i + 1) * 7]) for i in range(4))
 
 
-def make_domino_match(seed: int | None = None) -> DominoMatch:
+def make_domino_match(seed: int | None = None, *, mode: str = "partner") -> DominoMatch:
+    if mode not in ("partner", "cutthroat"):
+        raise ValueError("Unknown Jamaican dominoes mode.")
     hands = _shuffled_hands(seed)
     poser = next(i for i, hand in enumerate(hands) if (6, 6) in hand)
-    match = DominoMatch(hands=hands, actor=poser,
-                        event="Double-six poses the opening hand. Partners: 1 & 3 versus 2 & 4.")
+    match = DominoMatch(
+        hands=hands, mode=mode, actor=poser,
+        scores=(0, 0) if mode == "partner" else (0, 0, 0, 0),
+        event=("Double-six poses the opening hand. Partners: 1 & 3 versus 2 & 4."
+               if mode == "partner" else
+               "Cut Throat: everyone for themselves. Double-six opens."))
     assert_domino_invariants(match)
     return match
 
@@ -73,8 +83,11 @@ def legal_domino_actions(match: DominoMatch, seat: int) -> dict[str, Any]:
     if type(seat) is not int or seat not in range(4) or match.stage == "FINISHED":
         return empty
     if match.stage == "HAND_OVER":
-        empty["next_hand"] = (match.next_pose_team is None or
-                               seat % 2 == match.next_pose_team)
+        empty["next_hand"] = (
+            (match.last_hand_player is None or seat == match.last_hand_player)
+            if match.mode == "cutthroat" else
+            (match.next_pose_team is None or seat % 2 == match.next_pose_team)
+        )
         return empty
     if seat != match.actor:
         return empty
@@ -95,6 +108,21 @@ def _hard_key_finish(match: DominoMatch, bone: Bone) -> bool:
 
 def _end_hand(match: DominoMatch, team: int | None, seat: int | None,
               *, points: int = 1, reason: str) -> DominoMatch:
+    if match.mode == "cutthroat":
+        if seat is None:
+            return replace(match, stage="HAND_OVER", next_pose_team=None,
+                           last_hand_team=None, last_hand_player=None,
+                           last_hand_points=0,
+                           event=reason + " Hand tied: double-six poses next.")
+        scores = list(match.scores)
+        scores[seat] += 1  # Simple four-player race to six; no key bonus.
+        champion = seat if scores[seat] >= SIX_LOVE else None
+        return replace(match, stage="FINISHED" if champion is not None else "HAND_OVER",
+                       scores=tuple(scores), winner_player=champion,
+                       next_pose_team=None, last_hand_team=None,
+                       last_hand_player=seat, last_hand_points=1,
+                       event=reason + f" Player {seat + 1} scores 1 point." +
+                       (" SIX POINTS!" if champion is not None else ""))
     if team is None:
         return replace(match, stage="HAND_OVER", next_pose_team=None,
                        last_hand_team=None, last_hand_player=None,
@@ -126,6 +154,13 @@ def _finish_if_blocked(match: DominoMatch) -> DominoMatch:
     totals = [sum(a + b for a, b in hand) for hand in match.hands]
     least = min(totals)
     winners = [seat for seat, total in enumerate(totals) if total == least]
+    if match.mode == "cutthroat":
+        if len(winners) != 1:
+            return _end_hand(match, None, None,
+                             reason="Blocked: players tie for lowest pips.")
+        winning_seat = winners[0]
+        return _end_hand(match, None, winning_seat,
+                         reason=f"Blocked: Player {winning_seat + 1} has the fewest pips ({least}).")
     teams = {seat % 2 for seat in winners}
     if len(teams) == 2:
         return _end_hand(match, None, None,
@@ -142,11 +177,12 @@ def apply_domino_action(match: DominoMatch, seat: int, kind: str,
     if match.stage == "FINISHED":
         raise IllegalDominoMove("Six-love match has finished.")
     if match.stage == "HAND_OVER":
-        if kind != "next_hand" or (match.next_pose_team is not None and
-                                   seat % 2 != match.next_pose_team):
-            raise IllegalDominoMove("Only a member of the winning partnership can pose next.")
+        if kind != "next_hand" or not legal_domino_actions(match, seat)["next_hand"]:
+            raise IllegalDominoMove("Only an eligible player may start the next hand.")
         fresh = _shuffled_hands()
-        must_pose_six = match.next_pose_team is None
+        must_pose_six = (match.last_hand_player is None
+                         if match.mode == "cutthroat"
+                         else match.next_pose_team is None)
         first_actor = (next(i for i, hand in enumerate(fresh) if (6, 6) in hand)
                        if must_pose_six else seat)
         nxt = replace(match, hands=fresh, chain=(), left_end=None, right_end=None,
@@ -192,9 +228,11 @@ def apply_domino_action(match: DominoMatch, seat: int, kind: str,
                   turn_number=match.turn_number + 1,
                   event=f"Player {seat + 1} played {bone[0]}-{bone[1]}.")
     if not hands[seat]:
-        result = _end_hand(nxt, seat % 2, seat, points=2 if key_finish else 1,
+        key_bonus = key_finish and match.mode == "partner"
+        result = _end_hand(nxt, seat % 2 if match.mode == "partner" else None,
+                           seat, points=2 if key_bonus else 1,
                            reason=f"Domino! Player {seat + 1} emptied their hand." +
-                                  (" Key-bone finish!" if key_finish else ""))
+                                  (" Key-bone finish!" if key_bonus else ""))
     else:
         result = _finish_if_blocked(nxt)
     assert_domino_invariants(result)
@@ -202,11 +240,17 @@ def apply_domino_action(match: DominoMatch, seat: int, kind: str,
 
 
 def assert_domino_invariants(match: DominoMatch) -> None:
-    if (len(match.hands) != 4 or match.stage not in ("PLAYING", "HAND_OVER", "FINISHED")
+    if (len(match.hands) != 4 or match.mode not in ("partner", "cutthroat")
+            or match.stage not in ("PLAYING", "HAND_OVER", "FINISHED")
             or type(match.actor) is not int or match.actor not in range(4)
-            or len(match.scores) != 2 or any(type(x) is not int or x < 0 for x in match.scores)
+            or len(match.scores) != (2 if match.mode == "partner" else 4)
+            or any(type(x) is not int or x < 0 for x in match.scores)
             or match.next_pose_team not in (None, 0, 1)
-            or match.winner_team not in (None, 0, 1)):
+            or match.winner_team not in (None, 0, 1)
+            or match.winner_player not in (None, 0, 1, 2, 3)
+            or (match.mode == "partner" and match.winner_player is not None)
+            or (match.mode == "cutthroat" and
+                (match.winner_team is not None or match.next_pose_team is not None))):
         raise ValueError("Invalid partner dominoes metadata.")
     raw = [tuple(sorted(b)) for hand in match.hands for b in hand]
     raw += [tuple(sorted(b)) for b in match.chain]
@@ -221,17 +265,21 @@ def assert_domino_invariants(match: DominoMatch) -> None:
             raise ValueError("Domino layout ends do not match.")
     elif match.left_end is not None or match.right_end is not None:
         raise ValueError("Empty domino layout cannot have open ends.")
-    if match.stage == "FINISHED" and match.winner_team is None:
-        raise ValueError("Completed six-love match has no winning team.")
+    if (match.stage == "FINISHED" and
+        (match.winner_team is None if match.mode == "partner"
+         else match.winner_player is None)):
+        raise ValueError("Completed domino match has no winner.")
 
 
 def public_domino_view(match: DominoMatch) -> dict[str, Any]:
     return {
-        "game_type": "dominoes", "phase": "FINISHED" if match.stage == "FINISHED" else "PLAYING",
+        "game_type": "dominoes", "mode": match.mode,
+        "phase": "FINISHED" if match.stage == "FINISHED" else "PLAYING",
         "stage": match.stage, "actor": match.actor, "chain": [list(b) for b in match.chain],
         "ends": [match.left_end, match.right_end],
         "hand_counts": [len(hand) for hand in match.hands],
         "scores": list(match.scores), "winner_team": match.winner_team,
+        "winner_player": match.winner_player,
         "last_hand_team": match.last_hand_team, "last_hand_player": match.last_hand_player,
         "last_hand_points": match.last_hand_points, "next_pose_team": match.next_pose_team,
         "hand_number": match.hand_number, "turn_number": match.turn_number,
@@ -253,6 +301,7 @@ def dump_domino(match: DominoMatch) -> dict[str, Any]:
 def restore_domino(data: dict[str, Any]) -> DominoMatch:
     restored = DominoMatch(
         hands=tuple(tuple(tuple(b) for b in hand) for hand in data["hands"]),
+        mode=data.get("mode", "partner"),
         chain=tuple(tuple(b) for b in data.get("chain", [])),
         left_end=data.get("left_end"), right_end=data.get("right_end"),
         actor=data["actor"], stage=data.get("stage", "PLAYING"),
@@ -262,7 +311,8 @@ def restore_domino(data: dict[str, Any]) -> DominoMatch:
         last_hand_team=data.get("last_hand_team"),
         last_hand_player=data.get("last_hand_player"),
         last_hand_points=data.get("last_hand_points", 0),
-        winner_team=data.get("winner_team"), turn_number=data.get("turn_number", 0),
+        winner_team=data.get("winner_team"), winner_player=data.get("winner_player"),
+        turn_number=data.get("turn_number", 0),
         event=data.get("event", ""),
     )
     assert_domino_invariants(restored)
