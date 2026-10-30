@@ -25,18 +25,19 @@ function tableStatus(message) {
   el("awale-status").textContent = message;
   el("dara-status").textContent = message;
   el("yote-status").textContent = message;
+  el("domino-status").textContent = message;
 }
 
 let screenBeforeRules = "screen-home";
 function show(screen) {
-  ["screen-home", "screen-lobby", "screen-table", "screen-ludo", "screen-awale", "screen-dara", "screen-yote", "screen-rules", "screen-ludo-rules", "screen-awale-rules", "screen-dara-rules"].forEach(id =>
+  ["screen-home", "screen-lobby", "screen-table", "screen-ludo", "screen-awale", "screen-dara", "screen-yote", "screen-dominoes", "screen-dominoes-rules", "screen-rules", "screen-ludo-rules", "screen-awale-rules", "screen-dara-rules"].forEach(id =>
     el(id).classList.toggle("hidden", id !== screen));
 }
 function openRules() {
-  screenBeforeRules = ["screen-home", "screen-lobby", "screen-table", "screen-ludo", "screen-awale", "screen-dara", "screen-yote"]
+  screenBeforeRules = ["screen-home", "screen-lobby", "screen-table", "screen-ludo", "screen-awale", "screen-dara", "screen-yote", "screen-dominoes"]
     .find(id => !el(id).classList.contains("hidden")) || "screen-home";
   const game = screenBeforeRules === "screen-home" ? chosenGame : snap?.game_type;
-  show(game === "yote" ? "screen-yote-rules" : game === "dara" ? "screen-dara-rules" : game === "awale" ? "screen-awale-rules" : game === "ludo" ? "screen-ludo-rules" : "screen-rules");
+  show(game === "dominoes" ? "screen-dominoes-rules" : game === "yote" ? "screen-yote-rules" : game === "dara" ? "screen-dara-rules" : game === "awale" ? "screen-awale-rules" : game === "ludo" ? "screen-ludo-rules" : "screen-rules");
   window.scrollTo(0, 0);
 }
 
@@ -107,6 +108,7 @@ function render(x) {
   const isAwale = x.game_type === "awale";
   const isDara = x.game_type === "dara";
   const isYote = x.game_type === "yote";
+  const isDominoes = x.game_type === "dominoes";
   const hostPrompt = el("host-join-prompt");
   const lateNames = (x.pending_joiners || [])
     .map(i => x.players?.[i]?.name || "A player");
@@ -125,10 +127,11 @@ function render(x) {
     reactionTimer = setTimeout(() => toast.classList.add("hidden"), 2400);
   }
 
-  const reading = !el("screen-rules").classList.contains("hidden") || !el("screen-ludo-rules").classList.contains("hidden") || !el("screen-awale-rules").classList.contains("hidden") || !el("screen-dara-rules").classList.contains("hidden") || !el("screen-yote-rules").classList.contains("hidden");
+  const reading = !el("screen-rules").classList.contains("hidden") || !el("screen-ludo-rules").classList.contains("hidden") || !el("screen-awale-rules").classList.contains("hidden") || !el("screen-dara-rules").classList.contains("hidden") || !el("screen-yote-rules").classList.contains("hidden") || !el("screen-dominoes-rules").classList.contains("hidden");
   if (x.game) {
-    if (!reading) show(isYote ? "screen-yote" : isDara ? "screen-dara" : isAwale ? "screen-awale" : isLudo ? "screen-ludo" : "screen-table");
-    if (isYote) renderYote(x.game);
+    if (!reading) show(isDominoes ? "screen-dominoes" : isYote ? "screen-yote" : isDara ? "screen-dara" : isAwale ? "screen-awale" : isLudo ? "screen-ludo" : "screen-table");
+    if (isDominoes) renderDominoes(x.game);
+    else if (isYote) renderYote(x.game);
     else if (isDara) renderDara(x.game);
     else if (isAwale) renderAwale(x.game);
     else if (isLudo) {
@@ -140,12 +143,12 @@ function render(x) {
 
   if (!reading) show("screen-lobby");
   el("room-label").textContent = x.room_id;
-  el("lobby-game-label").textContent = "Selected game: " + (isYote ? "Yoté" : isDara ? "Dara" : isAwale ? "Awalé" : isLudo ? "Ludo" : "Shithead");
+  el("lobby-game-label").textContent = "Selected game: " + (isDominoes ? "Jamaican Dominoes" : isYote ? "Yoté" : isDara ? "Dara" : isAwale ? "Awalé" : isLudo ? "Ludo" : "Shithead");
   el("lobby-switch").classList.toggle("hidden", seatIndex !== x.host_seat);
   el("lobby-game").value = x.game_type || "shithead";
-  const limit = isAwale || isDara || isYote ? 2 : isLudo ? 4 : 6;
+  const limit = isAwale || isDara || isYote ? 2 : isLudo || isDominoes ? 4 : 6;
   const picker = el("lobby-capacity");
-  if (picker.options.length !== limit - 1) picker.replaceChildren(...Array.from({length:limit-1},(_,i)=>{const o=document.createElement("option");o.value=String(i+2);o.textContent=String(i+2);return o;}));
+  if (picker.options.length !== limit - 1) picker.replaceChildren(...Array.from({length:isDominoes?1:limit-1},(_,i)=>{const o=document.createElement("option");o.value=String(i+(isDominoes?4:2));o.textContent=o.value;return o;}));
   picker.value=String(x.capacity);
   const ul = el("players");
   ul.replaceChildren();
@@ -547,11 +550,11 @@ function selectHomeGame(game) {
   });
   const capacity = el("capacity");
   const oldValue = Number(capacity.value);
-  capacity.replaceChildren(...Array.from({length:((game==="awale"||game==="dara"||game==="yote")?1:game==="ludo"?3:5)},(_,i)=>{
-    const option=document.createElement("option"); option.value=String(i+2);
+  capacity.replaceChildren(...Array.from({length:((game==="awale"||game==="dara"||game==="yote"||game==="dominoes")?1:game==="ludo"?3:5)},(_,i)=>{
+    const option=document.createElement("option"); option.value=String(i+(game==="dominoes"?4:2));
     option.textContent=String(i+2);return option;
   }));
-  capacity.value=String(((game==="awale"||game==="dara"||game==="yote")?2:Math.min(oldValue,game==="ludo"?4:6)));
+  capacity.value=String(((game==="awale"||game==="dara"||game==="yote")?2:game==="dominoes"?4:Math.min(oldValue,game==="ludo"?4:6)));
 }
 document.querySelectorAll(".game-choice").forEach(btn=>{
   btn.onclick=()=>selectHomeGame(btn.dataset.game);
