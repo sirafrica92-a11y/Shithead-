@@ -1,0 +1,25 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'games.jestertable.preview'
+    compileSdk 36
+
+    defaultConfig {
+        // TEST ONLY. The owner has NOT selected a permanent Play package ID.
+        applicationId 'games.jestertable.preview'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0-preview'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
+}

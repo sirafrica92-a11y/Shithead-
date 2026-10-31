@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SH Games (Test)</string>
+    <!-- Escaped Android string resource containing the app-to-website relation. -->
+    <string name="asset_statements">[{\"relation\":[\"delegate_permission/common.handle_all_urls\"],\"target\":{\"namespace\":\"web\",\"site\":\"https://play.shithead.games\"}}]</string>
+</resources>
