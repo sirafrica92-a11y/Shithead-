@@ -31,6 +31,7 @@ class SoloAwaleSession:
     token: str
     match: AwaleMatch
     version: int = 0
+    action_trace: list[dict] = field(default_factory=list)
     last_active: float = field(default_factory=time.monotonic)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -56,6 +57,7 @@ def _snapshot(session: SoloAwaleSession) -> dict:
         "game": private_awale_view(session.match, 0),
         "players": ["You", "Computer"],
         "solo": True,
+        "computer_actions": list(session.action_trace),
     }
 
 
@@ -99,11 +101,18 @@ def _best_bot_pit(match: AwaleMatch) -> int:
 
 
 def _computer_reply(session: SoloAwaleSession) -> None:
+    session.action_trace = []
     match = session.match
     if not match.finished and match.actor == 1:
         move = _best_bot_pit(match)
         session.match = apply_awale_action(match, 1, "sow", pit=move)
         session.version += 1
+        captured = session.match.captured[1] - match.captured[1]
+        session.action_trace.append({
+            "message": f"Computer chose house {move + 1}, sowed {match.pits[move]} seeds"
+                       + (f" and captured {captured} seeds." if captured else "."),
+            "game": private_awale_view(session.match, 0),
+        })
 
 
 async def _require_session(key: str, token: str) -> SoloAwaleSession:
@@ -165,7 +174,9 @@ async def resume_solo_awale(
     async with session.lock:
         _computer_reply(session)
         session.last_active = time.monotonic()
-        return _no_store(_snapshot(session))
+        state = _snapshot(session)
+        state["computer_actions"] = []
+        return _no_store(state)
 
 
 @router.post("/api/solo/awale/{key}/reset")
