@@ -38,6 +38,7 @@ function bars(target,items,nameKey,countKey){
 }
 function render(data) {
   const overview=data.overview;
+  el("capacity-rejections").textContent=fmt.format(overview.capacity_rejections||0);
   el("views").textContent=fmt.format(overview.page_views);
   el("rooms").textContent=fmt.format(overview.rooms_created);
   el("starts").textContent=fmt.format(overview.matches_started);
