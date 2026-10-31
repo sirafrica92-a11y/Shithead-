@@ -7,27 +7,35 @@ const starts={red:0,yellow:26};
 let session=null,busy=false;
 function put(text){$("error").textContent=text;}
 let displayFrame=null;
+let skippingCpu=false;
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function showComputerTurns(result){
  const steps=result.computer_actions||[];
+ const log=$("cpu-log");
+ log.replaceChildren();
  if(!steps.length)return;
+ const skip=$("skip-cpu");
+ skippingCpu=false;
+ skip.classList.remove("hidden");
  const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
- for(const step of steps){
-  displayFrame=step.game;
+ try {
+  for(const step of steps){
+   const item=document.createElement("li");
+   item.textContent=step.message;
+   log.append(item);
+   displayFrame=step.game;
+   render();
+   $("event").textContent=step.message;
+   if(!reduced&&!skippingCpu)await sleep(950);
+  }
+ } finally {
+  skip.classList.add("hidden");
+  displayFrame=null;
   render();
-  $("event").textContent=step.message;
-  if(!reduced)await sleep(950);
  }
- displayFrame=null;
- render();
 }
+$("skip-cpu").onclick=()=>{skippingCpu=true;};
 
-async function api(url,options={}){
- const response=await fetch(url,{cache:"no-store",...options});
- let body;try{body=await response.json();}catch{throw Error("Server did not respond correctly");}
- if(!response.ok){const error=new Error(typeof body.detail==="string"?body.detail:"Server rejected that request");error.status=response.status;throw error;}
- return body;
-}
 function saved(){try{const s=JSON.parse(sessionStorage.getItem("shithead-solo-ludo"));return s?.id&&s?.token?s:null;}catch{return null;}}
 function remember(){try{if(session)sessionStorage.setItem("shithead-solo-ludo",JSON.stringify({id:session.id,token:session.token}));}catch{ /* private browsing */ }}
 function forget(){try{sessionStorage.removeItem("shithead-solo-ludo");}catch{ /* private browsing */ }}
