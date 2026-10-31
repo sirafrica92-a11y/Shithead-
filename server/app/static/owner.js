@@ -45,9 +45,11 @@ function render(data) {
   el("ends").textContent=fmt.format(overview.matches_completed);
   el("live-rooms").textContent=fmt.format(data.live.active_rooms);
   el("live-seats").textContent=fmt.format(data.live.connected_seats);
+  el("allocated-rooms").textContent=fmt.format(data.live.rooms_in_memory);
+  el("room-limit").textContent=fmt.format(data.live.room_limit);
   bars("ranking",data.games,"name","matches_started");
-  rows("game-table",data.games,["name","rooms_created","matches_started","matches_completed"]);
-  rows("daily-table",data.daily.slice(-31).reverse(),["date","page_views","rooms_created","matches_started","matches_completed"]);
+  rows("game-table",data.games,["name","rooms_created","matches_started","matches_completed","capacity_rejections"]);
+  rows("daily-table",data.daily.slice(-31).reverse(),["date","page_views","rooms_created","matches_started","matches_completed","capacity_rejections"]);
   bars("sources",data.sources,"source","page_views");
   const domino=data.games.find(g=>g.key==="dominoes");
   const modes=domino?Object.entries(domino.modes).map(([key,v])=>({
