@@ -23,7 +23,7 @@ function renderAwale(g) {
     " captured  ·  "+(snap.players[1]?.name||"Player 2")+": "+g.captured[1]+" captured";
   el("awale-event").textContent=done && winner!==null
     ?(snap.players[winner]?.name||"Winner")+" won with "+g.captured[winner]+" captured seeds ("+g.captured.join("–")+")."
-    :g.event||"";
+    :namedGameEvent(g.event);
   el("awale-board").replaceChildren();
   const legal=g.your_legal_pits||[];
   for (const row of [[11,10,9,8,7,6],[0,1,2,3,4,5]]) {
