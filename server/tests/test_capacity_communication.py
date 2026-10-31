@@ -24,6 +24,12 @@ def test_full_room_allocation_returns_actionable_503_without_fake_queue(monkeypa
         assert client.get(f"/api/rooms/{room}").status_code == 200
         summary = client.get("/owner/api/analytics",headers=auth()).json()
         assert summary["overview"]["capacity_rejections"] == 1
+        assert summary["live"]["rooms_in_memory"] == 1
+        assert summary["live"]["room_limit"] == 1
+        assert summary["daily"][-1]["capacity_rejections"] == 1
+        owner_page = client.get("/owner/analytics", headers=auth()).text
+        assert 'id="room-limit"' in owner_page
+        assert 'id="allocated-rooms"' in owner_page
         assert summary["overview"]["rooms_created"] == 1
         assert summary["overview"]["players_joined"] == 2
         assert next(g for g in summary["games"] if g["key"] == "awale")["capacity_rejections"] == 1
