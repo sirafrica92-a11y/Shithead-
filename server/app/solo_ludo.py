@@ -43,6 +43,11 @@ class SoloAction(BaseModel):
     piece: int | None = None
 
 
+class ResetAction(BaseModel):
+    token: str
+    version: int
+
+
 def _snapshot(session: Session) -> dict:
     state = private_ludo_view(session.match, 0)
     return {
@@ -131,6 +136,20 @@ async def create_solo_ludo():
 async def resume_solo_ludo(key: str, x_solo_token: str | None = Header(default=None)):
     session = await _find(key, x_solo_token or "")
     async with session.lock:
+        _bot_play(session)
+        session.last_active = time.monotonic()
+        return _snapshot(session)
+
+
+@router.post("/api/solo/ludo/{key}/reset")
+async def reset_solo_ludo(key: str, payload: ResetAction):
+    """Reuse a session for New Game / Play Again without filling the solo limit."""
+    session = await _find(key, payload.token)
+    async with session.lock:
+        if payload.version != session.version:
+            raise HTTPException(409, "Board changed; refresh the match")
+        session.match = make_ludo_match(2)
+        session.version += 1
         _bot_play(session)
         session.last_active = time.monotonic()
         return _snapshot(session)
