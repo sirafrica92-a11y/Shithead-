@@ -98,3 +98,44 @@ def test_ludo_dice_game_engine_unchanged():
         rolled=apply_ludo_action(prepared,seat,"roll",forced_roll=6)
         assert rolled.last_roll==6
         assert rolled.stage=="MOVE"
+
+
+def test_replay_reuses_session_and_preserves_multiplayer_slots(tmp_path):
+    with TestClient(create_app(db_path=tmp_path / "rooms.sqlite3")) as c:
+        original = c.post("/api/solo/ludo").json()
+        key, token = original["id"], original["token"]
+        version = original["version"]
+        assert c.post(f"/api/solo/ludo/{key}/reset",
+                      json={"token":"x"*43,"version":version}).status_code == 404
+        for _ in range(10):
+            resp = c.post(f"/api/solo/ludo/{key}/reset",
+                          json={"token":token,"version":version})
+            assert resp.status_code == 200
+            version = resp.json()["version"]
+            assert len(solo_ludo._sessions) == 1
+        assert c.post(f"/api/solo/ludo/{key}/reset",
+                      json={"token":token,"version":original["version"]}).status_code == 409
+        assert not c.app.state.room_store.rooms
+
+
+def test_full_two_player_match_with_computer_policy(monkeypatch):
+    from dataclasses import replace
+    import random
+    rng = random.Random(1234)
+    monkeypatch.setattr(solo_ludo.secrets, "randbelow", rng.randrange)
+    match = make_ludo_match(2, seed=7)
+    for _ in range(20000):
+        if match.winner is not None:
+            break
+        seat = match.actor
+        if match.stage == "ROLL":
+            match = apply_ludo_action(match, seat, "roll")
+        elif seat == 1:
+            match = apply_ludo_action(match, seat, "move",
+                                      token=solo_ludo._best_piece(match))
+        else:
+            choices = solo_ludo.legal_tokens(match, seat, match.die)
+            choice = max(choices, key=lambda i: match.players[seat].tokens[i])
+            match = apply_ludo_action(match, seat, "move", token=choice)
+    assert match.winner in (0,1)
+    assert all(t == 56 for t in match.players[match.winner].tokens)
