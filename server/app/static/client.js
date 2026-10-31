@@ -55,6 +55,7 @@ function loadSeat() {
   return null;
 }
 function saveSeat(room, token, seat, name) {
+  sessionRevoked = false; // A newly issued, explicitly saved seat is independent of an expired one.
   try { sessionStorage.setItem(KEY, JSON.stringify({ room, token, seat, name })); }
   catch (_) { status("Browser session storage blocked; do not refresh during the match."); }
 }
