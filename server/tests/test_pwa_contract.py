@@ -52,7 +52,7 @@ def test_approved_logo_files_have_true_png_dimensions():
     }
     for filename, expected in paths.items():
         raw = (STATIC / "brand" / filename).read_bytes()
-        assert raw[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
+        assert raw[:8] == bytes.fromhex("89504e470d0a1a0a")
         assert raw[12:16] == b"IHDR"
         assert struct.unpack(">II", raw[16:24]) == expected
 
