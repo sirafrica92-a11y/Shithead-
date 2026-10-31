@@ -36,6 +36,12 @@ async function showComputerTurns(result){
 }
 $("skip-cpu").onclick=()=>{skippingCpu=true;};
 
+async function api(url,options={}){
+ const response=await fetch(url,{cache:"no-store",...options});
+ let body;try{body=await response.json();}catch{throw Error("Server did not respond correctly");}
+ if(!response.ok){const error=new Error(typeof body.detail==="string"?body.detail:"Server rejected that request");error.status=response.status;throw error;}
+ return body;
+}
 function saved(){try{const s=JSON.parse(sessionStorage.getItem("shithead-solo-ludo"));return s?.id&&s?.token?s:null;}catch{return null;}}
 function remember(){try{if(session)sessionStorage.setItem("shithead-solo-ludo",JSON.stringify({id:session.id,token:session.token}));}catch{ /* private browsing */ }}
 function forget(){try{sessionStorage.removeItem("shithead-solo-ludo");}catch{ /* private browsing */ }}
