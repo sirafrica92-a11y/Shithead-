@@ -177,6 +177,10 @@ function render(x) {
     li.append(av, nm, pill);
     ul.appendChild(li);
   });
+  if (isDominoes && x.domino_mode !== "cutthroat") {
+    const teamText = [0,1].map(t => "Team "+(t+1)+": "+[t,t+2].map(i=>x.players[i]?.name||"Waiting for partner").join(" & ")).join("  |  ");
+    el("lobby-game-label").textContent = "Jamaican Dominoes · "+teamText;
+  }
   el("phase").textContent = x.all_ready
     ? "All players ready"
     : x.players.length + " of " + x.capacity + " seated";
