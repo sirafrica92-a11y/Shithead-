@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 from server.app.lobby import (
-    MAX_ROOM_CODE_INPUT, RateLimiter, RoomStore, Seat, broadcast, remember_request,
+    MAX_ROOM_CODE_INPUT, RateLimiter, RoomStore, RoomCapacityReached, Seat, broadcast, remember_request,
 )
 from server.app.persistence import token_digest
 from server.app.gameplay import apply_match_action, make_match, UndecidedStartTie
@@ -301,6 +301,16 @@ def create_app(
             store.persist(room)
             analytics.record("rooms_created", game=room.game_type,
                              mode=room.domino_mode if room.game_type == "dominoes" else "")
+        except RoomCapacityReached as exc:
+            analytics.record("capacity_rejections", game=payload.game_type,
+                             mode=payload.domino_mode if payload.game_type == "dominoes" else "")
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "room_capacity_reached", "rooms_allocated": exc.used,
+                        "room_limit": exc.limit, "retry_after_seconds": 300,
+                        "message": "Room creation is temporarily at capacity. Existing room codes can still be joined. Try again in a few minutes; availability is not guaranteed."},
+                headers={"Retry-After": "300"},
+            ) from None
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
         body = {"room_id": room.id, "capacity": room.capacity, "game_type": room.game_type,
