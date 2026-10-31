@@ -32,6 +32,7 @@ from server.app.dominoes import make_domino_match, apply_domino_action, IllegalD
 from server.app.game_catalog import game_spec, capacity_after_switch
 from server.app.analytics import AnalyticsStore, traffic_source
 from server.app.owner_auth import verify_google_token
+from server.app.owner_operations import OperationsStore
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
 
@@ -89,6 +90,8 @@ def create_app(
     )
     analytics = AnalyticsStore(analytics_location)
     app.state.analytics_store = analytics
+    operations = OperationsStore(Path(db_path).expanduser().with_name('owner_operations.sqlite3') if db_path is not None else None)
+    app.state.owner_operations = operations
     admin_password = os.getenv("SHITHEAD_ADMIN_PASSWORD", "")
     google_client_id = os.getenv("SHITHEAD_GOOGLE_CLIENT_ID", "").strip()
     google_owner_email = os.getenv("SHITHEAD_OWNER_EMAIL", "").strip().lower()
@@ -278,6 +281,61 @@ def create_app(
             Path(__file__).parent / "static" / "owner.js",
             media_type="application/javascript", headers=ADMIN_HEADERS,
         )
+
+    @app.get("/owner/api/operations", include_in_schema=False)
+    async def owner_operations_list(request: Request):
+        check_owner(request)
+        try:
+            records = operations.list(limit=100)
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Operational log unavailable") from None
+        return Response(content=json.dumps({"records": records}),
+                        media_type="application/json", headers=ADMIN_HEADERS)
+
+    @app.post("/owner/api/operations", include_in_schema=False, status_code=201)
+    async def owner_operations_create(request: Request):
+        check_owner(request)
+        _owner_post_origin(request)
+        try:
+            payload = await request.json()
+        except (ValueError, UnicodeDecodeError):
+            raise HTTPException(status_code=400, detail="Invalid JSON") from None
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="Invalid operation")
+        try:
+            record = operations.create(
+                payload.get("kind"), payload.get("title"), payload.get("description", ""),
+                payload.get("status"),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except (TypeError, AttributeError):
+            raise HTTPException(status_code=422, detail="Invalid record fields") from None
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Operational log unavailable") from None
+        return Response(content=json.dumps(record), media_type="application/json",
+                        status_code=201, headers=ADMIN_HEADERS)
+
+    @app.post("/owner/api/operations/{record_id}/status", include_in_schema=False)
+    async def owner_operations_status(record_id: int, request: Request):
+        check_owner(request)
+        _owner_post_origin(request)
+        try:
+            payload = await request.json()
+        except (ValueError, UnicodeDecodeError):
+            raise HTTPException(status_code=400, detail="Invalid JSON") from None
+        if not isinstance(payload, dict) or not isinstance(payload.get("status"), str):
+            raise HTTPException(status_code=422, detail="Invalid status")
+        try:
+            record = operations.change_status(record_id, payload["status"])
+        except LookupError:
+            raise HTTPException(status_code=404, detail="Record not found") from None
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Operational log unavailable") from None
+        return Response(content=json.dumps(record), media_type="application/json",
+                        headers=ADMIN_HEADERS)
 
     @app.get("/owner/api/analytics", include_in_schema=False)
     async def owner_metrics(request: Request, days: int = 30):
