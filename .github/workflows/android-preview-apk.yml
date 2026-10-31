@@ -26,13 +26,22 @@ jobs:
           java-version: '17'
       # Ubuntu hosted runners already provide Android cmdline tools. Avoid the
       # setup-android@v3 'sdkmanager tools' legacy package (removed upstream).
-      - name: Confirm Android SDK tools on GitHub runner
+      - name: Use preinstalled Android SDK manager and accept licenses
+        shell: bash
         run: |
-          echo "SDK at ${ANDROID_HOME}"
-          command -v sdkmanager
-          sdkmanager --version
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            echo "::error::sdkmanager missing at ${SDKMANAGER}"
+            exit 1
+          fi
+          "$SDKMANAGER" --version
+          "$SDKMANAGER" --licenses < <(yes) > /dev/null
       - name: Install Android API 36
-        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-36" "build-tools;36.0.0"
       - name: Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
