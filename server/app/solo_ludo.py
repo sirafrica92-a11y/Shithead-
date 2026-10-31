@@ -7,14 +7,14 @@ import hmac
 import secrets
 import time
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pathlib import Path
 
 from server.app.ludo import (
     IllegalLudoMove, LudoMatch, apply_ludo_action, legal_tokens,
-    make_ludo_match, private_ludo_view, track_square, SAFE, HOME,
+    make_ludo_match, private_ludo_view, HOME,
 )
 
 router = APIRouter()
@@ -128,8 +128,8 @@ async def create_solo_ludo():
 
 
 @router.get("/api/solo/ludo/{key}")
-async def resume_solo_ludo(key: str, token: str):
-    session = await _find(key, token)
+async def resume_solo_ludo(key: str, x_solo_token: str | None = Header(default=None)):
+    session = await _find(key, x_solo_token or "")
     async with session.lock:
         _bot_play(session)
         session.last_active = time.monotonic()
