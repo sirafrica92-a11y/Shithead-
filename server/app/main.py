@@ -117,7 +117,8 @@ def create_app(
 
     def check_owner(request: Request) -> None:
         # No owner portal at all until a strong password is configured.
-        if not admin_password:
+        # Refuse accidental short credentials on a public internet endpoint.
+        if len(admin_password) < 20:
             raise HTTPException(status_code=404, detail="not found")
         provided = request.headers.get("authorization", "")
         valid = False
