@@ -43,17 +43,19 @@ def test_worker_is_network_only_never_caches_seat_or_room_data(tmp_path):
         assert c.get("/health").json() == {"status":"ok"}
 
 def test_approved_logo_files_have_true_png_dimensions():
-    # Generated from the original jester, not invented placeholders.
-    from PIL import Image
+    # Standard-library PNG header check (no Pillow in production dependencies).
+    import struct
     paths = {
         "shithead-logo.png": (512,512),
         "shithead-logo-192.png": (192,192),
         "shithead-maskable-512.png": (512,512),
     }
     for filename, expected in paths.items():
-        with Image.open(STATIC / "brand" / filename) as img:
-            assert img.size == expected
-            assert img.format == "PNG"
+        raw = (STATIC / "brand" / filename).read_bytes()
+        assert raw[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
+        assert raw[12:16] == b"IHDR"
+        assert struct.unpack(">II", raw[16:24]) == expected
+
 
 def test_no_android_permission_or_assetlinks_credentials_in_source():
     manifest = json.loads((STATIC / "manifest.webmanifest").read_text(encoding="utf-8"))
