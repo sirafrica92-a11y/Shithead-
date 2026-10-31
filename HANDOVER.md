@@ -82,6 +82,13 @@ Owner-only endpoints: GET/POST `/owner/api/operations`, POST `/owner/api/operati
 - **Release gate:** PR #28 must have green full regression and all JavaScript checks, independent review of bot state and auth, mobile/browser verification and owner merge approval; do not merge or deploy solely on a passing CI result. Changes on draft branch have **not** gone live.
 - Progression after Ludo validation: Awalé, Dara, Yoté, Shithead custom-rule bot, and Jamaican partner Dominoes. Build one separately reviewed game at a time; don't accidentally mix rules or imply that all six Solo Play modes already exist.
 
+## Awalé Solo Play — PR #29 (draft; not in production)
+- Built after the Ludo Solo Play release. Owner-approved feature sequence is Ludo → Awalé → Dara → Yoté → Shithead → Jamaican Dominoes.
+- Awalé uses the unchanged `server/app/awale.py` Abapa engine; bot selects legal feeding/capture moves using a shallow look-ahead. Human controls south 0–5 houses; computer north 6–11. New endpoints `/solo/awale`, `/api/solo/awale` and scoped session actions.
+- Solo sessions are RAM-only (separate from multiplayer `RoomStore`, no new /data schema), with bearer tokens, expected-version guarding, 2-hour idle expiry, cap and same-session rematch.
+- **Release gate:** run GitHub Actions full suite, new-game full-match simulations, auth and invalid/out-of-turn cases, JS syntax, responsive browser visuals and six-game regression review. PR remains draft until verified; do not merge/deploy or modify live rooms solely to test this draft.
+- **Limitations:** online-only, ephemeral match on Railway restart, no difficulty selector yet, no analytics integration. Document these plainly rather than claiming offline play or persistent solo save data.
+
 ## NON-NEGOTIABLE ENGINEERING RULES
 - The owner defines gameplay decisions. Protect established Shithead rules and Ludo rules, even where standard variants differ.
 - Reuse already working multiplayer rooms, invitation codes, seat auth/token isolation, session recovery, WebSockets, serialization, rematches, reactions and the gold/cream/crimson design.
