@@ -24,6 +24,13 @@ def test_install_metadata_served_and_full_game_home_still_available(tmp_path):
         assert {x["sizes"] for x in data["icons"]} == {"192x192", "512x512"}
         for x in data["icons"]:
             assert x["src"].startswith("/brand/")
+            # Installation needs real, accessible images: the FastAPI
+            # /brand allowlist is intentionally strict.
+            icon = c.get(x["src"])
+            assert icon.status_code == 200, x["src"]
+            assert icon.headers["content-type"].startswith("image/png")
+            assert icon.content.startswith(bytes.fromhex("89504e470d0a1a0a"))
+        assert c.get("/brand/not-an-asset.png").status_code == 404
         assert len([x for x in data["icons"] if x.get("purpose")=="maskable"]) == 1
 
 def test_worker_is_network_only_never_caches_seat_or_room_data(tmp_path):
