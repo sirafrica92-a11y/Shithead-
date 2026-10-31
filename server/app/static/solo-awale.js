@@ -2,6 +2,22 @@
 const el=id=>document.getElementById(id);
 let session=null,busy=false;
 function showError(msg){el("error").textContent=msg;}
+let displayFrame=null;
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function showComputerTurns(result){
+ const steps=result.computer_actions||[];
+ if(!steps.length)return;
+ const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+ for(const step of steps){
+  displayFrame=step.game;
+  render();
+  el("event").textContent=step.message;
+  if(!reduced)await sleep(1100);
+ }
+ displayFrame=null;
+ render();
+}
+
 async function api(url,opts={}){
  const response=await fetch(url,{cache:"no-store",...opts});
  let json;try{json=await response.json();}catch{throw Error("Server response unavailable");}
@@ -13,7 +29,7 @@ function remember(){try{if(session)sessionStorage.setItem("shithead-solo-awale",
 function forget(){try{sessionStorage.removeItem("shithead-solo-awale");}catch{}}
 function render(){
  if(!session)return;
- const g=session.game,over=g.phase==="FINISHED",mine=g.actor===0;
+ const g=displayFrame||session.game,over=g.phase==="FINISHED",mine=g.actor===0;
  el("score-you").textContent=g.captured[0];el("score-computer").textContent=g.captured[1];
  el("turn").textContent=over?(g.winner===null?"Awalé ends in a draw":g.winner===0?"You win!":"Computer wins!"):(mine?"Your turn · choose a house":"Computer's turn");
  el("event").textContent=g.event||"";
