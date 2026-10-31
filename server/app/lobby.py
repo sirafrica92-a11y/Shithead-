@@ -49,6 +49,15 @@ def is_room_code(value: str) -> bool:
     return bool(ROOM_CODE_RE.match(value))
 
 
+class RoomCapacityReached(ValueError):
+    """All allocated room slots are occupied; not all are necessarily active."""
+
+    def __init__(self, *, used: int, limit: int):
+        self.used = used
+        self.limit = limit
+        super().__init__("room allocation limit reached")
+
+
 class RateLimiter:
     """Fixed-window limiter, keyed by client, to make code guessing impractical.
 
@@ -282,7 +291,7 @@ class RoomStore:
             raise ValueError("rooms require 2 to 6 players")
         async with self.lock:
             if len(self.rooms) >= self.max_rooms:
-                raise ValueError("development room limit reached")
+                raise RoomCapacityReached(used=len(self.rooms), limit=self.max_rooms)
             room = Room(id=self._allocate_code(), capacity=capacity)
             self.rooms[room.id] = room
             self.persist(room)
