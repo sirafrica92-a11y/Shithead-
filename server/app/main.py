@@ -464,6 +464,7 @@ def create_app(
     # design/references/; these are display copies only.
     BRAND = {
         "shithead-logo.png", "shithead-logo-180.png", "favicon.png",
+        "shithead-logo-192.png", "shithead-maskable-512.png",
     }
 
     @app.get("/brand/{name}", include_in_schema=False)
