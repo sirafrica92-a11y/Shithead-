@@ -19,6 +19,12 @@ const REACTIONS = ["😂", "😏", "😭", "👀", "🔥", "💀"];
 
 const roomCode = value => (value || "").trim().toUpperCase();
 function status(message) { el("status").textContent = message; }
+function namedGameEvent(message) {
+  // UI-only: authoritative engine events and hidden state remain unchanged.
+  return String(message || "").replace(/Player ([1-6])\b/g, (original, seat) =>
+    snap?.players?.[Number(seat)-1]?.name || original);
+}
+
 function tableStatus(message) {
   el("table-status").textContent = message;
   el("ludo-status").textContent = message;
