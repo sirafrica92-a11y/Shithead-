@@ -116,6 +116,12 @@ done
 
 **Known verification limits:** an intermittent legacy Shithead start-tie test failure was observed on one earlier CI run, although the verified five-game release run passed. Full manual two-device/mobile-browser playthroughs for the newest games are not yet independently recorded. See [HANDOVER.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md) for reproducible concerns and follow-up checks. Automated green checks and a healthy server do not by themselves establish zero gameplay issues.
 
+## Android / Google Play preparation (draft)
+
+Work in [Android preparation PR #36](https://github.com/sirafrica92-a11y/Shithead-/pull/36) makes the existing site installable as a **Progressive Web App** and prepares a future **Trusted Web Activity** for Google Play. It reuses the original jester artwork, existing six multiplayer games, three Solo modes, one Railway backend and the same friend-room player pool. No Android APK/AAB, app store listing, signing credential, owner-confirmed package ID or production publication exists yet. Installation metadata is isolated on the draft branch pending full CI and mobile QA.
+
+The service worker deliberately uses the network and does **not cache** game state, private credentials, room data, or API responses. Offline game play is **not supported**. Review [android/README.md](android/README.md) for the Bubblewrap setup, identity/signing ownership, Digital Asset Links and Play Console checklist; owners must never commit signing keys to GitHub. Google Play Android target API 36 or later must be checked for submission. No existing game rules, Railway service, persistent `/data` volume or Android permissions are changed.
+
 ## Safe development and deployment
 
 - **Production source:** `deploy/railway-shithead-games-staging`, **not `main`**.
