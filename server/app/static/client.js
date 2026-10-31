@@ -537,7 +537,8 @@ function connect(room, token, retry = 0) {
   seatToken = token;
   snap = null;
   intentionalClose = false;
-  if (retry === 0) sessionRevoked = false;
+  // Only an explicit new seat/session may clear a rejected credential.
+  // Network retries must never resurrect a 1008-revoked seat.
   lastStateAt = 0;
   socketOpenAt = 0;
   const socket = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") +
