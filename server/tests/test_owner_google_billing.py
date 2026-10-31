@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from server.app.main import create_app
 
 ORIGIN = "https://play.shithead.games"
-EMAIL = "sirafrica92@gmail.com"
+EMAIL = "owner@example.com"
 
 
 def configure(monkeypatch):
@@ -37,7 +37,7 @@ def test_google_owner_auth_denial_and_verified_session(monkeypatch, tmp_path):
         signin = client.get("/owner/login")
         assert signin.status_code == 200
         assert "owner-project.apps.googleusercontent.com" in signin.text
-        assert "sirafrica92@gmail.com" not in signin.text
+        assert "owner@example.com" not in signin.text
         nonce = re.search(r'data-nonce="([^"]+)"', signin.text).group(1)
         seen["nonce"] = nonce
         assert client.get("/owner/login.js").status_code == 200
