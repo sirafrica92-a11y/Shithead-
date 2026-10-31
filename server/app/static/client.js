@@ -498,7 +498,17 @@ async function request(path, data) {
     body: JSON.stringify(data)
   });
   const obj = await response.json();
-  if (!response.ok) throw Error(typeof obj.detail === "string" ? obj.detail : "Request failed");
+  if (!response.ok) {
+    if (response.status === 503 && obj.detail?.code === "room_capacity_reached") {
+      const detail=obj.detail;
+      const error=new Error("All "+detail.room_limit+" room slots are allocated. New rooms are temporarily unavailable. Try again in around 5 minutes (availability not guaranteed). You can still join an existing room using its code.");
+      error.code="room_capacity_reached";
+      error.roomLimit=detail.room_limit;
+      error.roomsAllocated=detail.rooms_allocated;
+      throw error;
+    }
+    throw Error(typeof obj.detail === "string" ? obj.detail : "Request failed");
+  }
   return obj;
 }
 
@@ -674,7 +684,21 @@ el("create").onclick = async () => {
     saveSeat(r.room_id, r.token, r.seat, name);
     connect(r.room_id, r.token);
     status("Room " + r.room_id + " created — share the code.");
-  } catch (e) { status(e.message); }
+  } catch (e) {
+    if (e.code === "room_capacity_reached") {
+      el("capacity-notice").classList.remove("hidden");
+      el("capacity-message").textContent=e.message;
+      status("Room creation is temporarily full; joining an existing room still works.");
+    } else status(e.message);
+  }
+};
+
+el("capacity-dismiss").onclick=()=>el("capacity-notice").classList.add("hidden");
+el("capacity-join").onclick=()=>{
+  el("capacity-notice").classList.add("hidden");
+  el("join-panel").classList.remove("hidden");
+  el("create-panel").classList.add("hidden");
+  el("room").focus();
 };
 
 el("join").onclick = async () => {
