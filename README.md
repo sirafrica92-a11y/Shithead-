@@ -1,5 +1,7 @@
 # SHITHEAD Games
 
+> **RAILWAY RELEASE REMINDER:** Before any deployment, **update/verify the GitHub deployment branch `deploy/railway-shithead-games-staging` FIRST**, then verify Railway is tracking it and the intended SHA reaches `SUCCESS`. This is a GitHub branch update, **not** a routine source reconnect. Preserve the live games and `match-data` volume at `/data`. See [Railway First Check](docs/RAILWAY_FIRST_CHECK.md).
+
 **Six traditional games. One multiplayer home.**
 
 Play online: **[play.shithead.games](https://play.shithead.games)**
@@ -110,5 +112,6 @@ The six-game milestone has been reached. The current priority is **hands-on test
 **[Play SHITHEAD Games](https://play.shithead.games)** · [Live application code](https://github.com/sirafrica92-a11y/Shithead-/tree/deploy/railway-shithead-games-staging) · [Platform handover](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md)
 
 
-### Owner analytics and demand monitoring
-An owner-only analytics dashboard and a truthful capacity notice have been implemented for the platform. The dashboard itself is private, never public, and is disabled until the owner configures a strong password. The dashboard needs a private 20+ character `SHITHEAD_ADMIN_PASSWORD` Railway variable; absent that, its routes return 404. Analytics records daily aggregate page loads, game starts/completions and denied room-creation attempts (not unique visitors). Capacity remains 100 allocated/saved rooms (not 100 simultaneously active matches); existing room joins continue when creation is full. There is no real waiting list or guaranteed five-minute availability.
+### Owner analytics, operations and demand monitoring
+The owner-only dashboard code is deployed, but access remains disabled until private Railway authentication settings are configured. Preferred Google owner sign-in uses all three service variables: `SHITHEAD_GOOGLE_CLIENT_ID`, `SHITHEAD_OWNER_EMAIL`, `SHITHEAD_ADMIN_SESSION_SECRET`; configure an authorised Google JavaScript origin of `https://play.shithead.games`. The older HTTP Basic option uses `SHITHEAD_ADMIN_PASSWORD` when Google mode is not configured. Do not commit credentials or make the admin dashboard public.
+Analytics records daily aggregate page loads, game starts/completions and denied room-creation attempts (not unique visitors). Owner-only Incidents, Problems and Changes registers record manual operations entries. The Railway billing date/usage/budget fields are optional **manual figures**, not linked to Railway invoices. Capacity remains 100 allocated/saved rooms (not 100 simultaneously active matches); existing joins continue at capacity. There is no real waiting list or guaranteed five-minute availability.
