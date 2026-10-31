@@ -3,6 +3,18 @@
 > **START HERE FOR RAILWAY WORK:** Read [docs/RAILWAY_FIRST_CHECK.md](docs/RAILWAY_FIRST_CHECK.md). **Update/verify the approved GitHub deployment branch first**; that is not a Railway reconnection. Then check the existing Railway service tracks that branch and the exact release commit reaches **SUCCESS**. Do not reconnect a correctly configured service, change credentials, create extra services, restart running games or touch persistent `/data`.
 Updated: 2026-10-31 (three production releases PR #33, #34, #35 verified; social-first setup and existing CPU clarity live; Dara final Solo owner-approved; NO new Solo game expansion) | Owner: Africa | Read this BEFORE changes.
 
+## CURRENT TAKEOVER — PWA release prepared, production approval blocked (31 October 2026)
+
+This section supersedes older live-state summaries below.
+- PR #36 was already merged at `aae4f67b3384696002d2e20f5db459a169875865`; deployment branch verified first. Exact-merge CI run `41235806661` SUCCESS; icon-serving fix included.
+- Independent local review at that exact tree: **447 Python tests passed**, 31 dependency warnings; **8 Node recovery/navigation tests passed**; PWA registration/worker syntax checks passed.
+- Chromium 134 mobile emulation: no installability errors reported by Page.getInstallabilityErrors; root-scoped service worker controls page, all three manifest icons return 200, six catalogue/setup/back flows work, no horizontal overflow, no Cache Storage entries and no JS page errors. Offline navigation fallback verified by stopping the isolated local server (browser offline emulation alone did not reliably disable worker network access). Physical Android installation, live PWA, APK and cross-client phone tests remain unverified.
+- Railway remains on `6944e8cb4b2b19191c729a95cb231a731579676f`, deployment `8ca11854-bc9a-49d7-b7c2-9dc8e665383f` SUCCESS; one worker and original match-data volume at /data intact. No new deployment existed for merged PWA commit.
+- Read docs/RAILWAY_FIRST_CHECK.md before resuming. Automatic approval review rejected immediate source reconnect; followed its suggested staged path instead. Exactly one same-service/same-repo/same-deployment-branch update, no commit pin, is STAGED in production: patch `f635cfed-66d4-4c88-96d0-0ec1c70e9134`. accept_deploy returned “Cancelled — the user did not approve this action.” No release happened. Do not bypass or repeatedly retry the approval.
+- Next: owner approves the concrete staged production deployment (brief multiplayer disconnect; RAM-only Solo sessions may reset), verify exact SHA SUCCESS, manifest/worker/icons over HTTPS, service worker activation and normal create/join/reconnect in an isolated new test room. Preserve /data. Then owner tests Chrome installation on phone.
+- Android SDK absent locally; JDK 17 available. No Android project/APK/AAB or release keys generated. Permanent package ID and owner-controlled signing still need decisions before production packaging. Keep Play payment/publication out of scope until explicitly authorised.
+- This is documentation-only work on a separate branch; do not merge it solely to trigger another production deployment.
+
 ## Platform purpose (owner-approved)
 SHITHEAD Games is an online multiplayer home for approachable traditional games from different cultures. Each game should invite and develop a distinct quality through play: adaptation, patience, foresight, sacrifice, pattern recognition or collaboration. Entertaining human-to-human play is the priority, not a classroom or a clone of chess. Accessible rules are non-negotiable: the owner should be able to understand/test a game without learning highly complex systems.
 
