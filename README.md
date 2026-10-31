@@ -107,3 +107,7 @@ The five-game target has been reached. The current priority is **hands-on testin
 ---
 
 **[Play SHITHEAD Games](https://play.shithead.games)** · [Live application code](https://github.com/sirafrica92-a11y/Shithead-/tree/deploy/railway-shithead-games-staging) · [Platform handover](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md)
+
+
+### Owner analytics and demand monitoring (release candidate)
+An owner-only analytics dashboard and a truthful capacity notice are implemented in the release branch but are **not yet available to the public**. The dashboard needs a private 20+ character `SHITHEAD_ADMIN_PASSWORD` Railway variable; absent that, its routes return 404. Analytics records daily aggregate page loads, game starts/completions and denied room-creation attempts (not unique visitors). Capacity remains 100 allocated/saved rooms (not 100 simultaneously active matches); existing room joins continue when creation is full. There is no real waiting list or guaranteed five-minute availability.
