@@ -212,7 +212,11 @@ def create_app(
         if (not nonce or len(nonce) < 32 or len(nonce) > 100
                 or not hmac.compare_digest(nonce, received)):
             raise HTTPException(status_code=403, detail="Invalid or expired sign-in request")
-        if int(request.headers.get("content-length", "0") or "0") > 15000:
+        try:
+            request_length = int(request.headers.get("content-length", "0") or "0")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid content length") from None
+        if request_length > 15000:
             raise HTTPException(status_code=413, detail="Sign-in request too large")
         try:
             body = await request.json()
