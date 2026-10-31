@@ -9,14 +9,26 @@ function put(text){$("error").textContent=text;}
 async function api(url,options={}){
  const response=await fetch(url,{cache:"no-store",...options});
  let body;try{body=await response.json();}catch{throw Error("Server did not respond correctly");}
- if(!response.ok)throw Error(typeof body.detail==="string"?body.detail:"Server rejected that request");
+ if(!response.ok){const error=new Error(typeof body.detail==="string"?body.detail:"Server rejected that request");error.status=response.status;throw error;}
  return body;
 }
 function saved(){try{const s=JSON.parse(sessionStorage.getItem("shithead-solo-ludo"));return s?.id&&s?.token?s:null;}catch{return null;}}
-function remember(){if(session)sessionStorage.setItem("shithead-solo-ludo",JSON.stringify({id:session.id,token:session.token}));}
+function remember(){try{if(session)sessionStorage.setItem("shithead-solo-ludo",JSON.stringify({id:session.id,token:session.token}));}catch{ /* private browsing */ }}
+function forget(){try{sessionStorage.removeItem("shithead-solo-ludo");}catch{ /* private browsing */ }}
 async function start(){
  if(busy)return;busy=true;$("new").disabled=true;put("");
- try{session=await api("/api/solo/ludo",{method:"POST"});remember();render();}
+ try{
+   if(session?.id&&session?.token){
+     try{
+       const updated=await api("/api/solo/ludo/"+encodeURIComponent(session.id)+"/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:session.token,version:session.version})});
+       session={...session,...updated};
+     }catch(e){
+       if(e.status!==404)throw e;
+       session=await api("/api/solo/ludo",{method:"POST"});
+     }
+   }else session=await api("/api/solo/ludo",{method:"POST"});
+   remember();render();
+ }
  catch(e){put(e.message);}finally{busy=false;$("new").disabled=false;}
 }
 function board(g){
@@ -77,13 +89,25 @@ async function act(action,piece=null){
      body:JSON.stringify({token:session.token,version:session.version,action,piece})
    });
    session={...session,...updated};
- }catch(e){put(e.message);if(e.message.includes("Board changed"))await resume();}
+ }catch(e){
+   put(e.message);
+   if(e.status===409){
+     try{const updated=await api("/api/solo/ludo/"+encodeURIComponent(session.id),{headers:{"X-Solo-Token":session.token}});session={...session,...updated};}
+     catch(refreshError){put("Could not refresh the match. "+refreshError.message);}
+   }
+ }
  finally{busy=false;render();}
 }
 async function resume(){
- const old=saved();if(!old)return;
- try{session={...old,...await api("/api/solo/ludo/"+encodeURIComponent(old.id),{headers:{"X-Solo-Token":old.token}})};render();}
- catch{session=null;sessionStorage.removeItem("shithead-solo-ludo");}
+ const old=saved();if(!old||busy||session)return;
+ try{
+   const updated=await api("/api/solo/ludo/"+encodeURIComponent(old.id),{headers:{"X-Solo-Token":old.token}});
+   if(!busy&&!session){session={...old,...updated};render();}
+ }catch(e){
+   if(busy||session)return;
+   if(e.status===404){forget();put("Previous Solo Play session expired. Start a new game.");}
+   else put("Could not reconnect. Check your connection and reload to retry.");
+ }
 }
 $("new").onclick=start;$("again").onclick=start;$("roll").onclick=()=>act("roll");
 resume();
