@@ -33,6 +33,7 @@ def test_daily_counter_math_all_games_and_domino_modes(tmp_path):
     assert result["overview"]["rooms_created"]==6
     assert result["overview"]["matches_started"]==7
     assert result["overview"]["matches_completed"]==1
+    assert "actions_accepted" not in result["overview"]
     assert len(result["games"])==6
     assert result["games"][0]["key"]=="dominoes"
     domino=result["games"][0]
