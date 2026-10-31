@@ -1,9 +1,13 @@
 "use strict";
 const {clientId,nonce}=document.body.dataset;
 const status=document.getElementById("status");
-function initialise(){
+function initialise(attempt=0){
   if(!window.google?.accounts?.id){
-    status.textContent="Google sign-in unavailable. Check your connection and reload.";
+    if(attempt<50){
+      setTimeout(()=>initialise(attempt+1),200);
+    }else{
+      status.textContent="Google sign-in unavailable. Check your connection and reload.";
+    }
     return;
   }
   google.accounts.id.initialize({
