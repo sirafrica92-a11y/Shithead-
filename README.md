@@ -1,6 +1,6 @@
 # SHITHEAD Games
 
-> **RAILWAY RELEASE REMINDER:** Before any deployment, **update/verify the GitHub deployment branch `deploy/railway-shithead-games-staging` FIRST**, then verify Railway is tracking it and the intended SHA reaches `SUCCESS`. This is a GitHub branch update, **not** a routine source reconnect. Preserve the live games and `match-data` volume at `/data`. See [Railway First Check](docs/RAILWAY_FIRST_CHECK.md).
+> **RAILWAY RELEASE REMINDER:** Before any deployment, **update/verify the GitHub deployment branch `deploy/railway-shithead-games-staging` FIRST**, then verify Railway is tracking it and the intended SHA reaches `SUCCESS`. This is a GitHub branch update, **not** a routine source reconnect. Preserve the live games and `match-data` volume at `/data`. See [Railway First Check](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/docs/RAILWAY_FIRST_CHECK.md).
 
 **Six traditional games. One multiplayer home.**
 
@@ -10,7 +10,7 @@ SHITHEAD Games is a browser-based, mobile-friendly collection of traditional soc
 
 What began as a custom multiplayer **Shithead** card game has grown into a six-game platform while keeping the original jester logo and dark, antique-gold, cream and crimson identity.
 
-> **Current status (31 October 2026):** Six games merged and deployed as a public preview. This is a **working application**, not a proposed concept. Live-server health and automated tests are verified; independent real-device playthroughs of every new game are still a release-quality follow-up.
+> **Current status (31 October 2026):** Six live multiplayer games and three live computer-opponent modes (Solo Ludo, Awalé and final Dara) and a social-first **choose game → separate room setup → lobby/Ready → play** flow. Current verified code deployment GitHub SHA **`33c7aa2`**, Railway deployment **`99150d31-1ffe-4572-8e0b-356d6a5ad1cc` SUCCESS**, `/health` HTTP 200, one online worker, existing `/data` volume intact. PR #33 restores connections automatically; PR #34 improves names/scoring/labels; PR #35 separates setup and shows each computer roll/move/seed action. **Solo Dara PR #30 has been merged as commit `33c7aa2`; Railway deployment `99150d31-1ffe-4572-8e0b-356d6a5ad1cc` reached **SUCCESS** for exact `33c7aa2`, with one healthy worker and the original `/data` volume intact. No additional Solo games.** Independent real-device visual/playthrough/reconnect testing is still outstanding.
 
 ## Play the games
 
@@ -25,6 +25,29 @@ What began as a custom multiplayer **Shithead** card game has grown into a six-g
 
 Each game has its own on-site **How to play** screen. Traditional games have regional variants; the implementation follows the rules documented for **this platform**, not necessarily every local version. The exact custom Shithead rules are recorded in [RULES.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/docs/RULES.md) and [DECISION_LOG.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/docs/DECISION_LOG.md).
 
+## Live quality improvements
+
+- **Reliable multiplayer recovery:** the browser retries dropped WebSocket connections using the existing protected seat token, requests read-only server state when the connection is quiet and never replays a game move for the player. Released in [PR #33](https://github.com/sirafrica92-a11y/Shithead-/pull/33), with automated disconnect/reconnect tests.
+- **Clearer play screens:** player names in public game events, named Awalé finish information, Jamaican Dominoes Six Love explanation, partner teams shown while waiting, correct remaining tile and piece counts, Yoté/Dara colour labels, corrected browser title and a portable Jamaican flag. Released in [PR #34](https://github.com/sirafrica92-a11y/Shithead-/pull/34); game rules unchanged.
+- **Still outstanding:** independent real-phone connection recovery, 360px/390px layout checks, and completed-multiplayer/CPU-turn real-device playthroughs. The separate setup and CPU action playback are **live in [PR #35](https://github.com/sirafrica92-a11y/Shithead-/pull/35)**; the obsolete original PR #32 was **closed unmerged** after two defects were repaired and integrated safely. No further Solo games are planned.
+
+## Play solo — against the computer
+
+When friends are unavailable, **Solo Play** requires no lobby, invitation or room code. It is separate from the guest multiplayer system and uses the same existing server-side game rules.
+
+| Solo mode | Live? | Where | Notes |
+| --- | --- | --- | --- |
+| **Ludo** | **Live** | [Solo Ludo](https://play.shithead.games/solo/ludo) | Computer-controlled opponent; existing Ludo dice/rules |
+| **Awalé** | **Live** | [Solo Awalé](https://play.shithead.games/solo/awale) | Legal sowing, capture and feeding from existing Abapa engine |
+| **Dara** | **Live** | [Final Solo Dara PR #30](https://github.com/sirafrica92-a11y/Shithead-/pull/30) | Server-authoritative placement, movement, captures and readable computer-action history; Railway `99150d31` SUCCESS, real-device QA not yet independently verified |
+| **Yoté, Shithead, Jamaican Dominoes** | Not implemented for Solo Play | — | Future possibilities, not a released feature |
+
+Solo sessions currently require internet and are held in server memory. A server restart can end a solo match; offline play, persisted solo saves and difficulty selection are **not supported**. Existing multiplayer game modes are unaffected.
+
+**Now live — social-first navigation:** Selecting one of the six game cards opens a separate selected-game screen, with game heading, name entry, Create Room / Join Room and Back to games. The existing room-code, lobby, Ready handshake and multiplayer game screens follow unchanged. The approved dark/gold design and original logo stay. Solo is a smaller secondary link on supported games.
+
+**Now live — clearer existing computer turns:** The original server-authoritative Ludo and Awalé engines still run CPU actions automatically; new ordered action traces let the player watch rolls, movements, sowing and captures without pressing for the computer. Move history, skip playback and reduced-motion support are included. The original PR #32 lost the `api()` helpers in both Solo clients and omitted the Shithead `screen-table` from navigation; the rebuilt PR #35 restored them and passed dynamic JavaScript tests. Independent real-phone experience remains to be verified.
+
 ## Playing together
 
 1. Open [play.shithead.games](https://play.shithead.games), choose a game and enter a player name.
@@ -38,7 +61,7 @@ Each game has its own on-site **How to play** screen. Traditional games have reg
 ## Built and running
 
 - **Backend:** Python, FastAPI, authenticated WebSockets and server-owned game logic.
-- **Six isolated rule engines:** `gameplay.py` (Shithead), `ludo.py`, `awale.py`, `dara.py`, `yote.py` and `dominoes.py`.
+- **Six isolated multiplayer rule engines:** `gameplay.py` (Shithead), `ludo.py`, `awale.py`, `dara.py`, `yote.py` and `dominoes.py`.
 - **Shared foundation:** lobby, seat management, room state, message validation, reconnection, rematches and a small game-capacity catalogue.
 - **Frontend:** HTML, CSS and vanilla JavaScript with dedicated boards/renderers for the non-card games.
 - **Persistence:** SQLite for saved rooms, seats and matches; Railway's persistent volume mounted at `/data`.
@@ -57,6 +80,8 @@ Game rules and state transitions remain separate from the shared multiplayer inf
 | `server/app/gameplay.py`, `server/app/rules/` | Custom Shithead engine and rule boundaries |
 | `server/app/{ludo,awale,dara,yote,dominoes}.py` | Separate server-authoritative game engines |
 | `server/app/game_catalog.py` | Supported game names and player-capacity contracts |
+| `server/app/solo_ludo.py`, `server/app/solo_awale.py` | Live independent computer-opponent APIs; ephemeral private solo sessions |
+| `server/app/solo_dara.py` | Final Dara computer opponent, isolated from multiplayer rooms and persistent `/data` |
 | `server/app/static/` | Responsive interfaces, individual game renderers and original brand assets |
 | `server/tests/` | Rule contracts, game simulations, WebSocket, recovery and regression tests |
 | `docs/` | Rule decisions, architecture, scenarios and verification history |
@@ -77,19 +102,17 @@ python run_local.py
 
 The launcher starts the local server at **http://127.0.0.1:8000** and opens a browser. A Windows `Start Shithead.bat` launcher is also included. The local-only launcher binds to localhost; the hosted website is the intended way to play remotely with friends.
 
-Run the complete automated checks from the deployment branch:
+Run the full regression suite and JavaScript syntax checks from the deployment branch:
 
 ~~~bash
 python -m pytest -q server/tests
 python -m py_compile run_local.py
-node --check server/app/static/client.js
-node --check server/app/static/ludo.js
-node --check server/app/static/awale.js
-node --check server/app/static/dara.js
-node --check server/app/static/yote.js
+for file in client ludo awale dara yote dominoes owner owner-login solo-ludo solo-awale; do
+  node --check "server/app/static/$file.js"
+done
 ~~~
 
-At the **five-game milestone** on 30 October 2026, GitHub CI for application/documentation release commit `20f92c6` reported **397 passing Python tests**, 31 warnings and successful JavaScript syntax checks for all six client files. The project also has specific complete-game, multiplayer, persistence and regression tests.
+**Verified releases:** PR #35 social-first setup and existing CPU action playback passed **436 Python tests (31 warnings), five WebSocket simulator tests, three actual-client navigation/API tests, and JavaScript syntax checks** in GitHub Actions `41227370028`; Railway release `5cf59c7` reached **SUCCESS**. Original PR #32 closed unmerged as superseded. PR #33 automatic multiplayer recovery passed 426 Python tests, five simulated WebSocket tests and ten JS syntax checks; Railway `55049fa` SUCCESS. PR #34 presentation improvements passed 429 Python tests on the merged PR #33 branch (including an integration contract preventing loss of recovery code) plus JS syntax checks, and Railway `d6595d0` SUCCESS. Earlier Awalé Solo PR #29 passed 424 Python tests and ten JS checks, Railway `3854becb` SUCCESS. Dara Solo original branch CI at `c0043f2` passed 429 tests. Its final integrated head `6ce1d1b` passed **443 Python tests**, five WebSocket tests, three UI/API simulator tests and full JavaScript syntax checks, including `solo-dara.js` (workflow `41229967771`). The merge commit is `33c7aa2`; Railway must reach terminal SUCCESS before declaring it live. To validate that branch separately, check it out and include `solo-dara.js` in the JavaScript checks. Do not mistake draft-only test success for deployment.
 
 **Known verification limits:** an intermittent legacy Shithead start-tie test failure was observed on one earlier CI run, although the verified five-game release run passed. Full manual two-device/mobile-browser playthroughs for the newest games are not yet independently recorded. See [HANDOVER.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md) for reproducible concerns and follow-up checks. Automated green checks and a healthy server do not by themselves establish zero gameplay issues.
 
@@ -105,7 +128,7 @@ This is an accessible **public preview** rather than a mature account-based game
 
 ### What's next?
 
-The six-game milestone has been reached. The current priority is **hands-on testing and polish**, not adding games at the expense of stability. **Morabaraba** remains a research candidate, not an implemented game. Fanorona is explicitly excluded from the current roadmap.
+The six-game multiplayer milestone is complete; Ludo and Awalé Solo are live, and final Dara Solo has been approved and merged. **The owner has ended Solo Play game expansion:** Dara is the final planned computer-opponent title, with its code safely merged in [PR #30](https://github.com/sirafrica92-a11y/Shithead-/pull/30). **Do not build Solo Play versions of Yoté, Shithead, Jamaican Dominoes or other games.** The social-first screens and clearer existing CPU turns are live. Priority now is **real-phone UX verification**, reconnection/replay checks, player feedback and encouraging friends to invite each other to rooms; maintain the existing games and rules. **Morabaraba** is a separate multiplayer research candidate only; Fanorona is excluded.
 
 ---
 
