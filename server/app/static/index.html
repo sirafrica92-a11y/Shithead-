@@ -1003,6 +1003,16 @@ select option { color:var(--cream);background:var(--surface); }
     <button id="create" class="btn btn-primary" type="button">Create room</button>
   </div>
 
+  <div class="panel hidden games-entry-panel" id="capacity-notice" role="alert" aria-live="assertive" style="border-color:var(--gold-bright);">
+    <h2>Game night is busy! <span aria-hidden="true">🔥</span></h2>
+    <p id="capacity-message">New room creation is temporarily unavailable.</p>
+    <p style="font-size:13px;color:var(--beige)">Room slots include saved games, not necessarily people playing right now. This isn't an actual waiting list, and retry times aren't guaranteed.</p>
+    <div class="btn-row">
+      <button id="capacity-join" class="btn btn-primary" type="button">Join a friend's room</button>
+      <button id="capacity-dismiss" class="btn btn-ghost" type="button">Close</button>
+    </div>
+  </div>
+
   <div class="panel hidden games-entry-panel" id="join-panel">
     <h2>Join a room</h2>
     <label class="field" for="room"><span>Room code</span>
