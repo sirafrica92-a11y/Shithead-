@@ -29,6 +29,7 @@ METRICS = (
     "players_joined",
     "matches_started",
     "matches_completed",
+    "capacity_rejections",  # denied room CREATE attempts, not unique visitors
 )
 GAME_METRICS = set(METRICS) - {"page_views"}
 SOURCES = ("direct", "instagram", "tiktok", "youtube", "facebook",
@@ -184,6 +185,7 @@ class AnalyticsStore:
                 "key": game, "name": GAMES[game].name,
                 "rooms_created": 0, "players_joined": 0,
                 "matches_started": 0, "matches_completed": 0,
+                "capacity_rejections": 0,
                 "modes": {},
             }
             for game in GAMES
@@ -198,6 +200,7 @@ class AnalyticsStore:
                     "date": date_key, "page_views": 0,
                     "rooms_created": 0, "matches_started": 0,
                     "matches_completed": 0,
+                    "capacity_rejections": 0,
                 }
 
         for date_key, game, mode, metric, source, amount in rows:
@@ -205,6 +208,7 @@ class AnalyticsStore:
             day_entry = dates.setdefault(date_key, {
                 "date": date_key, "page_views": 0, "rooms_created": 0,
                 "matches_started": 0, "matches_completed": 0,
+                "capacity_rejections": 0,
             })
             if metric in day_entry:
                 day_entry[metric] += amount
@@ -217,7 +221,7 @@ class AnalyticsStore:
                     group = target["modes"].setdefault(mode or "partner", {
                         "rooms_created": 0, "players_joined": 0,
                         "matches_started": 0, "matches_completed": 0,
-
+                        "capacity_rejections": 0,
                     })
                     group[metric] += amount
         ordered_games = sorted(
@@ -240,6 +244,7 @@ class AnalyticsStore:
                 "page_views": "Homepage loads, including repeat loads and possible bots; not unique people.",
                 "matches_started": "Server-confirmed game starts (including rematches/restarts), not visits or room creations.",
                 "matches_completed": "Server-confirmed completion of a full match, not each domino hand.",
+                "capacity_rejections": "Denied room-creation attempts when all allocated room slots are used; repeat attempts may include the same person. These are not unique visitors, active games, or waitlisted people.",
                 "privacy": "No cookies, visitor IDs, raw IPs, names, room codes or complete referrer URLs in analytics.",
             },
         }
