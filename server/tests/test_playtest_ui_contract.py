@@ -27,7 +27,7 @@ def test_all_six_games_and_labels(tmp_path):
         assert "in reserve" in yote
         assert "namedGameEvent" in yote
         dara=c.get("/dara.js").text
-        assert "cream" in dara and "red" in dara
+        assert "(gold):" in dara and "(crimson):" in dara
         assert "namedGameEvent" in dara
         for game,capacity in (("shithead",2),("ludo",2),("awale",2),("dara",2),("yote",2),("dominoes",4)):
             res=c.post("/api/rooms",json={"name":"Host","capacity":capacity,"game_type":game})
