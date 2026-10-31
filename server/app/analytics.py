@@ -29,7 +29,6 @@ METRICS = (
     "players_joined",
     "matches_started",
     "matches_completed",
-    "actions_accepted",
 )
 GAME_METRICS = set(METRICS) - {"page_views"}
 SOURCES = ("direct", "instagram", "tiktok", "youtube", "facebook",
@@ -185,7 +184,7 @@ class AnalyticsStore:
                 "key": game, "name": GAMES[game].name,
                 "rooms_created": 0, "players_joined": 0,
                 "matches_started": 0, "matches_completed": 0,
-                "actions_accepted": 0, "modes": {},
+                "modes": {},
             }
             for game in GAMES
         }
@@ -218,7 +217,7 @@ class AnalyticsStore:
                     group = target["modes"].setdefault(mode or "partner", {
                         "rooms_created": 0, "players_joined": 0,
                         "matches_started": 0, "matches_completed": 0,
-                        "actions_accepted": 0,
+
                     })
                     group[metric] += amount
         ordered_games = sorted(
