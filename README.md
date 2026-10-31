@@ -38,6 +38,10 @@ When friends are unavailable, **Solo Play** requires no lobby, invitation or roo
 
 Solo sessions currently require internet and are held in server memory. A server restart can end a solo match; offline play, persisted solo saves and difficulty selection are **not supported**. Existing multiplayer game modes are unaffected.
 
+**Upcoming navigation improvement (not yet implemented):** The current theme and logo stay. Selecting one of the six game cards should lead to a separate screen with that game's header, name entry and Create Room / Join Room actions; from there, the existing room code, readiness and multiplayer game flow continue unchanged. This avoids stacking game selection and seat entry on the same long home page. Solo Play remains a small secondary option, not the main invitation to play.
+
+**Existing Solo Play quality improvement (not yet implemented):** The server already executes Ludo and Awalé computer moves automatically, but its current snapshots skip intermediate action visuals. The next agent must reproduce the reported phone behaviour and display each server-generated CPU roll/move/capture in sequence, then return control to the human without requiring an extra click for the CPU. Full rules, security, room and regression checks are required. Details and acceptance criteria live in [HANDOVER.md](HANDOVER.md) on the documentation branch.
+
 ## Playing together
 
 1. Open [play.shithead.games](https://play.shithead.games), choose a game and enter a player name.
@@ -118,7 +122,7 @@ This is an accessible **public preview** rather than a mature account-based game
 
 ### What's next?
 
-The six-game multiplayer milestone and two live Solo Play modes are complete. **Dara Solo Play is finished in code but deliberately parked** at draft [PR #30](https://github.com/sirafrica92-a11y/Shithead-/pull/30): another agent can continue testing/reviewing without rebuilding it, but must not merge/deploy before the owner resumes. Only after Dara is approved should Yoté, owner-custom Shithead and Jamaican Dominoes Solo Play be considered. **Morabaraba** remains a separate research candidate; Fanorona is explicitly excluded.
+The six-game multiplayer milestone and two live Solo Play modes are complete. **The owner has ended Solo Play game expansion:** Dara is the final planned computer-opponent title, with finished code deliberately parked in draft [PR #30](https://github.com/sirafrica92-a11y/Shithead-/pull/30), unmerged and not live. **Do not build Solo Play versions of Yoté, Shithead, Jamaican Dominoes or other games.** Priority now is simplifying the game-selection → separate selected-game setup → existing room lobby journey, making human multiplayer prominent, and showing existing CPU turns automatically and clearly in live Ludo/Awalé. **Morabaraba** is a separate multiplayer research candidate only; Fanorona is excluded.
 
 ---
 
