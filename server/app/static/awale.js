@@ -21,7 +21,9 @@ function renderAwale(g) {
   el("awale-score").textContent=
     (snap.players[0]?.name||"Player 1")+": "+g.captured[0]+
     " captured  ·  "+(snap.players[1]?.name||"Player 2")+": "+g.captured[1]+" captured";
-  el("awale-event").textContent=g.event||"";
+  el("awale-event").textContent=done && winner!==null
+    ?(snap.players[winner]?.name||"Winner")+" won with "+g.captured[winner]+" captured seeds ("+g.captured.join("–")+")."
+    :g.event||"";
   el("awale-board").replaceChildren();
   const legal=g.your_legal_pits||[];
   for (const row of [[11,10,9,8,7,6],[0,1,2,3,4,5]]) {
