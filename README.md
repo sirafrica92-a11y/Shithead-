@@ -10,7 +10,7 @@ SHITHEAD Games is a browser-based, mobile-friendly collection of traditional soc
 
 What began as a custom multiplayer **Shithead** card game has grown into a six-game platform while keeping the original jester logo and dark, antique-gold, cream and crimson identity.
 
-> **Current status (31 October 2026):** Six live multiplayer games and three approved computer-opponent modes (Solo Ludo, Awalé and final Dara) and a social-first **choose game → separate room setup → lobby/Ready → play** flow. Current live GitHub SHA **`5cf59c7`**, Railway deployment **`a6a7f97b-025d-4072-9ca7-afb14ddfa175` SUCCESS**, `/health` HTTP 200, one online worker, existing `/data` volume intact. PR #33 restores connections automatically; PR #34 improves names/scoring/labels; PR #35 separates setup and shows each computer roll/move/seed action. **Solo Dara PR #30 has been merged as commit `33c7aa2`; Railway deployment `99150d31` was building at the initial check. Confirm its terminal SUCCESS before claiming Dara live. No additional Solo games.** Independent real-device visual/playthrough/reconnect testing is still outstanding.
+> **Current status (31 October 2026):** Six live multiplayer games and three live computer-opponent modes (Solo Ludo, Awalé and final Dara) and a social-first **choose game → separate room setup → lobby/Ready → play** flow. Current verified code deployment GitHub SHA **`33c7aa2`**, Railway deployment **`99150d31-1ffe-4572-8e0b-356d6a5ad1cc` SUCCESS**, `/health` HTTP 200, one online worker, existing `/data` volume intact. PR #33 restores connections automatically; PR #34 improves names/scoring/labels; PR #35 separates setup and shows each computer roll/move/seed action. **Solo Dara PR #30 has been merged as commit `33c7aa2`; Railway deployment `99150d31-1ffe-4572-8e0b-356d6a5ad1cc` reached **SUCCESS** for exact `33c7aa2`, with one healthy worker and the original `/data` volume intact. No additional Solo games.** Independent real-device visual/playthrough/reconnect testing is still outstanding.
 
 ## Play the games
 
@@ -39,7 +39,7 @@ When friends are unavailable, **Solo Play** requires no lobby, invitation or roo
 | --- | --- | --- | --- |
 | **Ludo** | **Live** | [Solo Ludo](https://play.shithead.games/solo/ludo) | Computer-controlled opponent; existing Ludo dice/rules |
 | **Awalé** | **Live** | [Solo Awalé](https://play.shithead.games/solo/awale) | Legal sowing, capture and feeding from existing Abapa engine |
-| **Dara** | **Merged, deployment verification pending** | [Final Solo Dara PR #30](https://github.com/sirafrica92-a11y/Shithead-/pull/30) | Server-authoritative placement, movement, captures and readable computer-action history; Railway `99150d31` needs terminal SUCCESS verification |
+| **Dara** | **Live** | [Final Solo Dara PR #30](https://github.com/sirafrica92-a11y/Shithead-/pull/30) | Server-authoritative placement, movement, captures and readable computer-action history; Railway `99150d31` SUCCESS, real-device QA not yet independently verified |
 | **Yoté, Shithead, Jamaican Dominoes** | Not implemented for Solo Play | — | Future possibilities, not a released feature |
 
 Solo sessions currently require internet and are held in server memory. A server restart can end a solo match; offline play, persisted solo saves and difficulty selection are **not supported**. Existing multiplayer game modes are unaffected.
