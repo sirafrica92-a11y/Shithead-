@@ -13,8 +13,8 @@ function renderYote(g){
   el("yote-turn").textContent=done?(winner===null?"Yoté draw":(snap.players[winner]?.name||"Player")+" wins Yoté!")
       :mine?(g.pending_bonus?"Remove one bonus opponent stone":"Your turn — place, move or jump")
       :(snap.players[g.actor]?.name||"Player")+"'s turn";
-  el("yote-score").textContent=(snap.players[0]?.name||"Player 1")+": "+g.reserves[0]+" reserve · "+
-      (snap.players[1]?.name||"Player 2")+": "+g.reserves[1]+" reserve";
+  el("yote-score").textContent=(snap.players[0]?.name||"Player 1")+" (red): "+g.cells.filter(v=>v===1).length+" on board, "+g.reserves[0]+" in reserve · "+
+      (snap.players[1]?.name||"Player 2")+" (cream): "+g.cells.filter(v=>v===2).length+" on board, "+g.reserves[1]+" in reserve";
   el("yote-event").textContent=g.event||"";
   const sources=new Set([...legal.steps,...legal.jumps].map(m=>m[0]));
   if(yoteSelected>=0&&!sources.has(yoteSelected))yoteSelected=-1;
