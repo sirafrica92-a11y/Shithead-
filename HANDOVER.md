@@ -66,6 +66,10 @@ Safety: full six-game CI plus owner.js syntax checks on the exact integrated rel
 - Billing values are **manual owner-supplied values** from optional variables `SHITHEAD_RAILWAY_NEXT_DUE_DATE` (YYYY-MM-DD), `SHITHEAD_RAILWAY_USAGE_USD`, `SHITHEAD_RAILWAY_BUDGET_USD`. Do not claim automatic Railway invoice access, a guaranteed billing date, or exact current spend. Show Not set when missing; provide official Railway usage link.
 - Google Cloud OAuth web client setup needs the owner's explicit account action (creating OAuth web client and configuring authorised origin). No credentials created in background. Test exact CI at development branch head before merge; no automatic deployment until owner approves.
 
+## Owner IT service-management registers (feature PR #26; not deployed)
+The owner dashboard now includes three adjacent, responsive columns: **Incidents** (restore interrupted service), **Problems** (investigate root causes or recurring incidents), **Changes** (record planned/deployed/rolled-back interventions). Each has a small manual form, reference ID, status and historical owner notes. These entries are persisted in a new `owner_operations.sqlite3` beside the existing databases on `/data`, not in live rooms. No game state, rules, deployment or operational alert is changed when an entry is added.
+Owner-only endpoints: GET/POST `/owner/api/operations`, POST `/owner/api/operations/{id}/status`. Same authentication gate as analytics; mutating requests require the expected origin. No automatic incident detection or integrations are claimed. A 503 is returned when the operations database is unavailable. Run isolated auth/CRUD/persistence tests and the full six-game regression suite before merge.
+ 
 ## NON-NEGOTIABLE ENGINEERING RULES
 - The owner defines gameplay decisions. Protect established Shithead rules and Ludo rules, even where standard variants differ.
 - Reuse already working multiplayer rooms, invitation codes, seat auth/token isolation, session recovery, WebSockets, serialization, rematches, reactions and the gold/cream/crimson design.
