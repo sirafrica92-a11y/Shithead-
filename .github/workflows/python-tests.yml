@@ -2,6 +2,7 @@ name: Shithead Python tests
 on:
   push:
     branches:
+      - feature/capacity-communication-analytics-20261031
       - feature/owner-analytics-dashboard-20261031
       - feature/jamaican-cutthroat-option-game06-20261030
       - feature/jamaican-partner-dominoes-game06-20261030
