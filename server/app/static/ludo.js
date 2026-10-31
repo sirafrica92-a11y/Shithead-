@@ -105,7 +105,7 @@ function renderLudo(g) {
   el("ludo-turn").textContent=over?(snap.players[g.winner]?.name||"Player")+" wins Ludo!"
     :g.is_spectator?"Waiting for next round":mine?"Your turn":current+"'s turn";
   el("ludo-dice").textContent=g.die||g.last_roll||"⚄";
-  el("ludo-event").textContent=g.event;
+  el("ludo-event").textContent=namedGameEvent(g.event);
   el("ludo-roll").classList.toggle("hidden",over||!mine||g.turn_stage!=="ROLL");
   el("ludo-roll").disabled=!(mine&&g.turn_stage==="ROLL");
   el("ludo-rematch").classList.toggle("hidden",!over);
