@@ -72,6 +72,11 @@ def test_two_seat_awale_full_match_rematch_and_restart_recovery(tmp_path):
                 assert end["winner"] in (0, 1, None)
                 assert end["turn_number"] > 10
                 assert end["phase"] == "FINISHED"
+                # Analytics follows the actual WebSocket game; a room is not a start.
+                metrics = client.app.state.analytics_store.report()
+                assert metrics["overview"]["matches_started"] == 1
+                assert metrics["overview"]["matches_completed"] == 1
+                assert metrics["overview"]["actions_accepted"] == end["turn_number"]
 
                 # Both players vote: the first vote may not restart alone.
                 send(a, views[0]["version"], "rematch", "rematch-host")
@@ -83,6 +88,9 @@ def test_two_seat_awale_full_match_rematch_and_restart_recovery(tmp_path):
                 assert views[0]["game"]["turn_number"] == 0
                 assert views[1]["game"]["pits"] == [4] * 12
                 restarted_version = views[0]["version"]
+                metrics = client.app.state.analytics_store.report()
+                assert metrics["overview"]["matches_started"] == 2
+                assert metrics["overview"]["matches_completed"] == 1
 
                 # Duplicate request IDs must not apply a move twice.
                 actor = views[0]["game"]["actor"]
@@ -99,6 +107,9 @@ def test_two_seat_awale_full_match_rematch_and_restart_recovery(tmp_path):
                 duplicate = sockets[actor].receive_json()
                 assert duplicate["game"] == after_once
                 assert duplicate["version"] == views[0]["version"]
+                metrics = client.app.state.analytics_store.report()
+                assert metrics["overview"]["matches_started"] == 2
+                assert metrics["overview"]["actions_accepted"] == end["turn_number"] + 1
 
         with TestClient(create_app(db_path=db)) as recovered:
             # The persisted room and guest token are still recoverable after
