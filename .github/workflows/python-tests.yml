@@ -57,3 +57,5 @@ jobs:
       - run: node --check server/app/static/solo-ludo.js
       - run: node --check server/app/static/solo-awale.js
       - run: node --check server/app/static/solo-dara.js
+      - run: node --check server/app/static/pwa-registration.js
+      - run: node --check server/app/static/service-worker.js
