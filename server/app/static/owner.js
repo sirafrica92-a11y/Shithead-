@@ -98,6 +98,90 @@ logout.addEventListener("click",async()=>{
     else {logout.hidden=true;el("status").textContent="Google sign-out is not available for this configuration.";}
   }catch(error){el("status").textContent="Unable to sign out; close the tab and try again.";}
 });
+// Three independent, owner-only service-management registers.
+// Never write to gameplay endpoints. Avoid innerHTML and display only text.
+const OPS_STATUSES={
+  incident:["open","investigating","resolved"],
+  problem:["investigating","known_error","resolved"],
+  change:["planned","in_progress","completed","rolled_back"]
+};
+function displayOps(records){
+  for(const kind of Object.keys(OPS_STATUSES)){
+    const root=el("ops-"+kind);empty(root);
+    const matching=records.filter(r=>r.kind===kind);
+    if(!matching.length){add(root,"p","No "+kind+" records yet.","caption");continue;}
+    for(const item of matching){
+      const entry=add(root,"article","","ops-entry");
+      add(entry,"small",item.reference+" · "+item.created_utc.slice(0,16).replace("T"," ")+" UTC");
+      add(entry,"strong",item.title);
+      if(item.description)add(entry,"p",item.description);
+      const label=add(entry,"label","Status");
+      const select=document.createElement("select");
+      for(const status of OPS_STATUSES[kind]){
+        const option=document.createElement("option");
+        option.value=status;
+        option.textContent=status.replaceAll("_"," ");
+        select.appendChild(option);
+      }
+      select.value=item.status;
+      select.addEventListener("change",async()=>{
+        select.disabled=true;
+        try{
+          await writeOperation("/owner/api/operations/"+encodeURIComponent(item.id)+"/status",{
+            status:select.value
+          });
+          await loadOperations();
+        }catch(error){
+          el("ops-status").textContent=error.message;
+          select.value=item.status;
+        }finally{select.disabled=false;}
+      });
+      label.appendChild(select);
+    }
+  }
+}
+async function writeOperation(path,data){
+  const response=await fetch(path,{
+    method:"POST",credentials:"same-origin",cache:"no-store",
+    headers:{"Content-Type":"application/json","Accept":"application/json"},
+    body:JSON.stringify(data)
+  });
+  if(!response.ok){
+    let message="Could not save owner record (HTTP "+response.status+").";
+    try{const error=await response.json();if(typeof error.detail==="string")message=error.detail;}catch(_){}
+    throw Error(message);
+  }
+  return response.json();
+}
+async function loadOperations(){
+  try{
+    const response=await fetch("/owner/api/operations",{
+      credentials:"same-origin",cache:"no-store",headers:{"Accept":"application/json"}
+    });
+    if(!response.ok)throw Error("Operational records unavailable (HTTP "+response.status+").");
+    const data=await response.json();
+    displayOps(data.records||[]);
+    el("ops-status").textContent="Private owner records. Changes here do not trigger deployments.";
+  }catch(error){el("ops-status").textContent=error.message;}
+}
+document.querySelectorAll("[data-ops-form]").forEach(form=>{
+  form.addEventListener("submit",async event=>{
+    event.preventDefault();
+    const kind=form.dataset.opsForm;
+    const submit=form.querySelector('button[type="submit"]');
+    submit.disabled=true;
+    try{
+      const title=form.elements.title.value.trim();
+      const description=form.elements.description.value.trim();
+      await writeOperation("/owner/api/operations",{kind,title,description});
+      form.reset();
+      await loadOperations();
+    }catch(error){el("ops-status").textContent=error.message;}
+    finally{submit.disabled=false;}
+  });
+});
+loadOperations();
+
 el("refresh").addEventListener("click",load);
 el("period").addEventListener("change",load);
 el("export").addEventListener("click",()=>{
