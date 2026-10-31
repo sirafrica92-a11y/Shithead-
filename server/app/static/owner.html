@@ -20,10 +20,20 @@ footer{color:#8b8176;font-size:.75rem;margin-top:25px;text-align:center}
 </style>
 <script src="/owner/analytics.js" defer></script></head>
 <body><main><header><div><div class="eyebrow">OWNER ACCESS · PRIVATE</div><h1>SHITHEAD Games</h1><p style="margin:4px 0 0">Traffic and gameplay analytics</p></div>
-<div class="actions"><label for="period">Period</label><select id="period"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option><option value="365">365 days</option><option value="0">All time</option></select><button id="refresh" type="button">Refresh</button><button id="export" type="button">Export CSV</button></div></header>
+<div class="actions"><label for="period">Period</label><select id="period"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option><option value="365">365 days</option><option value="0">All time</option></select><button id="refresh" type="button">Refresh</button><button id="export" type="button">Export CSV</button><button id="logout" type="button" hidden>Sign out</button></div></header>
 <p id="status" role="status" aria-live="polite">Loading aggregated statistics…</p>
 <div class="stats"><div class="card"><div class="metric" id="capacity-rejections">—</div><div class="metric-label">Room creation attempts denied (not unique people)</div></div></div>
 <div class="stats"><div class="card"><div class="metric" id="views">—</div><div class="metric-label">Homepage views</div></div><div class="card"><div class="metric" id="rooms">—</div><div class="metric-label">Rooms created</div></div><div class="card"><div class="metric" id="starts">—</div><div class="metric-label">Matches started</div></div><div class="card"><div class="metric" id="ends">—</div><div class="metric-label">Matches completed</div></div></div>
+<section class="card" aria-labelledby="billing-title">
+<h2 id="billing-title">Railway billing &amp; usage</h2>
+<div class="stats" style="margin:0;grid-template-columns:repeat(3,minmax(0,1fr))">
+<div><div class="metric" id="billing-date" style="font-size:clamp(1.1rem,2vw,1.55rem)">Not set</div><div class="metric-label">Next payment / renewal date</div></div>
+<div><div class="metric" id="billing-usage">Not set</div><div class="metric-label">Usage so far (USD)</div></div>
+<div><div class="metric" id="billing-budget">Not set</div><div class="metric-label">Monthly budget (USD)</div></div>
+</div>
+<p class="caption" id="billing-note">Figures are manually configured; no live Railway billing connection. Check the actual invoice and billing cycle in Railway.</p>
+<p><a href="https://railway.com/workspace/usage" target="_blank" rel="noopener noreferrer">Check actual Railway usage and billing</a></p>
+</section>
 <section class="columns"><div class="stack">
 <div class="card"><h2>Most played games</h2><p class="caption" style="margin:-7px 0 12px">Ranked by confirmed server-side match starts, not clicks</p><div id="ranking"></div><div class="divider"></div><h2>Game breakdown</h2><div class="scroll"><table><thead><tr><th>Game</th><th>Rooms</th><th>Starts</th><th>Completed</th><th>Room requests denied</th></tr></thead><tbody id="game-table"></tbody></table></div></div>
 <div class="card"><h2>Activity by day</h2><div class="scroll"><table><thead><tr><th>Date (UTC)</th><th>Visits</th><th>Rooms</th><th>Starts</th><th>Finished</th><th>Requests denied</th></tr></thead><tbody id="daily-table"></tbody></table></div></div>
