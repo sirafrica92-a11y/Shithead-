@@ -1,50 +1,59 @@
 # Google Play listing preparation — DRAFT, 31 October 2026
 
-**Unpublished; no Google Play Console account, payment or reserved app identity is implied.** Keep the existing SHITHEAD Games website and original jester intact. The store title below is a **provisional compliance-friendly suggestion** because Google Play metadata guidance prohibits profanity. The owner chooses the permanent commercial identity.
+**Not published or reserved. Owner approval of permanent app title, app ID, signing and support identity is outstanding.** The existing website and original jester/logo remain unchanged.
 
-## Listing copy (English, UK)
+## Store identity proposal
 
-- **Provisional title (under 30 characters):** Jester Table Games
-- **Short description (under 80 characters):** Six table games with friends, plus three ways to play solo.
-- **Category:** Games / Board (confirm exact category availability in Play Console)
-- **Price model:** No in-app purchases or ads presently identified in the current web client; confirm before declaration
-- **Availability:** Online only; no offline gameplay
-- **Access:** Guests can play without an account. Private owner tools are separate.
+- **Recommended store-facing title (27/30 characters):** SH: African & Classic Games
+- **Brand:** SH
+- **Positioning:** traditional African strategy games alongside classic games from the Caribbean and elsewhere
+- **Alternative broad title:** SH: Board & Card Games
+- **Short description (under 80 characters):** Play Ludo, Awalé, Dara, Yoté and Jamaican Dominoes with friends.
+- **Category:** Games / Board (review actual available category in Play Console)
+- **Cost/ads:** no guest-game purchases or ad network currently identified; recheck at submission
+- **Connectivity:** online-only; app and browser players join the same server-hosted multiplayer rooms
+- **Access:** guest players need no accounts; owner tools are separate
 
-### Full description draft
+“Traditional African Board Games” was considered but is **not** a faithful title for a catalogue also containing Ludo, Jamaican Dominoes and a custom Shithead card game. “SH: African & Classic Games” preserves brand flexibility while giving African games clear prominence.
 
-Six games. One shared table.
+## Full store description — proposed copy
 
-Bring your friends together for classic card, board and strategy games in one place. Start a private multiplayer room, share the four-character code and play from your phones or browsers.
+Discover traditional African strategy games and familiar classics in one place.
 
-Choose from our original card game, Ludo, Awalé, Dara, Yoté and Jamaican Dominoes. Every game has its own rules and play screen, while the same shared room system keeps everyone together.
+SH brings six different multiplayer games to a shared online table. Create a private room, send friends the four-character code and take turns together, whether they open the game on Android or in a web browser.
 
-When friends are away, try the existing computer opponents in Solo Ludo, Solo Awalé and Solo Dara.
+Play Ludo, Awalé, Dara and Yoté; challenge friends to Jamaican Dominoes, including partner and Cut Throat modes; or try our custom fast-moving card game.
 
-Play in real time, see whose turn it is and return to your match after an interrupted connection. Internet access is required. Guest multiplayer does not require creating an account.
+Prefer playing alone? Play against the computer in Solo Ludo, Solo Awalé and Solo Dara.
 
-### Store metadata caution
+Different games, different strategies, one place to play together. Guest multiplayer needs no account. An internet connection is required for all games, including Solo Play.
 
-Google Play's public metadata policy discourages/prohibits profanity and vulgar language in **titles, icons, screenshots, descriptions and feature graphics**. The website's existing brand includes a word that may be flagged. Do not upload unreviewed art, logo text or gameplay screenshots containing that word into public store metadata; prepare a compliant store-facing brand variant only after owner approval. This is a **risk**, not a confirmed rejection. Do NOT silently rebrand the actual live game.
+## Search/discoverability and policy
 
-## Assets: real, policy-compliant imagery only
+Google says the title and description should be accurate, readable and relevant; keyword repetition, misleading metadata and profane wording are not allowed. The title helps discovery but **does not guarantee** ranking for individual games. Mention each implemented game in natural prose; avoid repeating an artificial keyword list.
 
-- **Store icon:** 512 × 512 px, original jester motif adapted to a Google Play-compliant store icon as approved by owner. Do not invent or upload a final approved icon yet.
-- **Feature graphic:** 1024 × 500 px, 24-bit PNG or JPEG (no transparency), real platform mood + six-game proposition; avoid misleading depictions.
-- **Phone screenshots:** capture at least two *real, current* Android gameplay screenshots, preferably homepage, actual room lobby, representative Shithead card table (policy review), Ludo board, Awalé and Jamaican Dominoes. Remove only real names/room codes; never fake UI or imply unimplemented features.
-- **Other device types:** supply only where platform actually supports them. Preview video optional.
+The existing website/game uses the title “Shithead”, which is a potentially profane term for **public Play listing metadata and screenshots**. Do not silently rename the existing live game. Before uploading store graphics/screenshots, check logo and page text for Play policy suitability, choose compliant store-facing variants with owner approval, and do not imply Google has approved them. Avoid sanitising images in a way that misrepresents the actual play experience; evaluate policy and risk first.
 
-## Before launch owner decisions
-1. Confirm the public store name and permanent application ID. The preview ID `games.jestertable.preview` is NOT that ID.
-2. Confirm the public developer/support email, verified contact details and signed privacy notice.
-3. Approve safe-for-store artwork that keeps the jester identity without prohibited metadata.
-4. Review target age group, content rating, privacy/data safety and content rights with actual evidence.
-5. Choose intended publishing regions and confirm any applicable UK/EU consumer privacy terms.
-6. Owner alone controls Play registration/payment, identity verification and signing keys.
+## Accurate assets still to prepare/review
 
-## Current Google policies checked 31 Oct 2026
-- Metadata: https://support.google.com/googleplay/android-developer/answer/9898842
-- Listing advice: https://support.google.com/googleplay/android-developer/answer/13393723
-- Target SDK: new submissions require **API 36+** from 31 Aug 2026: https://support.google.com/googleplay/android-developer/answer/11926878
-- Preview assets: https://support.google.com/googleplay/android-developer/answer/9866151
-- New personal account testing: **12 opted-in testers continuously for 14 days** before production access request: https://support.google.com/googleplay/android-developer/answer/14151465
+- **Store icon:** 512 × 512 PNG, preserve original approved jester motif; review any text or graphic for Play policy.
+- **Feature graphic:** 1024 × 500 PNG/JPEG, original brand palette, truthful images and message.
+- **Screenshots:** capture genuine current Android gameplay and lobbies after preview APK testing. Aim to feature Ludo, Awalé, Dara, Yoté, Jamaican Dominoes and a representative card screen where policy allows. Redact live user names and room codes, but do not fake gameplay or features.
+- **Video:** optional; only actual supported gameplay.
+
+## Owner decisions before final store package
+
+1. Approve store-facing title and permanent application/package ID. Preview ID `games.jestertable.preview` is disposable.
+2. Approve public support email/trading identity and privacy notice.
+3. Approve original-brand store icon/feature graphic and live UI screenshot set.
+4. Confirm audience, age rating, Data safety responses, regions and rights to artwork.
+5. Control private signing/upload keys, Play registration, payment and identity verification.
+6. Test with browser users and Android app users on real phones before launch.
+
+## Official Google guidance (review again at publication)
+
+- Store listing: https://support.google.com/googleplay/android-developer/answer/13393723
+- Metadata policy: https://support.google.com/googleplay/android-developer/answer/9898842
+- Image assets: https://support.google.com/googleplay/android-developer/answer/9866151
+- Target SDK: https://support.google.com/googleplay/android-developer/answer/11926878
+- New personal account closed testing: https://support.google.com/googleplay/android-developer/answer/14151465
