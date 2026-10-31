@@ -30,6 +30,7 @@ from server.app.dara import make_dara_match, apply_dara_action, IllegalDaraMove
 from server.app.yote import make_yote_match, apply_yote_action, IllegalYoteMove
 from server.app.dominoes import make_domino_match, apply_domino_action, IllegalDominoMove
 from server.app.game_catalog import game_spec, capacity_after_switch
+from server.app.solo_ludo import router as solo_ludo_router
 from server.app.analytics import AnalyticsStore, traffic_source
 from server.app.owner_auth import verify_google_token
 from server.app.owner_operations import OperationsStore
@@ -987,6 +988,7 @@ def create_app(
             if notify:
                 await broadcast(room)
 
+    app.include_router(solo_ludo_router)
     return app
 
 
