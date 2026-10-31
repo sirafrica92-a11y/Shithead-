@@ -131,3 +131,28 @@ def test_idle_expiry_and_capacity_preserve_room_store(tmp_path,monkeypatch):
         assert a["id"] not in solo_dara._sessions
         assert len(solo_dara._sessions)==1
         assert not c.app.state.room_store.rooms
+
+def test_bot_action_trace_matches_actual_engine_state_and_refresh_skips_replay(tmp_path):
+    with TestClient(create_app(db_path=tmp_path/"rooms.sqlite3")) as c:
+        a=c.post("/api/solo/dara").json()
+        session=solo_dara._sessions[a["id"]]
+        session.match=replace(make_dara_match(),actor=1)
+        solo_dara._computer_reply(session)
+        steps=session.action_trace
+        assert steps and all(step["message"].startswith("Computer ") for step in steps)
+        assert steps[-1]["game"]==solo_dara.private_dara_view(session.match,0)
+        assert session.match.actor==0 or session.match.finished
+        resumed=c.get("/api/solo/dara/"+a["id"],headers={"X-Solo-Token":a["token"]})
+        assert resumed.status_code==200
+        assert resumed.json()["computer_actions"]==[]
+        assert resumed.json()["game"]==steps[-1]["game"]
+
+def test_solo_dara_browser_action_trace_accessibility(tmp_path):
+    with TestClient(create_app(db_path=tmp_path/"rooms.sqlite3")) as c:
+        page=c.get("/solo/dara").text
+        code=c.get("/solo/dara.js").text
+        assert 'id="cpu-log"' in page and 'id="skip-cpu"' in page
+        assert 'aria-live="polite"' in page
+        assert "showComputerTurns" in code
+        assert "displayFrame=step.game" in code
+        assert "computer_actions" in code
