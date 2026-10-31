@@ -89,6 +89,12 @@ Owner-only endpoints: GET/POST `/owner/api/operations`, POST `/owner/api/operati
 - **Release gate:** run GitHub Actions full suite, new-game full-match simulations, auth and invalid/out-of-turn cases, JS syntax, responsive browser visuals and six-game regression review. PR remains draft until verified; do not merge/deploy or modify live rooms solely to test this draft.
 - **Limitations:** online-only, ephemeral match on Railway restart, no difficulty selector yet, no analytics integration. Document these plainly rather than claiming offline play or persistent solo save data.
 
+## Solo Play status — 31 October 2026
+- **Ludo:** PR #28 merged as `a6c8257117b10a150cdb52b48e553c1f9909a56f` and Railway deployment `6b482400-1e74-4d27-b1f3-ec81b016f2d9` reached SUCCESS. The earlier draft-only status text is historical.
+- **Awalé:** PR #29 merged as `3854becb443d5a065ad82ead642bd867730b125e`; Railway deployment `f6303b5a-989f-4a04-9534-f1e7db99810f` reached SUCCESS. Full regression CI on PR head `e29cc92002b3f425a3f029e068ab52e1f0fc955a`: 424 Python tests passed, all ten JS syntax checks passed. Existing six game engines unchanged. No independent mobile interactive QA recorded.
+- **Dara:** draft PR #30, `feature/solo-play-dara-20261031`, branched from the Awalé production release. Uses unchanged `server/app/dara.py`, server-owned placement, orthogonal moves, compulsory captures and 5×6 board; independent memory-only session. New tests include full match, strict version and authentication checks, and coexistence with all six multiplayer games, Ludo and Awalé. **Do not claim Dara deployed or reviewed until exact-head CI, browser testing and an approved merge/release.** The live `/data` volume and six multiplayer engines are not touched by the draft.
+- **Next after Dara:** Yoté, followed by Shithead and Jamaican Dominoes; one safe reviewed mode at a time.
+
 ## NON-NEGOTIABLE ENGINEERING RULES
 - The owner defines gameplay decisions. Protect established Shithead rules and Ludo rules, even where standard variants differ.
 - Reuse already working multiplayer rooms, invitation codes, seat auth/token isolation, session recovery, WebSockets, serialization, rematches, reactions and the gold/cream/crimson design.
