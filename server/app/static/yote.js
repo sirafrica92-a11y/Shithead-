@@ -15,7 +15,7 @@ function renderYote(g){
       :(snap.players[g.actor]?.name||"Player")+"'s turn";
   el("yote-score").textContent=(snap.players[0]?.name||"Player 1")+" (red): "+g.cells.filter(v=>v===1).length+" on board, "+g.reserves[0]+" in reserve · "+
       (snap.players[1]?.name||"Player 2")+" (cream): "+g.cells.filter(v=>v===2).length+" on board, "+g.reserves[1]+" in reserve";
-  el("yote-event").textContent=g.event||"";
+  el("yote-event").textContent=namedGameEvent(g.event).replace("Jump captured the final enemy piece.", "Jump captured the last enemy piece on the board.");
   const sources=new Set([...legal.steps,...legal.jumps].map(m=>m[0]));
   if(yoteSelected>=0&&!sources.has(yoteSelected))yoteSelected=-1;
   const simple=legal.steps.filter(m=>m[0]===yoteSelected);
