@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#151518">
+<title>Solo Play · Ludo | SHITHEAD Games</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#f8ebd0;background:#131518}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0,#30211c,#111317 75%);min-height:100dvh}
+.shell{width:min(100%,640px);padding:18px 14px 32px;margin:auto}
+header,.heading,.controls{display:flex;justify-content:space-between;align-items:center;gap:10px}
+header{border-bottom:1px solid #6d523b;padding-bottom:12px}h1{font:italic 800 29px Georgia,serif;color:#f1c47c;margin:12px 0 3px}h2{margin:0;font:800 18px Georgia,serif}
+a{color:#efcd92;text-decoration:none}button{border:1px solid #8f714a;color:#161817;background:#efc57f;border-radius:11px;font:700 15px system-ui;padding:12px;cursor:pointer;min-height:44px}
+button:disabled{opacity:.48;cursor:default}.secondary{background:#252a30;color:#ffdfa4}
+.panel{padding:15px;margin:14px 0;border:1px solid #695238;border-radius:14px;background:#191d25}
+.small{font-size:13px;color:#cdbb9e}.message{min-height:20px;color:#f1c47c}
+.players{display:flex;justify-content:space-between;gap:10px}.players>div{flex:1;padding:9px;background:#232a32;border-radius:9px}
+.board{aspect-ratio:1;display:grid;grid-template:repeat(15,1fr)/repeat(15,1fr);background:#e6d6b3;border:3px solid #b18d5a;border-radius:7px;overflow:hidden}
+.cell{position:relative;border:1px solid #cbb995;display:flex;align-items:center;justify-content:center;color:#ae9a73;font-size:12px;min-width:0}
+.cell.empty{background:#21252d;border:0}.cell.track,.cell.safe{background:#fff6df}.cell.safe{color:#b68a48}
+.cell.red{background:#c94747}.cell.yellow{background:#dfb34e}.cell.green{background:#46a97c}.cell.blue{background:#487fb6}.cell.centre{background:#59402e}
+.piece{border:2px solid #fff;border-radius:50%;color:white;font-size:clamp(6px,1.9vw,11px);font-weight:900;min-height:0;min-width:0;padding:0;width:80%;aspect-ratio:1;display:grid;place-items:center;box-shadow:0 1px 4px #0005;z-index:2}
+.piece.red{background:#b91828}.piece.yellow{background:#98700b}.piece.legal{outline:2px solid #10141a;box-shadow:0 0 0 3px #fff}.piece:disabled{opacity:1}
+.controls{flex-wrap:wrap}.controls button{flex:1}.die{font:900 26px system-ui;display:inline-flex;min-width:48px;align-items:center;justify-content:center;background:#fff;color:#15191b;border-radius:8px;padding:8px}
+#moves{display:flex;gap:8px;flex-wrap:wrap}#moves button{flex:1}.hidden{display:none!important}
+@media(max-width:360px){.shell{padding:12px 8px}.piece{border-width:1px}.panel{padding:10px}}
+</style></head><body><main class="shell">
+<header><a href="/" aria-label="Back to SHITHEAD Games">‹ All games</a><strong>SHITHEAD GAMES</strong></header>
+<div class="heading"><div><h1>Solo Play</h1><p class="small">Ludo · You vs Computer</p></div><button id="new" class="secondary">New Game</button></div>
+<section class="panel"><div class="players"><div><strong>🔴 You</strong><p id="you-progress" class="small">0/4 home</p></div><div><strong>🟡 Computer</strong><p id="bot-progress" class="small">0/4 home</p></div></div>
+<div id="board" class="board" aria-label="Ludo board"></div>
+<p id="turn" role="status" aria-live="polite">Select New Game to start.</p>
+<div class="controls"><span id="die" class="die" aria-label="Last dice roll">⚄</span><button id="roll" disabled>Roll Dice</button><button id="again" class="secondary hidden">Play Again</button></div>
+<div id="moves"></div><p id="event" class="small"></p><p id="error" role="alert" class="message"></p></section>
+<p class="small">Solo Play is online. The computer follows the same Ludo rules as you. Your private match is separate from multiplayer rooms.</p>
+</main><script src="/solo/ludo.js" defer></script></body></html>
