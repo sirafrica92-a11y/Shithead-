@@ -111,3 +111,54 @@ def test_bot_does_not_mutate_state_and_reset_has_no_random_remote_model_cost():
     solo_awale._computer_reply(s)
     assert s.version == 1
     assert s.match.actor == 0 or s.match.finished
+
+
+def test_all_six_multiplayer_games_and_existing_solo_ludo_still_work(tmp_path):
+    """A new Solo Play game must not displace any existing game or room routes."""
+    from server.app import solo_ludo
+    with TestClient(create_app(db_path=tmp_path / "rooms.sqlite3")) as c:
+        original_ludo_sessions = len(solo_ludo._sessions)
+        awale = c.post("/api/solo/awale")
+        assert awale.status_code == 201
+        ludo = c.post("/api/solo/ludo")
+        assert ludo.status_code == 201
+        assert c.get("/health").json() == {"status": "ok"}
+        assert c.get("/").status_code == 200
+        assert c.get("/brand/shithead-logo.png").status_code == 200
+        for path in ("/client.js", "/ludo.js", "/awale.js", "/dara.js",
+                     "/yote.js", "/dominoes.js", "/solo/ludo", "/solo/ludo.js"):
+            assert c.get(path).status_code == 200, path
+        for game, capacity in (("shithead", 2), ("ludo", 2), ("awale", 2),
+                               ("dara", 2), ("yote", 2), ("dominoes", 4)):
+            response = c.post("/api/rooms", json={
+                "name": "Host", "capacity": capacity, "game_type": game})
+            assert response.status_code == 201, (game, response.text)
+            room = response.json()
+            assert room["game_type"] == game
+            snap = c.get("/api/rooms/" + room["room_id"])
+            assert snap.status_code == 200
+            assert snap.json()["game_type"] == game
+            joined = c.post(f'/api/rooms/{room["room_id"]}/join',
+                            json={"name": "Friend"})
+            assert joined.status_code == 201
+        assert len(c.app.state.room_store.rooms) == 6
+        # Both solo game sessions operate outside that multiplayer store.
+        assert len(solo_awale._sessions) == 1
+        assert len(solo_ludo._sessions) >= original_ludo_sessions + 1
+        solo_ludo._sessions.pop(ludo.json()["id"], None)
+
+
+def test_solo_awale_idle_expiry_and_capacity_do_not_touch_rooms(tmp_path, monkeypatch):
+    monkeypatch.setattr(solo_awale, "MAX_SESSIONS", 1)
+    with TestClient(create_app(db_path=tmp_path / "rooms.sqlite3")) as c:
+        first = c.post("/api/solo/awale").json()
+        assert c.post("/api/solo/awale").status_code == 503
+        session = solo_awale._sessions[first["id"]]
+        session.last_active -= solo_awale.SESSION_TTL + 1
+        assert c.get("/api/solo/awale/" + first["id"],
+                     headers={"X-Solo-Token": first["token"]}).status_code == 404
+        second = c.post("/api/solo/awale")
+        assert second.status_code == 201
+        assert first["id"] not in solo_awale._sessions
+        assert len(solo_awale._sessions) == 1
+        assert not c.app.state.room_store.rooms
