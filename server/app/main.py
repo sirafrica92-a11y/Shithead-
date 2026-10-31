@@ -745,8 +745,6 @@ def create_app(
                             and old_phase != "FINISHED"
                             and room.public_view()["phase"] == "FINISHED"):
                             analytics.record("matches_completed", game=room.game_type, mode=game_mode)
-                        if kind in ("game", "ludo", "awale", "dara", "yote", "dominoes"):
-                            analytics.record("actions_accepted", game=room.game_type, mode=game_mode)
                     view = room.view_for(index)
                     if changed or (error is None and request_id in seat.request_ids):
                         store.persist(room)
