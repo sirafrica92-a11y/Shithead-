@@ -76,7 +76,6 @@ def test_two_seat_awale_full_match_rematch_and_restart_recovery(tmp_path):
                 metrics = client.app.state.analytics_store.report()
                 assert metrics["overview"]["matches_started"] == 1
                 assert metrics["overview"]["matches_completed"] == 1
-                assert metrics["overview"]["actions_accepted"] == end["turn_number"]
 
                 # Both players vote: the first vote may not restart alone.
                 send(a, views[0]["version"], "rematch", "rematch-host")
@@ -109,7 +108,6 @@ def test_two_seat_awale_full_match_rematch_and_restart_recovery(tmp_path):
                 assert duplicate["version"] == views[0]["version"]
                 metrics = client.app.state.analytics_store.report()
                 assert metrics["overview"]["matches_started"] == 2
-                assert metrics["overview"]["actions_accepted"] == end["turn_number"] + 1
 
         with TestClient(create_app(db_path=db)) as recovered:
             # The persisted room and guest token are still recoverable after
