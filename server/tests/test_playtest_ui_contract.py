@@ -33,3 +33,16 @@ def test_all_six_games_and_labels(tmp_path):
             res=c.post("/api/rooms",json={"name":"Host","capacity":capacity,"game_type":game})
             assert res.status_code==201
             assert c.post("/api/rooms/"+res.json()["room_id"]+"/join",json={"name":"Friend"}).status_code==201
+
+
+def test_actual_piece_color_labels_match_css(tmp_path):
+    with TestClient(create_app(db_path=tmp_path/"rooms.sqlite3")) as client:
+        css=client.get("/").text
+        for name in ("dara","yote"):
+            assert f".{name}-p1 .{name}-piece" in css
+            assert f".{name}-p2 .{name}-piece" in css
+            script=client.get(f"/{name}.js").text
+            assert "(gold):" in script
+            assert "(crimson):" in script
+            assert "(red):" not in script
+            assert "(cream):" not in script
