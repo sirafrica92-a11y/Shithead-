@@ -6,6 +6,7 @@ import asyncio
 import base64
 import binascii
 import hmac
+import html
 import json
 import os
 import secrets
@@ -14,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
@@ -29,6 +31,7 @@ from server.app.yote import make_yote_match, apply_yote_action, IllegalYoteMove
 from server.app.dominoes import make_domino_match, apply_domino_action, IllegalDominoMove
 from server.app.game_catalog import game_spec, capacity_after_switch
 from server.app.analytics import AnalyticsStore, traffic_source
+from server.app.owner_auth import verify_google_token
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
 
@@ -87,6 +90,17 @@ def create_app(
     analytics = AnalyticsStore(analytics_location)
     app.state.analytics_store = analytics
     admin_password = os.getenv("SHITHEAD_ADMIN_PASSWORD", "")
+    google_client_id = os.getenv("SHITHEAD_GOOGLE_CLIENT_ID", "").strip()
+    google_owner_email = os.getenv("SHITHEAD_OWNER_EMAIL", "").strip().lower()
+    session_secret = os.getenv("SHITHEAD_ADMIN_SESSION_SECRET", "")
+    google_enabled = bool(google_client_id and google_owner_email and len(session_secret) >= 32)
+    google_origin = os.getenv("SHITHEAD_OWNER_ORIGIN", "https://play.shithead.games").rstrip("/")
+    session_signer = URLSafeTimedSerializer(session_secret, salt="shithead-owner-google-v1") if google_enabled else None
+    session_cookie = "__Host-shithead-owner"
+    login_cookie = "__Host-shithead-login-nonce"
+    admin_session_seconds = 8 * 60 * 60
+    app.state.owner_google_enabled = google_enabled
+
 
     # Rooms are open to anyone holding the code, so a wrong code is the only
     # thing worth throttling. Successful play never touches this limiter.
@@ -116,8 +130,21 @@ def create_app(
         return room
 
     def check_owner(request: Request) -> None:
-        # No owner portal at all until a strong password is configured.
-        # Refuse accidental short credentials on a public internet endpoint.
+        if google_enabled:
+            signed = request.cookies.get(session_cookie, "")
+            if not signed or len(signed) > 2000:
+                raise HTTPException(status_code=401, detail="Owner sign-in required")
+            try:
+                claims = session_signer.loads(signed, max_age=admin_session_seconds)
+            except (BadSignature, SignatureExpired, ValueError):
+                raise HTTPException(status_code=401, detail="Owner sign-in required") from None
+            if (not isinstance(claims, dict)
+                    or not isinstance(claims.get("sub"), str)
+                    or not claims["sub"]
+                    or not hmac.compare_digest(claims.get("email", ""), google_owner_email)):
+                raise HTTPException(status_code=401, detail="Owner sign-in required")
+            return
+        # Legacy Basic fallback is disabled as soon as Google mode is configured.
         if len(admin_password) < 20:
             raise HTTPException(status_code=404, detail="not found")
         provided = request.headers.get("authorization", "")
