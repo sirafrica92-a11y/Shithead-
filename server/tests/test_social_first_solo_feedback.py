@@ -130,3 +130,29 @@ def test_new_home_keeps_multiplayer_primary_and_original_brand(tmp_path):
         end=html.index('<section id="screen-setup"')
         assert 'Solo Play · Ludo' not in html[start:end]
         assert 'Solo Play · Awalé' not in html[start:end]
+
+def test_existing_releases_survive_game_setup_pr_merge(tmp_path):
+    """Tests on GitHub's PR merge commit, not just the old feature head.
+
+    The code in PR #32 must not regress PR #33 connection recovery or PR #34
+    display improvements when it joins the now-updated deployment branch.
+    """
+    with TestClient(create_app(db_path=tmp_path / "rooms.sqlite3")) as client:
+        js = client.get("/client.js").text
+        for source in (
+            'function namedGameEvent(',
+            'SYNC_INTERVAL_MS',
+            'function recoverLiveSeat()',
+            'sessionRevoked',
+            'show("screen-setup")',
+            '"screen-table"',
+        ):
+            assert source in js
+        html = client.get("/").text
+        assert 'SHITHEAD Games — Play Six Games with Friends' in html
+        assert 'id="domino-hand-total"' in html
+        assert 'Jamaican flag' in html
+        for mode in ("ludo", "awale"):
+            solo_js = client.get(f"/solo/{mode}.js").text
+            assert solo_js.count("async function api(") == 1
+            assert "await showComputerTurns" in solo_js
