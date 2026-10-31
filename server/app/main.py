@@ -168,6 +168,95 @@ def create_app(
                      "Referrer-Policy": "no-referrer",
                      "X-Frame-Options": "DENY"}
 
+    def _owner_post_origin(request: Request) -> None:
+        # Cross-site requests must not mutate authenticated session cookies.
+        if request.headers.get("origin") != google_origin:
+            raise HTTPException(status_code=403, detail="Invalid owner sign-in origin")
+
+    @app.get("/owner/login", include_in_schema=False)
+    async def owner_login(request: Request):
+        if not google_enabled:
+            raise HTTPException(status_code=404, detail="not found")
+        nonce = secrets.token_urlsafe(32)
+        template = (Path(__file__).parent / "static" / "owner-login.html").read_text(encoding="utf-8")
+        body = template.replace("__GOOGLE_CLIENT_ID__", html.escape(google_client_id, quote=True))
+        body = body.replace("__OWNER_NONCE__", html.escape(nonce, quote=True))
+        response = Response(
+            content=body, media_type="text/html",
+            headers={**ADMIN_HEADERS, "Content-Security-Policy":
+                "default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client; "
+                "connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; "
+                "style-src 'unsafe-inline'; img-src 'self' https://*.googleusercontent.com https://accounts.google.com; "
+                "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"},
+        )
+        response.set_cookie(login_cookie, nonce, secure=True, httponly=True,
+                            samesite="strict", path="/", max_age=600)
+        return response
+
+    @app.get("/owner/login.js", include_in_schema=False)
+    async def owner_login_script():
+        if not google_enabled:
+            raise HTTPException(status_code=404, detail="not found")
+        return FileResponse(
+            Path(__file__).parent / "static" / "owner-login.js",
+            media_type="application/javascript", headers=ADMIN_HEADERS,
+        )
+
+    @app.post("/owner/session", include_in_schema=False)
+    async def owner_google_session(request: Request):
+        if not google_enabled:
+            raise HTTPException(status_code=404, detail="not found")
+        _owner_post_origin(request)
+        nonce = request.cookies.get(login_cookie, "")
+        received = request.headers.get("x-owner-login-nonce", "")
+        if (not nonce or len(nonce) < 32 or len(nonce) > 100
+                or not hmac.compare_digest(nonce, received)):
+            raise HTTPException(status_code=403, detail="Invalid or expired sign-in request")
+        if int(request.headers.get("content-length", "0") or "0") > 15000:
+            raise HTTPException(status_code=413, detail="Sign-in request too large")
+        try:
+            body = await request.json()
+        except (ValueError, UnicodeDecodeError):
+            raise HTTPException(status_code=400, detail="Invalid sign-in request") from None
+        credential = body.get("credential") if isinstance(body, dict) else None
+        if not isinstance(credential, str) or not (30 <= len(credential) <= 12000):
+            raise HTTPException(status_code=400, detail="Invalid sign-in credential")
+        try:
+            claims = await verify_google_token(credential, google_client_id)
+        except Exception:
+            raise HTTPException(status_code=401, detail="Google sign-in could not be verified") from None
+        email = claims.get("email", "")
+        sub = claims.get("sub", "")
+        if (not isinstance(email, str) or not isinstance(sub, str) or not sub
+                or claims.get("email_verified") is not True
+                or not hmac.compare_digest(email.strip().lower(), google_owner_email)
+                or not hmac.compare_digest(str(claims.get("nonce", "")), nonce)):
+            raise HTTPException(status_code=403, detail="This Google account is not authorised")
+        response = Response(content='{"ok":true}', media_type="application/json",
+                            headers=ADMIN_HEADERS)
+        response.set_cookie(
+            session_cookie,
+            session_signer.dumps({"sub": sub, "email": google_owner_email}),
+            secure=True, httponly=True, samesite="strict",
+            max_age=admin_session_seconds, path="/",
+        )
+        response.delete_cookie(login_cookie, path="/", secure=True, httponly=True,
+                               samesite="strict")
+        return response
+
+    @app.post("/owner/logout", include_in_schema=False)
+    async def owner_logout(request: Request):
+        if not google_enabled:
+            raise HTTPException(status_code=404, detail="not found")
+        _owner_post_origin(request)
+        response = Response(content='{"ok":true}', media_type="application/json",
+                            headers=ADMIN_HEADERS)
+        response.delete_cookie(session_cookie, path="/", secure=True, httponly=True,
+                               samesite="strict")
+        response.delete_cookie(login_cookie, path="/", secure=True, httponly=True,
+                               samesite="strict")
+        return response
+
     @app.get("/owner/analytics", include_in_schema=False)
     async def owner_dashboard(request: Request):
         check_owner(request)
