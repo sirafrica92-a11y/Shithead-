@@ -8,7 +8,11 @@
 const el = id => document.getElementById(id);
 const KEY = "shithead-local-seat-v1";
 
-let ws, seatToken, seatIndex = -1, snap = null, roomId = "", reconnects = 0;
+let ws, seatToken, seatIndex = -1, snap = null, roomId = "";
+let reconnectTimer = null, heartbeatTimer = null;
+let lastStateAt = 0, heartbeatSentAt = 0, socketOpenAt = 0;
+let sessionRevoked = false;
+const SYNC_INTERVAL_MS = 45000, SYNC_TIMEOUT_MS = 20000, RETRY_MAX_MS = 30000;
 let selection = new Set();        // indices inside the live zone
 let targetSeat = null;            // chosen opponent for 3 / Joker and counters
 let intentionalClose = false;
@@ -51,6 +55,7 @@ function loadSeat() {
   return null;
 }
 function saveSeat(room, token, seat, name) {
+  sessionRevoked = false; // A newly issued, explicitly saved seat is independent of an expired one.
   try { sessionStorage.setItem(KEY, JSON.stringify({ room, token, seat, name })); }
   catch (_) { status("Browser session storage blocked; do not refresh during the match."); }
 }
@@ -477,6 +482,7 @@ el("host-finish").onclick = () => sendRoomAction("host_join_decision", {decision
 el("main-menu").onclick = () => {
   // Leaving the table does not delete a room or change another player's game.
   intentionalClose = true;
+  stopTransportTimers();
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
   sessionStorage.removeItem(KEY);
   seatToken = null; seatIndex = -1; roomId = ""; snap = null;
@@ -512,53 +518,126 @@ async function request(path, data) {
   return obj;
 }
 
+function stopTransportTimers() {
+  if (reconnectTimer !== null) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  if (heartbeatTimer !== null) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  heartbeatSentAt = 0;
+}
+
+// An idle WebSocket can appear connected after a server deployment or proxy
+// interruption. A read-only sync verifies the authoritative server is still
+// responding; silence closes the socket and activates seat-preserving retry.
+// Never replay game actions, create another room, or change rules here.
 function connect(room, token, retry = 0) {
+  stopTransportTimers();
   if (ws) {
     ws.onclose = null;
     if (ws.readyState !== WebSocket.CLOSED) ws.close();
   }
-  roomId = room; seatToken = token; snap = null;
+  roomId = room;
+  seatToken = token;
+  snap = null;
   intentionalClose = false;
+  // Only an explicit new seat/session may clear a rejected credential.
+  // Network retries must never resurrect a 1008-revoked seat.
+  lastStateAt = 0;
+  socketOpenAt = 0;
   const socket = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") +
     location.host + "/ws/" + encodeURIComponent(room));
   ws = socket;
   socket.onopen = () => {
-    socket.send(JSON.stringify({ type: "auth", token }));
-    status("Connected to room.");
-    reconnects = 0;
+    if (ws !== socket) return;
+    socketOpenAt = Date.now();
+    socket.send(JSON.stringify({type: "auth", token}));
+    status("Connecting to room…");
+    // One timer per currently owned socket, always cleared on replacement/exit.
+    heartbeatTimer = setInterval(() => {
+      if (ws !== socket || socket.readyState !== WebSocket.OPEN) return;
+      const now = Date.now();
+      if (!lastStateAt) {
+        // Opening TCP/WebSocket is NOT the same as a confirmed seat snapshot.
+        if (now - socketOpenAt > SYNC_TIMEOUT_MS) socket.close();
+        return;
+      }
+      if (heartbeatSentAt) {
+        if (now - heartbeatSentAt > SYNC_TIMEOUT_MS) socket.close();
+        return;
+      }
+      if (now - lastStateAt > SYNC_INTERVAL_MS) {
+        heartbeatSentAt = now;
+        socket.send(JSON.stringify({type: "sync"}));
+      }
+    }, 5000);
   };
   socket.onmessage = message => {
     if (ws !== socket) return;
     let x;
     try { x = JSON.parse(message.data); }
     catch (_) { status("Invalid server response."); return; }
+    // Only an actual authenticated room snapshot counts as a heartbeat ack.
+    if (x.type === "room_state" || x.stateSnapshot?.type === "room_state") {
+      lastStateAt = Date.now();
+      heartbeatSentAt = 0;
+    }
     if (x.type === "error") {
       if (x.stateSnapshot) render(x.stateSnapshot);
       const text = x.message || ("Action rejected: " + x.reasonCode);
       status(text); tableStatus(text);
       noteSnapshot(false, text);
-    } else { render(x); tableStatus(""); noteSnapshot(true); }
+    } else {
+      render(x);
+      tableStatus("");
+      noteSnapshot(true);
+    }
   };
   socket.onclose = event => {
     if (ws !== socket) return;
+    stopTransportTimers();
+    if (intentionalClose) return;
     el("ready").disabled = true;
     if (event.code === 1008) {
-      status("Room or seat credential no longer valid; start a new room if the server restarted.");
+      sessionRevoked = true; // Failed authentication MUST NOT retry forever.
+      status("Room or seat credential no longer valid. Rejoin through the room code.");
+      tableStatus("Seat verification failed. Join the room again.");
       return;
     }
-    if (retry >= 5) {
-      status("Connection lost. Refresh this tab to restore your existing seat.");
-      tableStatus("Connection lost — refresh to rejoin.");
-      return;
-    }
-    status("Disconnected; restoring the same seat…");
-    tableStatus("Reconnecting…");
     const next = retry + 1;
-    setTimeout(() => { if (ws === socket) connect(room, token, next); },
-      Math.min(8000, 500 * Math.pow(2, next)));
+    const delay = Math.min(RETRY_MAX_MS, 750 * (2 ** Math.min(next - 1, 6)));
+    status("Connection interrupted. Restoring your original seat automatically…");
+    tableStatus("Reconnecting automatically…");
+    // Back off indefinitely (max 30 s) rather than leave a frozen turn after
+    // five retries. Browser online/focus can bring forward the next attempt.
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      if (ws === socket && !intentionalClose && !sessionRevoked) connect(room, token, next);
+    }, delay);
   };
-  socket.onerror = () => { status("Could not reach the server."); };
+  socket.onerror = () => {
+    if (ws === socket) status("Connection problem; trying to restore this seat.");
+  };
 }
+
+// Network return / foregrounding a tab is a cheap recovery trigger.
+// If connected, a sync updates even a silently stalled UI without reload.
+// If disconnected, reuse the SAME room and private seat token; never rejoin.
+function recoverLiveSeat() {
+  if (intentionalClose || sessionRevoked || !roomId || !seatToken) return;
+  if (ws?.readyState === WebSocket.OPEN) {
+    if (lastStateAt && !heartbeatSentAt) {
+      heartbeatSentAt = Date.now();
+      ws.send(JSON.stringify({type: "sync"}));
+    }
+    return;
+  }
+  if (ws?.readyState === WebSocket.CONNECTING) return;
+  stopTransportTimers();
+  connect(roomId, seatToken);
+}
+window.addEventListener("online", recoverLiveSeat);
+window.addEventListener("focus", recoverLiveSeat);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) recoverLiveSeat();
+});
 
 /* ------------------------------------------------------------ home flow */
 function selectHomeGame(game) {
