@@ -1,6 +1,6 @@
 "use strict";
 const el=id=>document.getElementById(id);
-let session=null,busy=false,selected=-1;
+let session=null,busy=false,selected=-1,displayFrame=null,skippingCpu=false;
 function message(s){el("error").textContent=s;}
 async function api(path,opts={}){
  const r=await fetch(path,{cache:"no-store",...opts});
@@ -13,7 +13,7 @@ function remember(){try{if(session)sessionStorage.setItem("shithead-solo-dara",J
 function forget(){try{sessionStorage.removeItem("shithead-solo-dara");}catch{}}
 function render(){
  if(!session)return;
- const g=session.game,done=g.phase==="FINISHED",mine=g.actor===0&&!done;
+ const g=displayFrame||session.game,done=g.phase==="FINISHED",mine=g.actor===0&&!done;
  const legal=mine&&!busy?g.legal||{places:[],moves:[],captures:[]}:{places:[],moves:[],captures:[]};
  const sources=new Set(legal.moves.map(m=>m[0]));
  if(!sources.has(selected))selected=-1;
@@ -41,6 +41,23 @@ function render(){
  }
  el("board").replaceChildren(frag);
 }
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function showComputerTurns(result){
+ const steps=result.computer_actions||[],log=el("cpu-log");
+ log.replaceChildren();
+ if(!steps.length)return;
+ const skip=el("skip-cpu"),reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+ skippingCpu=false;skip.classList.remove("hidden");
+ try{
+  for(const step of steps){
+   const item=document.createElement("li");
+   item.textContent=step.message;log.append(item);
+   displayFrame=step.game;render();el("event").textContent=step.message;
+   if(!reduced&&!skippingCpu)await delay(950);
+  }
+ }finally{skip.classList.add("hidden");displayFrame=null;render();}
+}
+el("skip-cpu").onclick=()=>{skippingCpu=true;};
 async function begin(){
  if(busy)return;busy=true;el("new").disabled=true;message("");
  try{
@@ -50,6 +67,7 @@ async function begin(){
      catch(e){if(e.status!==404)throw e;session=await api("/api/solo/dara",{method:"POST"});}
    }else session=await api("/api/solo/dara",{method:"POST"});
    selected=-1;remember();
+   await showComputerTurns(updated||session);
  }catch(e){message(e.message);}
  finally{busy=false;el("new").disabled=false;render();}
 }
@@ -62,6 +80,7 @@ async function act(kind,fields){
  try{
    const data=await api("/api/solo/dara/"+encodeURIComponent(session.id),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:session.token,version:session.version,kind,...fields})});
    session={...session,...data};selected=-1;remember();
+   await showComputerTurns(data);
  }catch(e){message(e.message);if(e.status===409){try{await fetchLatest();}catch(err){message("Could not refresh board: "+err.message);}}}
  finally{busy=false;render();}
 }
