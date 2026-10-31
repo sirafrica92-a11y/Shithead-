@@ -274,6 +274,8 @@ def create_app(
                 room.capacity = max(room.capacity, len(room.seats))
             room.version += 1
             store.persist(room)
+            analytics.record("players_joined", game=room.game_type,
+                             mode=room.domino_mode if room.game_type == "dominoes" else "")
         await broadcast(room)
         return {"room_id": room.id, "seat": index, "token": raw_token,
                 "waiting_next_match": room.match is not None or room.ludo is not None or room.awale is not None or room.dara is not None or room.yote is not None or room.dominoes is not None}
@@ -296,6 +298,8 @@ def create_app(
             room.game_type = payload.game_type
             room.domino_mode = payload.domino_mode
             store.persist(room)
+            analytics.record("rooms_created", game=room.game_type,
+                             mode=room.domino_mode if room.game_type == "dominoes" else "")
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
         body = {"room_id": room.id, "capacity": room.capacity, "game_type": room.game_type,
@@ -402,9 +406,11 @@ def create_app(
                     continue
 
                 changed = False
+                started_a_match = False
                 error = None
                 reason = None
                 async with room.lock:
+                    old_phase = room.public_view()["phase"]
                     seat = room.seats[index]
                     if seat.socket is not websocket:
                         error = "seat_reconnected"
@@ -532,6 +538,7 @@ def create_app(
                                 room.pending_joiners.clear()
                                 room.rematch_votes.clear()
                                 room.room_notice = "The host restarted the match for everyone."
+                                started_a_match = True
                                 room.reaction = None
                                 room.reaction_at.clear()
                                 room.version += 1
@@ -571,6 +578,7 @@ def create_app(
                                         room.match = fresh
                                     room.pending_joiners.clear()
                                     room.room_notice = ""
+                                    started_a_match = True
                                     room.rematch_votes.clear()
                                     room.reaction = None
                                     room.reaction_at.clear()
@@ -609,6 +617,7 @@ def create_app(
                                     else:
                                         room.match = candidate
                                     room.rematch_votes.clear()
+                                    started_a_match = True
                                     room.version += 1
                                     changed = True
                     elif room.game_type == "dominoes":
@@ -728,6 +737,16 @@ def create_app(
                             room.version += 1
                             remember_request(seat, request_id)
                             changed = True
+                    if changed:
+                        game_mode = room.domino_mode if room.game_type == "dominoes" else ""
+                        if started_a_match:
+                            analytics.record("matches_started", game=room.game_type, mode=game_mode)
+                        if (kind in ("game", "ludo", "awale", "dara", "yote", "dominoes")
+                            and old_phase != "FINISHED"
+                            and room.public_view()["phase"] == "FINISHED"):
+                            analytics.record("matches_completed", game=room.game_type, mode=game_mode)
+                        if kind in ("game", "ludo", "awale", "dara", "yote", "dominoes"):
+                            analytics.record("actions_accepted", game=room.game_type, mode=game_mode)
                     view = room.view_for(index)
                     if changed or (error is None and request_id in seat.request_ids):
                         store.persist(room)
