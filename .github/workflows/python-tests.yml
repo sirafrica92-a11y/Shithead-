@@ -2,6 +2,7 @@ name: Shithead Python tests
 on:
   push:
     branches:
+      - feature/solo-play-awale-20261031
       - feature/solo-play-ludo-20261031
       - feature/google-owner-login-only-20261031
       - release/owner-analytics-capacity-home-20261031
@@ -50,3 +51,4 @@ jobs:
       - run: node --check server/app/static/owner.js
       - run: node --check server/app/static/owner-login.js
       - run: node --check server/app/static/solo-ludo.js
+      - run: node --check server/app/static/solo-awale.js
