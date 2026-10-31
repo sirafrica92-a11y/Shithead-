@@ -40,13 +40,13 @@ function tableStatus(message) {
 
 let screenBeforeRules = "screen-home";
 function show(screen) {
-  ["screen-home", "screen-lobby", "screen-table", "screen-ludo", "screen-awale", "screen-dara", "screen-yote", "screen-dominoes", "screen-dominoes-rules", "screen-rules", "screen-ludo-rules", "screen-awale-rules", "screen-dara-rules"].forEach(id =>
+  ["screen-home", "screen-setup", "screen-lobby", "screen-table", "screen-ludo", "screen-awale", "screen-dara", "screen-yote", "screen-dominoes", "screen-dominoes-rules", "screen-rules", "screen-ludo-rules", "screen-awale-rules", "screen-dara-rules"].forEach(id =>
     el(id).classList.toggle("hidden", id !== screen));
 }
 function openRules() {
-  screenBeforeRules = ["screen-home", "screen-lobby", "screen-table", "screen-ludo", "screen-awale", "screen-dara", "screen-yote", "screen-dominoes"]
+  screenBeforeRules = ["screen-home", "screen-setup", "screen-lobby", "screen-ludo", "screen-awale", "screen-dara", "screen-yote", "screen-dominoes"]
     .find(id => !el(id).classList.contains("hidden")) || "screen-home";
-  const game = screenBeforeRules === "screen-home" ? chosenGame : snap?.game_type;
+  const game = ["screen-home", "screen-setup"].includes(screenBeforeRules) ? chosenGame : snap?.game_type;
   show(game === "dominoes" ? "screen-dominoes-rules" : game === "yote" ? "screen-yote-rules" : game === "dara" ? "screen-dara-rules" : game === "awale" ? "screen-awale-rules" : game === "ludo" ? "screen-ludo-rules" : "screen-rules");
   window.scrollTo(0, 0);
 }
@@ -652,6 +652,11 @@ document.addEventListener("visibilitychange", () => {
 /* ------------------------------------------------------------ home flow */
 function selectHomeGame(game) {
   chosenGame = game;
+  const names={shithead:"Shithead",ludo:"Ludo",awale:"Awalé",dara:"Dara",yote:"Yoté",dominoes:"Jamaican Dominoes"};
+  const subtitles={shithead:"2–6 friends · Create or join",ludo:"2–4 friends · Race together",awale:"2 players · Play together",dara:"2 players · Think, align and capture",yote:"2 players · Challenge a friend",dominoes:"4 players · Partner or Cut Throat"};
+  el("setup-game-name").textContent=names[game]||"Choose a game";
+  el("setup-game-subtitle").textContent=subtitles[game]||"Create a room or join friends";
+  const link=el("solo-entry-link");link.closest("#solo-entry").classList.toggle("hidden",!["ludo","awale"].includes(game));link.href=game==="awale"?"/solo/awale":"/solo/ludo";
   document.querySelectorAll(".game-choice").forEach(button => {
     const active = button.dataset.game === game;
     button.classList.toggle("active", active);
@@ -667,7 +672,7 @@ function selectHomeGame(game) {
   capacity.value=String(((game==="awale"||game==="dara"||game==="yote")?2:game==="dominoes"?4:Math.min(oldValue,game==="ludo"?4:6)));
 }
 document.querySelectorAll(".game-choice").forEach(btn=>{
-  btn.onclick=()=>selectHomeGame(btn.dataset.game);
+  btn.onclick=()=>{selectHomeGame(btn.dataset.game);show("screen-setup");window.scrollTo(0,0);el("setup-back").focus();};
 });
 el("switch-game").onclick=()=>sendRoomAction("select_game",{game_type:el("lobby-game").value});
 el("set-domino-mode").onclick=()=>sendRoomAction("set_domino_mode",{domino_mode:el("lobby-domino-mode").value});
@@ -677,12 +682,15 @@ el("ludo-refresh").onclick=refreshGame;
 el("ludo-open-rules").onclick=openRules;
 el("ludo-rules-back").onclick=()=>show(screenBeforeRules);
 selectHomeGame("shithead");
+el("setup-back").onclick=()=>{el("create-panel").classList.add("hidden");el("join-panel").classList.add("hidden");el("capacity-notice").classList.add("hidden");show("screen-home");window.scrollTo(0,0);};
 
 el("go-create").onclick = () => {
+  show("screen-setup");
   el("create-panel").classList.remove("hidden");
   el("join-panel").classList.add("hidden");
 };
 el("go-join").onclick = () => {
+  show("screen-setup");
   el("join-panel").classList.remove("hidden");
   el("create-panel").classList.add("hidden");
 };
