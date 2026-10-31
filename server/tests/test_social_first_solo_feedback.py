@@ -99,3 +99,34 @@ def test_all_six_multiplayer_games_still_create_and_join(tmp_path):
             assert joined.status_code == 201
             assert c.get(f"/api/rooms/{room}").json()["game_type"] == name
         assert len(c.app.state.room_store.rooms) == 6
+
+def test_cpu_playback_is_accessible_and_cannot_play_cpu_from_browser(tmp_path):
+    with TestClient(create_app(db_path=tmp_path / "rooms.sqlite3")) as c:
+        for name in ("ludo", "awale"):
+            html = c.get(f"/solo/{name}").text
+            js = c.get(f"/solo/{name}.js").text
+            assert 'id="cpu-log"' in html
+            assert 'id="skip-cpu"' in html
+            assert 'aria-live="polite"' in html
+            assert "await showComputerTurns" in js
+            assert "computer_actions" in js
+            assert "displayFrame=step.game" in js
+            assert "session={...session" in js
+            assert 'if(!session||busy)return' in js
+            # Human API actions remain authorised; CPU steps are display-only.
+            assert 'showComputerTurns' in js
+            assert "skip.classList.add" in js
+
+
+def test_new_home_keeps_multiplayer_primary_and_original_brand(tmp_path):
+    with TestClient(create_app(db_path=tmp_path / "rooms.sqlite3")) as c:
+        html=c.get("/").text
+        assert 'src="/brand/shithead-logo.png"' in html
+        assert 'id="go-create"' in html
+        assert 'id="go-join"' in html
+        assert html.count('id="screen-setup"') == 1
+        assert html.count('id="screen-home"') == 1
+        start=html.index('<section id="screen-home"')
+        end=html.index('<section id="screen-setup"')
+        assert 'Solo Play · Ludo' not in html[start:end]
+        assert 'Solo Play · Awalé' not in html[start:end]
