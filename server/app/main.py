@@ -173,6 +173,7 @@ def create_app(
             "active_rooms": sum(1 for room in rooms if any(s.socket is not None for s in room.seats)),
             "connected_seats": sum(s.socket is not None for room in rooms for s in room.seats),
             "rooms_in_memory": len(rooms),
+            "room_limit": store.max_rooms,
         }
         return Response(
             content=json.dumps(report), media_type="application/json",
