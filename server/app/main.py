@@ -32,6 +32,7 @@ from server.app.dominoes import make_domino_match, apply_domino_action, IllegalD
 from server.app.game_catalog import game_spec, capacity_after_switch
 from server.app.solo_ludo import router as solo_ludo_router
 from server.app.solo_awale import router as solo_awale_router
+from server.app.solo_dara import router as solo_dara_router
 from server.app.analytics import AnalyticsStore, traffic_source
 from server.app.owner_auth import verify_google_token
 from server.app.owner_operations import OperationsStore
@@ -991,6 +992,7 @@ def create_app(
 
     app.include_router(solo_ludo_router)
     app.include_router(solo_awale_router)
+    app.include_router(solo_dara_router)
     return app
 
 

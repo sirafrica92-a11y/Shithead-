@@ -656,7 +656,7 @@ function selectHomeGame(game) {
   const subtitles={shithead:"2–6 friends · Create or join",ludo:"2–4 friends · Race together",awale:"2 players · Play together",dara:"2 players · Think, align and capture",yote:"2 players · Challenge a friend",dominoes:"4 players · Partner or Cut Throat"};
   el("setup-game-name").textContent=names[game]||"Choose a game";
   el("setup-game-subtitle").textContent=subtitles[game]||"Create a room or join friends";
-  const link=el("solo-entry-link");link.closest("#solo-entry").classList.toggle("hidden",!["ludo","awale"].includes(game));link.href=game==="awale"?"/solo/awale":"/solo/ludo";
+  const link=el("solo-entry-link");link.closest("#solo-entry").classList.toggle("hidden",!["ludo","awale","dara"].includes(game));link.href=game==="awale"?"/solo/awale":game==="dara"?"/solo/dara":"/solo/ludo";
   document.querySelectorAll(".game-choice").forEach(button => {
     const active = button.dataset.game === game;
     button.classList.toggle("active", active);
