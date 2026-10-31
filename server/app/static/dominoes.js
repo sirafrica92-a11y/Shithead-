@@ -29,7 +29,7 @@ function renderDominoes(g) {
     :handover?"Hand finished — "+g.event
     :mine?"Your turn — play a matching tile or pass when blocked"
     :(names[g.actor]?.name||"Player")+" to play";
-  el("domino-event").textContent=g.event||"";
+  el("domino-event").textContent=namedGameEvent(g.event);
   el("domino-hand-counts").replaceChildren(...g.hand_counts.map((count,i)=>{
     const label=document.createElement("div");label.className="domino-player";
     label.textContent=(names[i]?.name||"Seat "+(i+1))+(i===seatIndex?" (you)":"")+(cutthroat?"":" · Team "+((i%2)+1))+" · "+count+" "+(count===1?"tile":"tiles");
