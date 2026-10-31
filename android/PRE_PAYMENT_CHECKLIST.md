@@ -1,6 +1,6 @@
 # SHITHEAD Games — Free preparation before Google Play registration
 
-**Status at 31 October 2026:** PR [#36](https://github.com/sirafrica92-a11y/Shithead-/pull/36) is a draft on `feature/android-pwa-play-store-prep-20261031` based on the verified production branch. Latest exact-head GitHub Actions `41233623379` **SUCCESS: 447 Python tests, five WebSocket recovery tests, three client-side simulator tests and JavaScript syntax checks**. Logo-derived 192 px and 512 px maskable icons have also been generated and dimension-checked. Nothing in PR #36 has been merged, deployed or published to the Play Store. Existing web app, room storage and Railway production remain untouched.
+**Status at 31 October 2026:** PR [#36](https://github.com/sirafrica92-a11y/Shithead-/pull/36) was **merged** into the Railway deployment branch as `aae4f67`. The PWA release is reported as successful; independent physical-phone installation still needs verification. The owner approved the store-facing name **SH: African & Classic Games**. This branch contains a separate temporary Android debug APK test kit; a successful APK build and real-device cross-play must still be recorded before calling the Android step complete. No Play submission, production signing key, paid registration or policy approval has occurred.
 
 ## Goal
 
@@ -10,9 +10,9 @@ Do **all free preparation first**, using one shared online game service and a PW
 
 | Gate | Assistant / coding-agent work | Owner's part | Current state |
 |---|---|---|---|
-| 1. PWA readiness | Review draft PR #36, verify icon sizes, offline handling and all game regressions; merge only after owner authorisation; follow `docs/RAILWAY_FIRST_CHECK.md` for production release | Approve the release after review | Code and CI complete; draft PR, not yet live |
+| 1. PWA readiness | Verify merged PR #36, icon sizes, offline handling and all game regressions; follow `docs/RAILWAY_FIRST_CHECK.md` for the release | Approved | PR #36 merged; PWA release reported successful; physical-phone check pending |
 | 2. On-phone PWA | Verify manifest, HTTPS, real icon and installation flow after deploy; write precise test instructions | Install via Chrome **Add to Home screen / Install app** and test it on a physical Android phone | Not tested on phone |
-| 3. Store identity | Propose compliant title, short/full descriptions, category, keywords, store graphics; do not rename the user's original artwork or gameplay | Decide public Play title, confirm the permanent Android package ID, support email, contact/brand details, age audience and whether ads are planned | Decisions pending; working title only |
+| 3. Store identity | Draft compliant metadata with all six real game titles; preserve original website branding | Store title **approved** as SH: African & Classic Games; package ID, public support email, audience and monetisation decisions still pending | Title approved, remaining identity details pending |
 | 4. Legal and trust | Audit actual server data collection; draft a privacy policy and Google Play Data safety *working sheet*, then add policy URL only once approved | Review for accuracy, confirm public contact email and any organisational details, approve publication of privacy notice | Not complete |
 | 5. Store artwork | Prepare 512px icon, 1024×500 feature graphic plan and compliant actual-game screenshot layouts | Approve visuals and capture/provide phone screenshots of real games if needed | Icons ready; feature graphic and screenshots pending |
 | 6. Android project | Generate Bubblewrap/Android project from the *deployed* PWA, set Android 16/API 36 target or higher, verify signing and package settings, prepare AAB build instructions | Generate and **privately retain/back up** an upload signing key on a computer under your control; never put keys or passwords in chat or GitHub | Not built |
@@ -31,7 +31,7 @@ Do **all free preparation first**, using one shared online game service and a PW
 
 ## Owner decisions to settle at no cost
 
-1. **Store-facing name**, provisionally `SH Games: Play With Friends` — keep the original SHITHEAD Games branding and six game rules on the website, subject to Play policies.
+1. **Store-facing name — APPROVED:** `SH: African & Classic Games` (27/30 characters). Keep existing website identity, logo and all six game rules unchanged; final Play policy review still applies.
 2. **Permanent package ID**, suggested only (not reserved): `games.shithead.play`. It must be unique and carefully checked before official release; do not assume we own it.
 3. **Developer type**: individual vs existing verified organisation (Google requirements differ).
 4. **Public support email**, which may become visible in the listing. Do not supply private login credentials.
