@@ -1,6 +1,6 @@
 # SHITHEAD Games
 
-> **RAILWAY RELEASE REMINDER:** Before any deployment, **update/verify the GitHub deployment branch `deploy/railway-shithead-games-staging` FIRST**, then verify Railway is tracking it and the intended SHA reaches `SUCCESS`. This is a GitHub branch update, **not** a routine source reconnect. Preserve the live games and `match-data` volume at `/data`. See [Railway First Check](docs/RAILWAY_FIRST_CHECK.md).
+> **RAILWAY RELEASE REMINDER:** Before any deployment, **update/verify the GitHub deployment branch `deploy/railway-shithead-games-staging` FIRST**, then verify Railway is tracking it and the intended SHA reaches `SUCCESS`. This is a GitHub branch update, **not** a routine source reconnect. Preserve the live games and `match-data` volume at `/data`. See [Railway First Check](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/docs/RAILWAY_FIRST_CHECK.md).
 
 **Six traditional games. One multiplayer home.**
 
@@ -10,7 +10,7 @@ SHITHEAD Games is a browser-based, mobile-friendly collection of traditional soc
 
 What began as a custom multiplayer **Shithead** card game has grown into a six-game platform while keeping the original jester logo and dark, antique-gold, cream and crimson identity.
 
-> **Current status (31 October 2026):** Six multiplayer games and two computer-opponent **Solo Play** modes (Ludo and Awalé) are deployed on Railway at release `3854becb`. Solo Dara is developed and tested but **parked, unmerged and not live** as draft PR #30. Server/CI status is verified; real-device end-to-end visual checks remain a follow-up.
+> **Current status (31 October 2026):** Six multiplayer games and two computer-opponent **Solo Play** modes (Ludo and Awalé) are deployed. **Current live release: `d6595d0`** (PR #33 automatic connection recovery, then PR #34 clearer names, scoring, piece counts and branding), Railway deployment `a6b8e8cf-8c1f-478b-85a5-d9eba78b60b2` **SUCCESS**, `/health` HTTP 200, one healthy worker and original `/data` volume. Solo Dara remains **parked, unmerged and not live** in draft PR #30. The separate two-screen setup and visible Solo CPU-turn improvements remain **draft PR #32**, not released. Automated checks and Railway health are verified; real-device end-to-end visual and network-interruption checks remain outstanding.
 
 ## Play the games
 
@@ -24,6 +24,12 @@ What began as a custom multiplayer **Shithead** card game has grown into a six-g
 | **Jamaican Dominoes** | 4 | Four-player double-six tile game, Partner (2 vs 2) by default or optional Cut Throat free-for-all | Collaboration and strategy |
 
 Each game has its own on-site **How to play** screen. Traditional games have regional variants; the implementation follows the rules documented for **this platform**, not necessarily every local version. The exact custom Shithead rules are recorded in [RULES.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/docs/RULES.md) and [DECISION_LOG.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/docs/DECISION_LOG.md).
+
+## Live quality improvements
+
+- **Reliable multiplayer recovery:** the browser retries dropped WebSocket connections using the existing protected seat token, requests read-only server state when the connection is quiet and never replays a game move for the player. Released in [PR #33](https://github.com/sirafrica92-a11y/Shithead-/pull/33), with automated disconnect/reconnect tests.
+- **Clearer play screens:** player names in public game events, named Awalé finish information, Jamaican Dominoes Six Love explanation, partner teams shown while waiting, correct remaining tile and piece counts, Yoté/Dara colour labels, corrected browser title and a portable Jamaican flag. Released in [PR #34](https://github.com/sirafrica92-a11y/Shithead-/pull/34); game rules unchanged.
+- **Still outstanding:** independent real-phone connection recovery and 360px/390px layout checks. The separate game-selection/setup journey and narrated CPU turns are implemented in **draft [PR #32](https://github.com/sirafrica92-a11y/Shithead-/pull/32)**, *not yet live or mobile-verified*. No further Solo Play games are planned.
 
 ## Play solo — against the computer
 
@@ -106,7 +112,7 @@ for file in client ludo awale dara yote dominoes owner owner-login solo-ludo sol
 done
 ~~~
 
-**Verified releases:** Awalé Solo Play PR #29 tested 424 Python tests and ten JavaScript syntax checks before merge; Railway release `3854becb` reached **SUCCESS**. Dara Solo Play PR #30 at `c0043f2` passed **429 tests (31 warnings) and eleven JavaScript syntax checks** in GitHub Actions workflow `41215614376`, but this is a **draft, unmerged development branch**. To validate that branch separately, check it out and include `solo-dara.js` in the JavaScript checks. Do not mistake draft-only test success for deployment.
+**Verified releases:** PR #33 automatic multiplayer recovery passed 426 Python tests, five simulated WebSocket tests and ten JS syntax checks; Railway `55049fa` SUCCESS. PR #34 presentation improvements passed 429 Python tests on the merged PR #33 branch (including an integration contract preventing loss of recovery code) plus JS syntax checks, and Railway `d6595d0` SUCCESS. Earlier Awalé Solo PR #29 passed 424 Python tests and ten JS checks, Railway `3854becb` SUCCESS. Dara Solo PR #30 at `c0043f2` passed **429 tests (31 warnings) and eleven JavaScript syntax checks** in GitHub Actions workflow `41215614376`, but this is a **draft, unmerged development branch**. To validate that branch separately, check it out and include `solo-dara.js` in the JavaScript checks. Do not mistake draft-only test success for deployment.
 
 **Known verification limits:** an intermittent legacy Shithead start-tie test failure was observed on one earlier CI run, although the verified five-game release run passed. Full manual two-device/mobile-browser playthroughs for the newest games are not yet independently recorded. See [HANDOVER.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md) for reproducible concerns and follow-up checks. Automated green checks and a healthy server do not by themselves establish zero gameplay issues.
 
