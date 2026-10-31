@@ -3,27 +3,35 @@ const el=id=>document.getElementById(id);
 let session=null,busy=false;
 function showError(msg){el("error").textContent=msg;}
 let displayFrame=null;
+let skippingCpu=false;
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function showComputerTurns(result){
  const steps=result.computer_actions||[];
+ const log=el("cpu-log");
+ log.replaceChildren();
  if(!steps.length)return;
+ const skip=el("skip-cpu");
+ skippingCpu=false;
+ skip.classList.remove("hidden");
  const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
- for(const step of steps){
-  displayFrame=step.game;
+ try {
+  for(const step of steps){
+   const item=document.createElement("li");
+   item.textContent=step.message;
+   log.append(item);
+   displayFrame=step.game;
+   render();
+   el("event").textContent=step.message;
+   if(!reduced&&!skippingCpu)await sleep(950);
+  }
+ } finally {
+  skip.classList.add("hidden");
+  displayFrame=null;
   render();
-  el("event").textContent=step.message;
-  if(!reduced)await sleep(1100);
  }
- displayFrame=null;
- render();
 }
+el("skip-cpu").onclick=()=>{skippingCpu=true;};
 
-async function api(url,opts={}){
- const response=await fetch(url,{cache:"no-store",...opts});
- let json;try{json=await response.json();}catch{throw Error("Server response unavailable");}
- if(!response.ok){const err=new Error(typeof json.detail==="string"?json.detail:"Request rejected");err.status=response.status;throw err;}
- return json;
-}
 function saved(){try{const x=JSON.parse(sessionStorage.getItem("shithead-solo-awale"));return x?.id&&x?.token?x:null;}catch{return null;}}
 function remember(){try{if(session)sessionStorage.setItem("shithead-solo-awale",JSON.stringify({id:session.id,token:session.token}));}catch{}}
 function forget(){try{sessionStorage.removeItem("shithead-solo-awale");}catch{}}
