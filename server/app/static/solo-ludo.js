@@ -82,7 +82,7 @@ async function act(action,piece=null){
 }
 async function resume(){
  const old=saved();if(!old)return;
- try{session={...old,...await api("/api/solo/ludo/"+encodeURIComponent(old.id)+"?token="+encodeURIComponent(old.token))};render();}
+ try{session={...old,...await api("/api/solo/ludo/"+encodeURIComponent(old.id),{headers:{"X-Solo-Token":old.token}})};render();}
  catch{session=null;sessionStorage.removeItem("shithead-solo-ludo");}
 }
 $("new").onclick=start;$("again").onclick=start;$("roll").onclick=()=>act("roll");
