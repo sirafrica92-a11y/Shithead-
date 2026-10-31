@@ -37,6 +37,12 @@ function bars(target,items,nameKey,countKey){
   }
 }
 function render(data) {
+  const billing=data.billing||{};
+  const usd=value=>Number.isFinite(value)?"$"+Number(value).toFixed(2):"Not set";
+  el("billing-date").textContent=billing.next_due_date||"Not set";
+  el("billing-usage").textContent=usd(billing.estimated_usage_usd);
+  el("billing-budget").textContent=usd(billing.monthly_budget_usd);
+  el("billing-note").textContent="Manual owner-entered information, not a live Railway billing feed. Verify the actual due date and usage in Railway.";
   const overview=data.overview;
   el("capacity-rejections").textContent=fmt.format(overview.capacity_rejections||0);
   el("views").textContent=fmt.format(overview.page_views);
@@ -82,6 +88,16 @@ async function load(){
     el("status").textContent=error.message||"Analytics not available";
   }
 }
+// Owner sign-out only; regular players remain guest users.
+const logout=el("logout");
+logout.hidden=false;
+logout.addEventListener("click",async()=>{
+  try{
+    const result=await fetch("/owner/logout",{method:"POST",credentials:"same-origin"});
+    if(result.ok)window.location.replace("/owner/login");
+    else {logout.hidden=true;el("status").textContent="Google sign-out is not available for this configuration.";}
+  }catch(error){el("status").textContent="Unable to sign out; close the tab and try again.";}
+});
 el("refresh").addEventListener("click",load);
 el("period").addEventListener("change",load);
 el("export").addEventListener("click",()=>{
