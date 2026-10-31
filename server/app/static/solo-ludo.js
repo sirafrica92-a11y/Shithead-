@@ -6,6 +6,22 @@ const lanes={red:[[7,1],[7,2],[7,3],[7,4],[7,5]],yellow:[[7,13],[7,12],[7,11],[7
 const starts={red:0,yellow:26};
 let session=null,busy=false;
 function put(text){$("error").textContent=text;}
+let displayFrame=null;
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function showComputerTurns(result){
+ const steps=result.computer_actions||[];
+ if(!steps.length)return;
+ const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+ for(const step of steps){
+  displayFrame=step.game;
+  render();
+  $("event").textContent=step.message;
+  if(!reduced)await sleep(950);
+ }
+ displayFrame=null;
+ render();
+}
+
 async function api(url,options={}){
  const response=await fetch(url,{cache:"no-store",...options});
  let body;try{body=await response.json();}catch{throw Error("Server did not respond correctly");}
@@ -67,7 +83,7 @@ function board(g){
 }
 function render(){
  if(!session)return;
- const g=session.game,over=g.phase==="FINISHED",mine=g.actor===0;
+ const g=displayFrame||session.game,over=g.phase==="FINISHED",mine=g.actor===0;
  $("turn").textContent=over?(g.winner===0?"You won! 🎉":"Computer wins!"):(mine?"Your turn":"Computer's turn");
  $("die").textContent=g.die??g.last_roll??"⚄";
  $("event").textContent=g.event;
