@@ -998,6 +998,14 @@ select option { color:var(--cream);background:var(--surface); }
   #screen-home .featured-choice .featured-eyebrow{font-size:9px}
 }
 
+/* Separate mobile setup screen; preserves approved dark/gold visual identity. */
+#screen-setup{max-width:690px;margin-inline:auto;min-height:100dvh;display:flex;flex-direction:column;gap:14px;padding:25px 18px calc(28px + env(safe-area-inset-bottom));background:#151113;border:1px solid var(--gold);border-radius:18px;}
+#screen-setup.hidden{display:none}
+#screen-setup .panel{border:1px solid var(--gold);padding:19px;border-radius:16px;}
+#screen-setup .btn-row{gap:10px}
+#screen-setup .games-entry-panel{border-color:var(--gold)}
+#screen-setup .seat-heading{margin-top:0}
+@media(max-width:420px){#screen-setup{width:calc(100% - 12px);margin:6px auto;padding:16px 12px 24px;min-height:calc(100dvh - 12px)}#screen-setup .panel{padding:14px 11px}}
 </style>
 </head>
 <body>
@@ -1040,14 +1048,22 @@ select option { color:var(--cream);background:var(--surface); }
       <button type="button" class="game-choice" data-game="dominoes" aria-pressed="false"><span class="game-emoji"><svg viewBox="0 0 60 40" width="52" height="35" role="img" aria-label="Jamaican flag" style="vertical-align:middle;border-radius:3px"><rect width="60" height="40" fill="#009B3A"/><path d="M0 0L60 40M60 0L0 40" stroke="#FED100" stroke-width="12"/><path d="M0 0L30 20L0 40Z M60 0L30 20L60 40Z" fill="#111"/></svg></span><strong>Jamaican Dominoes</strong><small>4 players · teams</small><span class="choice-tagline">Partner up. Six Love.</span></button>
     </div>
   </section>
+  <p class="home-footer">PLAY.SHITHEAD.GAMES</p>
+</section>
+
+<!-- GAME SETUP (step 2; separate view) -->
+<section id="screen-setup" class="shell hidden" aria-label="Game setup">
+  <button class="btn btn-ghost" id="setup-back" type="button" style="align-self:flex-start">‹ Back to games</button>
+  <header class="brand" style="margin:4px 0 8px">
+    <p class="brand-strapline">PLAY TOGETHER</p>
+    <h1 id="setup-game-name" style="font-size:clamp(28px,7vw,44px);color:var(--cream)">Shithead</h1>
+    <p id="setup-game-subtitle" style="margin:0">Create a room or join your friends</p>
+  </header>
   <div class="panel">
     <h2 class="seat-heading">Take your seat</h2>
     <label class="field" for="name"><span>Enter your name</span>
       <input id="name" placeholder="Player name" maxlength="32" autocomplete="nickname">
     </label>
-    <a href="/solo/ludo" class="btn btn-primary" style="display:block;text-align:center;margin-bottom:12px" aria-label="Solo Play Ludo against the computer">Solo Play · Ludo</a>
-    <a href="/solo/awale" class="btn btn-primary" style="display:block;text-align:center;margin-bottom:12px" aria-label="Solo Play Awalé against the computer">Solo Play · Awalé</a>
-    <p style="font-size:13px;color:var(--beige)">Just you and a computer opponent — no room code needed.</p>
     <div class="btn-row">
       <button id="go-create" class="btn btn-primary" type="button">Create Room</button>
       <button id="go-join" class="btn btn-ghost" type="button">Join Room</button>
@@ -1082,10 +1098,10 @@ select option { color:var(--cream);background:var(--surface); }
     <button id="join" class="btn btn-primary" type="button">Join room</button>
   </div>
 
+  <p class="games-entry-panel" id="solo-entry" style="margin:8px 0 0;font-size:13px;text-align:center"><a id="solo-entry-link" href="/solo/ludo" style="color:var(--gold-bright)">Prefer Solo Play against the computer?</a></p>
   <button id="go-rules" class="btn btn-ghost" type="button">How to play &amp; rules</button>
   <p id="status" role="status" aria-live="polite"></p>
   <noscript><p>JavaScript is required to play.</p></noscript>
-  <p class="home-footer">PLAY.SHITHEAD.GAMES</p>
 </section>
 
 <!-- =========================================================== LOBBY -->
