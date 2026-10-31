@@ -410,6 +410,32 @@ def create_app(
         )
         return FileResponse(Path(__file__).parent / "static" / "index.html")
 
+    # PWA and Android Trusted Web Activity: metadata only, never cache games.
+    @app.get("/manifest.webmanifest", include_in_schema=False)
+    async def web_app_manifest():
+        return FileResponse(
+            Path(__file__).parent / "static" / "manifest.webmanifest",
+            media_type="application/manifest+json",
+            headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+        )
+
+    @app.get("/service-worker.js", include_in_schema=False)
+    async def pwa_service_worker():
+        return FileResponse(
+            Path(__file__).parent / "static" / "service-worker.js",
+            media_type="application/javascript",
+            headers={"Cache-Control": "no-store", "Service-Worker-Allowed": "/",
+                     "X-Content-Type-Options": "nosniff"},
+        )
+
+    @app.get("/pwa-registration.js", include_in_schema=False)
+    async def pwa_registration():
+        return FileResponse(
+            Path(__file__).parent / "static" / "pwa-registration.js",
+            media_type="application/javascript",
+            headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+        )
+
     @app.get("/client.js")
     async def client_script():
         return FileResponse(Path(__file__).parent / "static" / "client.js", media_type="application/javascript")
