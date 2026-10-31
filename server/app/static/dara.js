@@ -18,7 +18,7 @@ function renderDara(g){
   el("dara-progress").textContent=(snap.players[0]?.name||"Player 1")+" (red): "+g.cells.filter(v=>v===1).length+
       " "+(g.cells.filter(v=>v===1).length===1?"piece":"pieces")+" · "+(snap.players[1]?.name||"Player 2")+" (cream): "+g.cells.filter(v=>v===2).length+
       " "+(g.cells.filter(v=>v===2).length===1?"piece":"pieces")+" · "+(g.stage==="PLACE"?"Placement":"Movement");
-  el("dara-event").textContent=event;
+  el("dara-event").textContent=namedGameEvent(event);
   const legalSources=new Set(legal.moves.map(m=>m[0]));
   const legalTargets=new Set(legal.moves.filter(m=>m[0]===daraSelected).map(m=>m[1]));
   if(daraSelected>=0&&!legalSources.has(daraSelected))daraSelected=-1;
