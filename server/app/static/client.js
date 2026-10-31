@@ -30,7 +30,7 @@ function tableStatus(message) {
 
 let screenBeforeRules = "screen-home";
 function show(screen) {
-  ["screen-home", "screen-setup", "screen-lobby", "screen-ludo", "screen-awale", "screen-dara", "screen-yote", "screen-dominoes", "screen-dominoes-rules", "screen-rules", "screen-ludo-rules", "screen-awale-rules", "screen-dara-rules"].forEach(id =>
+  ["screen-home", "screen-setup", "screen-lobby", "screen-table", "screen-ludo", "screen-awale", "screen-dara", "screen-yote", "screen-dominoes", "screen-dominoes-rules", "screen-rules", "screen-ludo-rules", "screen-awale-rules", "screen-dara-rules"].forEach(id =>
     el(id).classList.toggle("hidden", id !== screen));
 }
 function openRules() {
