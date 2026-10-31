@@ -21,3 +21,13 @@ def test_recovery_keeps_same_seat_and_sync_is_read_only(tmp_path):
             assert c.post(f"/api/rooms/{rid}/join",json={"name":"Friend"}).status_code==201
         assert c.get("/solo/ludo").status_code==200
         assert c.get("/solo/awale").status_code==200
+
+
+def test_revoked_credentials_do_not_auto_retry(tmp_path):
+    with TestClient(create_app(db_path=tmp_path/"rooms.sqlite3")) as client:
+        js=client.get("/client.js").text
+        assert "if (intentionalClose || sessionRevoked" in js
+        assert "sessionRevoked = true" in js
+        assert "sessionRevoked = false; // A newly issued" in js
+        assert "if (retry === 0) sessionRevoked = false" not in js
+        assert 'if (event.code === 1008)' in js
