@@ -46,3 +46,22 @@ def test_actual_piece_color_labels_match_css(tmp_path):
             assert "(crimson):" in script
             assert "(red):" not in script
             assert "(cream):" not in script
+
+def test_presentation_and_recovery_fixes_coexist_in_pr_merge(tmp_path):
+    """PR merge must retain PR33's same-seat transport alongside named events.
+
+    GitHub Actions' pull_request checkout uses the merge with the current
+    deployment branch. This catches overwriting client.js with an old version.
+    """
+    with TestClient(create_app(db_path=tmp_path / "rooms.sqlite3")) as client:
+        js = client.get("/client.js").text
+        for requirement in (
+            "function namedGameEvent(",
+            "SYNC_INTERVAL_MS",
+            "function recoverLiveSeat()",
+            "sessionRevoked",
+            'socket.send(JSON.stringify({type: "sync"}))',
+            'el("ready").disabled = true',
+        ):
+            assert requirement in js
+        assert 'reconnects >= 5' not in js
