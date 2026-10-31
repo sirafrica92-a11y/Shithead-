@@ -72,6 +72,13 @@ def test_owner_endpoints_disabled_without_password(monkeypatch,tmp_path):
             assert app.get(url).status_code==404
 
 
+def test_weak_admin_password_is_not_activated(monkeypatch,tmp_path):
+    monkeypatch.setenv("SHITHEAD_ADMIN_PASSWORD","123456")
+    with TestClient(create_app(db_path=tmp_path/"rooms.db")) as app:
+        assert app.get("/owner/analytics",headers=auth("123456")).status_code==404
+        assert app.get("/owner/api/analytics",headers=auth("123456")).status_code==404
+
+
 def test_authenticated_owner_dashboard_and_csv(monkeypatch,tmp_path):
     monkeypatch.setenv("SHITHEAD_ADMIN_PASSWORD","a-strong-test-secret")
     db=tmp_path/"rooms.db"
