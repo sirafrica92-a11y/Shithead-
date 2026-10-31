@@ -949,6 +949,55 @@ select option { color:var(--cream);background:var(--surface); }
 #domino-reactions button{min-width:44px;min-height:44px;border-radius:9px;border:1px solid var(--border-gold);background:var(--surface);font-size:21px}
 @media(max-width:380px){.domino-bone{font-size:16px}.domino-half{min-width:25px;min-height:33px}.domino-choice{min-width:72px}}
 
+
+/* Shithead is the featured original; all other games have their own heading.
+   Layout-only: every game button still uses the existing data-game selector. */
+#screen-home .game-choice.featured-choice{
+  width:100%;min-height:156px;margin:0 0 23px;
+  display:grid;grid-template-columns:minmax(75px,126px) minmax(0,1fr);
+  grid-template-rows:repeat(4,auto);align-items:center;justify-items:start;
+  column-gap:clamp(13px,4vw,27px);
+  padding:18px clamp(15px,4vw,28px);text-align:left;
+  border:1px solid var(--gold);border-radius:12px;
+  background:linear-gradient(115deg,#38251c 0%,#201716 58%,#151114 100%);
+}
+#screen-home .featured-choice svg{
+  grid-column:1;grid-row:1 / 5;justify-self:center;
+  width:clamp(72px,15vw,96px);height:clamp(72px,15vw,96px);
+}
+#screen-home .featured-choice .featured-eyebrow{
+  grid-column:2;grid-row:1;color:var(--gold-bright);
+  font-size:10px;font-weight:850;letter-spacing:.16em;text-transform:uppercase;
+}
+#screen-home .featured-choice strong{
+  grid-column:2;grid-row:2;font-size:clamp(25px,5.8vw,35px);
+}
+#screen-home .featured-choice small{grid-column:2;grid-row:3}
+#screen-home .featured-choice .choice-tagline{grid-column:2;grid-row:4}
+#screen-home .other-games-heading{
+  display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;
+  gap:5px 14px;margin-bottom:14px;padding:0 0 12px;
+  border-bottom:1px solid var(--border-gold);
+}
+#screen-home .other-games-heading h3{
+  margin:0;color:var(--cream);
+  font-size:clamp(17px,4.6vw,23px);font-weight:900;letter-spacing:.025em;
+  text-transform:uppercase;
+}
+#screen-home .other-games-heading p{
+  margin:0;color:var(--gold-bright);font-size:10px;font-weight:750;
+  letter-spacing:.05em;text-transform:uppercase;
+}
+@media(max-width:390px){
+  #screen-home .game-choice.featured-choice{
+    grid-template-columns:76px minmax(0,1fr);
+    column-gap:12px;min-height:151px;padding:14px 12px;margin-bottom:18px;
+  }
+  #screen-home .featured-choice strong{font-size:25px}
+  #screen-home .featured-choice svg{width:70px;height:70px}
+  #screen-home .featured-choice .featured-eyebrow{font-size:9px}
+}
+
 </style>
 </head>
 <body>
@@ -968,10 +1017,18 @@ select option { color:var(--cream);background:var(--surface); }
   </header>
   <section id="game-picker" class="panel" aria-labelledby="games-pick-title">
     <h2 id="games-pick-title">Choose your game</h2>
-    <div class="game-choices">
-      <button type="button" class="game-choice active" data-game="shithead" aria-pressed="true">
-        <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="5" width="26" height="37" rx="4" fill="#f4eee4" transform="rotate(-12 20 24)"/><rect x="19" y="7" width="25" height="36" rx="4" fill="#fff8ef" transform="rotate(10 31 25)"/><path d="M31 32 23 24c-7-8 3-12 8-5 5-7 15-3 8 5Z" fill="#b5262e"/></svg><strong>Shithead</strong><small>2–6 players</small><span class="choice-tagline">Outsmart your mates</span>
-      </button>
+    <button type="button" class="game-choice featured-choice active" data-game="shithead" aria-pressed="true">
+      <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="5" width="26" height="37" rx="4" fill="#f4eee4" transform="rotate(-12 20 24)"/><rect x="19" y="7" width="25" height="36" rx="4" fill="#fff8ef" transform="rotate(10 31 25)"/><path d="M31 32 23 24c-7-8 3-12 8-5 5-7 15-3 8 5Z" fill="#b5262e"/></svg>
+      <span class="featured-eyebrow">The original game</span>
+      <strong>Shithead</strong>
+      <small>2–6 players</small>
+      <span class="choice-tagline">Outsmart your mates</span>
+    </button>
+    <div class="other-games-heading">
+      <h3 id="other-games-title">Other Games</h3>
+      <p>Five more ways to play</p>
+    </div>
+    <div class="game-choices" role="group" aria-labelledby="other-games-title">
       <button type="button" class="game-choice" data-game="ludo" aria-pressed="false">
         <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="5" y="5" width="38" height="38" rx="8" fill="#f4eee4"/><g fill="#20252b"><circle cx="15" cy="15" r="3"/><circle cx="33" cy="15" r="3"/><circle cx="24" cy="24" r="3"/><circle cx="15" cy="33" r="3"/><circle cx="33" cy="33" r="3"/></g></svg><strong>Ludo</strong><small>2–4 players</small><span class="choice-tagline">Roll. Race. Rule.</span>
       </button>
