@@ -33,6 +33,7 @@ class SoloDaraSession:
     token: str
     match: DaraMatch
     version: int = 0
+    action_trace: list[dict] = field(default_factory=list)
     last_active: float = field(default_factory=time.monotonic)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -61,6 +62,7 @@ def _snapshot(session: SoloDaraSession) -> dict:
     return {
         "version": session.version,
         "solo": True,
+        "computer_actions": list(session.action_trace),
         "players": ["You", "Computer"],
         "game": private_dara_view(session.match, 0),
     }
@@ -147,6 +149,7 @@ def _best_bot_action(match: DaraMatch) -> tuple[str, dict]:
 
 
 def _computer_reply(session: SoloDaraSession) -> None:
+    session.action_trace = []
     # Placement is turn-based. A capture can give the bot one extra action.
     # The bound also prevents any unexpected engine state from hanging a request.
     for _ in range(BOT_STEP_LIMIT):
@@ -156,6 +159,19 @@ def _computer_reply(session: SoloDaraSession) -> None:
         kind, kwargs = _best_bot_action(before)
         session.match = apply_dara_action(before, 1, kind, **kwargs)
         session.version += 1
+        if kind == "place":
+            message = f"Computer placed a stone on square {kwargs['index'] + 1}."
+        elif kind == "move":
+            message = (f"Computer moved a stone from square {kwargs['source'] + 1} "
+                       f"to {kwargs['destination'] + 1}.")
+        else:
+            message = f"Computer captured your stone on square {kwargs['index'] + 1}."
+        if session.match.pending_capture and kind == "move":
+            message += " Formed three; a capture follows."
+        session.action_trace.append({
+            "message": message,
+            "game": private_dara_view(session.match, 0),
+        })
     if not session.match.finished and session.match.actor == 1:
         raise RuntimeError("Dara computer exceeded its safe consecutive-action limit")
 
@@ -198,6 +214,7 @@ async def create_dara_solo():
             match=make_dara_match(),
         )
         _sessions[key] = session
+    _computer_reply(session)
     return _no_store({"id": key, "token": session.token, **_snapshot(session)}, 201)
 
 
@@ -207,7 +224,9 @@ async def resume_dara_solo(key: str, x_solo_token: str | None = Header(default=N
     async with session.lock:
         _computer_reply(session)
         session.last_active = time.monotonic()
-        return _no_store(_snapshot(session))
+        state = _snapshot(session)
+        state["computer_actions"] = []  # Resume must not replay past turns.
+        return _no_store(state)
 
 
 @router.post("/api/solo/dara/{key}/reset")
@@ -218,6 +237,7 @@ async def reset_dara_solo(key: str, payload: SoloDaraReset):
             raise HTTPException(409, "Board changed; refresh the match")
         session.match = make_dara_match()
         session.version += 1
+        _computer_reply(session)
         session.last_active = time.monotonic()
         return _no_store(_snapshot(session))
 
