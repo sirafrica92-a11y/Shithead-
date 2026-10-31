@@ -66,7 +66,7 @@ async function start(){
        session=await api("/api/solo/awale",{method:"POST"});
      }
    }else session=await api("/api/solo/awale",{method:"POST"});
-   remember();
+   remember();await showComputerTurns(session);
  }catch(e){showError(e.message);}
  finally{busy=false;el("new").disabled=false;render();}
 }
@@ -79,7 +79,7 @@ async function sow(index){
  if(!session||busy)return;busy=true;showError("");render();
  try{
    const update=await api("/api/solo/awale/"+encodeURIComponent(session.id),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:session.token,version:session.version,pit:index})});
-   session={...session,...update};remember();
+   session={...session,...update};remember();await showComputerTurns(update);
  }catch(e){
    showError(e.message);
    if(e.status===409){try{await refresh();}catch(err){showError("Could not refresh the board. "+err.message);}}
