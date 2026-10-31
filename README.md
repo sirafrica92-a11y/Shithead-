@@ -1,14 +1,14 @@
 # SHITHEAD Games
 
-**Five traditional games. One multiplayer home.**
+**Six traditional games. One multiplayer home.**
 
 Play online: **[play.shithead.games](https://play.shithead.games)**
 
 SHITHEAD Games is a browser-based, mobile-friendly collection of traditional social games from different cultures. Start a room, share its four-character code and play together. The focus is on accessible games with personality, strategy and human interaction—not a complicated competitive platform.
 
-What began as a custom multiplayer **Shithead** card game has grown into a five-game platform while keeping the original jester logo and dark, antique-gold, cream and crimson identity.
+What began as a custom multiplayer **Shithead** card game has grown into a six-game platform while keeping the original jester logo and dark, antique-gold, cream and crimson identity.
 
-> **Current status (30 October 2026):** Five games merged and deployed as a public preview. This is a **working application**, not a proposed concept. Live-server health and automated tests are verified; independent real-device playthroughs of every new game are still a release-quality follow-up.
+> **Current status (31 October 2026):** Six games merged and deployed as a public preview. This is a **working application**, not a proposed concept. Live-server health and automated tests are verified; independent real-device playthroughs of every new game are still a release-quality follow-up.
 
 ## Play the games
 
@@ -19,6 +19,7 @@ What began as a custom multiplayer **Shithead** card game has grown into a five-
 | **Awalé** | 2 | West African Oware/Abapa-style seed sowing across 12 houses, with feeding and two-or-three-seed captures | Foresight and calculation |
 | **Dara** | 2 | Nigerian 5×6 board strategy: place stones, move orthogonally, form new lines of three and capture | Pattern recognition and positioning |
 | **Yoté** | 2 | West African 5×6 tactical game: place stones, move and jump-capture, then choose a bonus removal | Tactics and sacrifice |
+| **Jamaican Dominoes** | 4 | Four-player double-six tile game, Partner (2 vs 2) by default or optional Cut Throat free-for-all | Collaboration and strategy |
 
 Each game has its own on-site **How to play** screen. Traditional games have regional variants; the implementation follows the rules documented for **this platform**, not necessarily every local version. The exact custom Shithead rules are recorded in [RULES.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/docs/RULES.md) and [DECISION_LOG.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/docs/DECISION_LOG.md).
 
@@ -35,7 +36,7 @@ Each game has its own on-site **How to play** screen. Traditional games have reg
 ## Built and running
 
 - **Backend:** Python, FastAPI, authenticated WebSockets and server-owned game logic.
-- **Five isolated rule engines:** `gameplay.py` (Shithead), `ludo.py`, `awale.py`, `dara.py` and `yote.py`.
+- **Six isolated rule engines:** `gameplay.py` (Shithead), `ludo.py`, `awale.py`, `dara.py`, `yote.py` and `dominoes.py`.
 - **Shared foundation:** lobby, seat management, room state, message validation, reconnection, rematches and a small game-capacity catalogue.
 - **Frontend:** HTML, CSS and vanilla JavaScript with dedicated boards/renderers for the non-card games.
 - **Persistence:** SQLite for saved rooms, seats and matches; Railway's persistent volume mounted at `/data`.
@@ -52,7 +53,7 @@ Game rules and state transitions remain separate from the shared multiplayer inf
 | `server/app/main.py` | FastAPI routes, authenticated multiplayer WebSockets and game actions |
 | `server/app/lobby.py` | Room and seat lifecycle, broadcasting, SQLite persistence |
 | `server/app/gameplay.py`, `server/app/rules/` | Custom Shithead engine and rule boundaries |
-| `server/app/{ludo,awale,dara,yote}.py` | Separate server-authoritative game engines |
+| `server/app/{ludo,awale,dara,yote,dominoes}.py` | Separate server-authoritative game engines |
 | `server/app/game_catalog.py` | Supported game names and player-capacity contracts |
 | `server/app/static/` | Responsive interfaces, individual game renderers and original brand assets |
 | `server/tests/` | Rule contracts, game simulations, WebSocket, recovery and regression tests |
@@ -86,7 +87,7 @@ node --check server/app/static/dara.js
 node --check server/app/static/yote.js
 ~~~
 
-At the **five-game milestone** on 30 October 2026, GitHub CI for application/documentation release commit `20f92c6` reported **383 passing Python tests**, 31 warnings and successful JavaScript syntax checks for all five client files. The project also has specific complete-game, multiplayer, persistence and regression tests.
+At the **five-game milestone** on 30 October 2026, GitHub CI for application/documentation release commit `20f92c6` reported **397 passing Python tests**, 31 warnings and successful JavaScript syntax checks for all six client files. The project also has specific complete-game, multiplayer, persistence and regression tests.
 
 **Known verification limits:** an intermittent legacy Shithead start-tie test failure was observed on one earlier CI run, although the verified five-game release run passed. Full manual two-device/mobile-browser playthroughs for the newest games are not yet independently recorded. See [HANDOVER.md](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md) for reproducible concerns and follow-up checks. Automated green checks and a healthy server do not by themselves establish zero gameplay issues.
 
@@ -102,8 +103,12 @@ This is an accessible **public preview** rather than a mature account-based game
 
 ### What's next?
 
-The five-game target has been reached. The current priority is **hands-on testing and polish**, not adding games at the expense of stability. **Dominoes** and **Morabaraba** are research candidates, not implemented games. Fanorona is explicitly excluded from the current roadmap.
+The six-game milestone has been reached. The current priority is **hands-on testing and polish**, not adding games at the expense of stability. **Morabaraba** remains a research candidate, not an implemented game. Fanorona is explicitly excluded from the current roadmap.
 
 ---
 
 **[Play SHITHEAD Games](https://play.shithead.games)** · [Live application code](https://github.com/sirafrica92-a11y/Shithead-/tree/deploy/railway-shithead-games-staging) · [Platform handover](https://github.com/sirafrica92-a11y/Shithead-/blob/deploy/railway-shithead-games-staging/HANDOVER.md)
+
+
+### Owner analytics and demand monitoring
+An owner-only analytics dashboard and a truthful capacity notice have been implemented for the platform. The dashboard itself is private, never public, and is disabled until the owner configures a strong password. The dashboard needs a private 20+ character `SHITHEAD_ADMIN_PASSWORD` Railway variable; absent that, its routes return 404. Analytics records daily aggregate page loads, game starts/completions and denied room-creation attempts (not unique visitors). Capacity remains 100 allocated/saved rooms (not 100 simultaneously active matches); existing room joins continue when creation is full. There is no real waiting list or guaranteed five-minute availability.

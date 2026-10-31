@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import hmac
+import json
 import os
 import secrets
 import time
@@ -11,11 +14,11 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 from server.app.lobby import (
-    MAX_ROOM_CODE_INPUT, RateLimiter, RoomStore, Seat, broadcast, remember_request,
+    MAX_ROOM_CODE_INPUT, RateLimiter, RoomStore, RoomCapacityReached, Seat, broadcast, remember_request,
 )
 from server.app.persistence import token_digest
 from server.app.gameplay import apply_match_action, make_match, UndecidedStartTie
@@ -25,6 +28,7 @@ from server.app.dara import make_dara_match, apply_dara_action, IllegalDaraMove
 from server.app.yote import make_yote_match, apply_yote_action, IllegalYoteMove
 from server.app.dominoes import make_domino_match, apply_domino_action, IllegalDominoMove
 from server.app.game_catalog import game_spec, capacity_after_switch
+from server.app.analytics import AnalyticsStore, traffic_source
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
 
@@ -68,11 +72,21 @@ def create_app(
     db_path: str | Path | None = None,
     failed_lookup_limit: int | None = None,
     rate_window: float | None = None,
+    analytics_path: str | Path | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Shithead multiplayer preview", version="0.2-w4")
     cloud = bool(os.getenv("RAILWAY_ENVIRONMENT_ID"))
     store = RoomStore(db_path=db_path)
     app.state.room_store = store
+    # Separate SQLite file; zero changes to the live rooms schema.
+    analytics_location = (
+        analytics_path if analytics_path is not None
+        else Path(db_path).expanduser().with_name("analytics.sqlite3")
+        if db_path is not None else None
+    )
+    analytics = AnalyticsStore(analytics_location)
+    app.state.analytics_store = analytics
+    admin_password = os.getenv("SHITHEAD_ADMIN_PASSWORD", "")
 
     # Rooms are open to anyone holding the code, so a wrong code is the only
     # thing worth throttling. Successful play never touches this limiter.
@@ -101,12 +115,98 @@ def create_app(
             raise HTTPException(status_code=404, detail="room not found")
         return room
 
+    def check_owner(request: Request) -> None:
+        # No owner portal at all until a strong password is configured.
+        # Refuse accidental short credentials on a public internet endpoint.
+        if len(admin_password) < 20:
+            raise HTTPException(status_code=404, detail="not found")
+        provided = request.headers.get("authorization", "")
+        valid = False
+        if provided.startswith("Basic "):
+            try:
+                raw = base64.b64decode(provided[6:], validate=True).decode("utf-8")
+                user, sep, password = raw.partition(":")
+                valid = bool(sep) and hmac.compare_digest(user, "owner") and hmac.compare_digest(password, admin_password)
+            except (ValueError, UnicodeDecodeError, binascii.Error):
+                pass
+        if not valid:
+            raise HTTPException(
+                status_code=401, detail="Owner authentication required",
+                headers={"WWW-Authenticate": 'Basic realm="SHITHEAD Games Owner"',
+                         "Cache-Control": "no-store"},
+            )
+
+    ADMIN_HEADERS = {"Cache-Control": "no-store, private",
+                     "X-Content-Type-Options": "nosniff",
+                     "Referrer-Policy": "no-referrer",
+                     "X-Frame-Options": "DENY"}
+
+    @app.get("/owner/analytics", include_in_schema=False)
+    async def owner_dashboard(request: Request):
+        check_owner(request)
+        return FileResponse(
+            Path(__file__).parent / "static" / "owner.html",
+            media_type="text/html",
+            headers={**ADMIN_HEADERS, "Content-Security-Policy":
+                     "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; base-uri 'none'; frame-ancestors 'none'"},
+        )
+
+    @app.get("/owner/analytics.js", include_in_schema=False)
+    async def owner_script(request: Request):
+        check_owner(request)
+        return FileResponse(
+            Path(__file__).parent / "static" / "owner.js",
+            media_type="application/javascript", headers=ADMIN_HEADERS,
+        )
+
+    @app.get("/owner/api/analytics", include_in_schema=False)
+    async def owner_metrics(request: Request, days: int = 30):
+        check_owner(request)
+        try:
+            report = analytics.report(days)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Choose 7, 30, 90, 365, or all") from None
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Analytics database unavailable") from None
+        rooms = list(store.rooms.values())
+        report["live"] = {
+            "active_rooms": sum(1 for room in rooms if any(s.socket is not None for s in room.seats)),
+            "connected_seats": sum(s.socket is not None for room in rooms for s in room.seats),
+            "rooms_in_memory": len(rooms),
+            "room_limit": store.max_rooms,
+        }
+        return Response(
+            content=json.dumps(report), media_type="application/json",
+            headers=ADMIN_HEADERS,
+        )
+
+    @app.get("/owner/api/analytics.csv", include_in_schema=False)
+    async def owner_export(request: Request, days: int = 30):
+        check_owner(request)
+        try:
+            csv_data = analytics.export_csv(days)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid period") from None
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Analytics database unavailable") from None
+        return Response(
+            content=csv_data, media_type="text/csv; charset=utf-8",
+            headers={**ADMIN_HEADERS, "Content-Disposition": 'attachment; filename="shithead-analytics.csv"'},
+        )
+
     @app.get("/health", include_in_schema=False)
     async def health():
         return {"status": "ok"}
 
     @app.get("/")
-    async def home():
+    async def home(request: Request):
+        analytics.record(
+            "page_views",
+            source=traffic_source(
+                utm_source=request.query_params.get("utm_source"),
+                referrer=request.headers.get("referer"),
+            ),
+        )
         return FileResponse(Path(__file__).parent / "static" / "index.html")
 
     @app.get("/client.js")
@@ -176,6 +276,8 @@ def create_app(
                 room.capacity = max(room.capacity, len(room.seats))
             room.version += 1
             store.persist(room)
+            analytics.record("players_joined", game=room.game_type,
+                             mode=room.domino_mode if room.game_type == "dominoes" else "")
         await broadcast(room)
         return {"room_id": room.id, "seat": index, "token": raw_token,
                 "waiting_next_match": room.match is not None or room.ludo is not None or room.awale is not None or room.dara is not None or room.yote is not None or room.dominoes is not None}
@@ -198,6 +300,18 @@ def create_app(
             room.game_type = payload.game_type
             room.domino_mode = payload.domino_mode
             store.persist(room)
+            analytics.record("rooms_created", game=room.game_type,
+                             mode=room.domino_mode if room.game_type == "dominoes" else "")
+        except RoomCapacityReached as exc:
+            analytics.record("capacity_rejections", game=payload.game_type,
+                             mode=payload.domino_mode if payload.game_type == "dominoes" else "")
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "room_capacity_reached", "rooms_allocated": exc.used,
+                        "room_limit": exc.limit, "retry_after_seconds": 300,
+                        "message": "Room creation is temporarily at capacity. Existing room codes can still be joined. Try again in a few minutes; availability is not guaranteed."},
+                headers={"Retry-After": "300"},
+            ) from None
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
         body = {"room_id": room.id, "capacity": room.capacity, "game_type": room.game_type,
@@ -304,9 +418,11 @@ def create_app(
                     continue
 
                 changed = False
+                started_a_match = False
                 error = None
                 reason = None
                 async with room.lock:
+                    old_phase = room.public_view()["phase"]
                     seat = room.seats[index]
                     if seat.socket is not websocket:
                         error = "seat_reconnected"
@@ -434,6 +550,7 @@ def create_app(
                                 room.pending_joiners.clear()
                                 room.rematch_votes.clear()
                                 room.room_notice = "The host restarted the match for everyone."
+                                started_a_match = True
                                 room.reaction = None
                                 room.reaction_at.clear()
                                 room.version += 1
@@ -473,6 +590,7 @@ def create_app(
                                         room.match = fresh
                                     room.pending_joiners.clear()
                                     room.room_notice = ""
+                                    started_a_match = True
                                     room.rematch_votes.clear()
                                     room.reaction = None
                                     room.reaction_at.clear()
@@ -511,6 +629,7 @@ def create_app(
                                     else:
                                         room.match = candidate
                                     room.rematch_votes.clear()
+                                    started_a_match = True
                                     room.version += 1
                                     changed = True
                     elif room.game_type == "dominoes":
@@ -630,6 +749,14 @@ def create_app(
                             room.version += 1
                             remember_request(seat, request_id)
                             changed = True
+                    if changed:
+                        game_mode = room.domino_mode if room.game_type == "dominoes" else ""
+                        if started_a_match:
+                            analytics.record("matches_started", game=room.game_type, mode=game_mode)
+                        if (kind in ("game", "ludo", "awale", "dara", "yote", "dominoes")
+                            and old_phase != "FINISHED"
+                            and room.public_view()["phase"] == "FINISHED"):
+                            analytics.record("matches_completed", game=room.game_type, mode=game_mode)
                     view = room.view_for(index)
                     if changed or (error is None and request_id in seat.request_ids):
                         store.persist(room)
