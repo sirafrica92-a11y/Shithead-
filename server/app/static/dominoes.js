@@ -23,16 +23,16 @@ function renderDominoes(g) {
   const teamNames=[0,1].map(t=>(names[t]?.name||"Seat "+(t+1))+" & "+(names[t+2]?.name||"Seat "+(t+3)));
   el("domino-score").textContent=cutthroat
     ?g.scores.map((s,i)=>(names[i]?.name||"Player "+(i+1))+": "+s).join(" · ")+" (first to 6)"
-    :teamNames[0]+": "+g.scores[0]+"  •  "+teamNames[1]+": "+g.scores[1]+" (first to 6)";
+    :teamNames[0]+": "+g.scores[0]+"  •  "+teamNames[1]+": "+g.scores[1]+" (Six Love: reach 6 points in an uninterrupted run; opponent wins reset the run)";
   el("domino-turn").textContent=done
     ?(cutthroat?(names[g.winner_player]?.name||"Player")+" wins Cut Throat!":teamNames[g.winner_team]+" wins Six Love!")
     :handover?"Hand finished — "+g.event
     :mine?"Your turn — play a matching tile or pass when blocked"
     :(names[g.actor]?.name||"Player")+" to play";
-  el("domino-event").textContent=g.event||"";
+  el("domino-event").textContent=namedGameEvent(g.event);
   el("domino-hand-counts").replaceChildren(...g.hand_counts.map((count,i)=>{
     const label=document.createElement("div");label.className="domino-player";
-    label.textContent=(names[i]?.name||"Seat "+(i+1))+(i===seatIndex?" (you)":"")+(cutthroat?"":" · Team "+((i%2)+1))+" · "+count+" tiles";
+    label.textContent=(names[i]?.name||"Seat "+(i+1))+(i===seatIndex?" (you)":"")+(cutthroat?"":" · Team "+((i%2)+1))+" · "+count+" "+(count===1?"tile":"tiles");
     return label;
   }));
   const chain=el("domino-chain");chain.replaceChildren(...g.chain.map(boneEl));
@@ -41,6 +41,7 @@ function renderDominoes(g) {
   el("domino-ends").textContent=g.chain.length?"Open ends: "+left+" and "+right:"Waiting for opening tile";
   const hand=el("domino-hand");hand.replaceChildren();
   const myHand=g.hand||[];
+  el("domino-hand-total").textContent="("+myHand.length+" "+(myHand.length===1?"tile":"tiles")+" remaining)";
   const plays=new Map((g.legal?.plays||[]).map(x=>[x.index,x.sides]));
   myHand.forEach((tile,i)=>{
     const wrapper=document.createElement("div");wrapper.className="domino-choice";

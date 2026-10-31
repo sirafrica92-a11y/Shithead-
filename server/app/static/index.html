@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0e">
-<title>Shithead Games — Shithead &amp; Ludo</title>
+<title>SHITHEAD Games — Play Six Games with Friends</title>
 <link rel="icon" href="/brand/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/brand/shithead-logo-180.png">
-<meta name="description" content="Play Shithead and Ludo with friends online.">
+<meta name="description" content="Play Shithead, Ludo, Awalé, Dara, Yoté and Jamaican Dominoes with friends online.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Shithead">
 <style>
@@ -1013,7 +1013,7 @@ select option { color:var(--cream);background:var(--surface); }
          sizes="290px" width="512" height="512" alt="Shithead" decoding="async">
     <h1>SHITHEAD</h1>
     <p>Multiplayer game night</p>
-    <p class="brand-strapline">Outplay. Outsmart. Don\'t be the Shithead.</p>
+    <p class="brand-strapline">Outplay. Outsmart. Don't be the Shithead.</p>
   </header>
   <section id="game-picker" class="panel" aria-labelledby="games-pick-title">
     <h2 id="games-pick-title">Choose your game</h2>
@@ -1037,7 +1037,7 @@ select option { color:var(--cream);background:var(--surface); }
       </button>
       <button type="button" class="game-choice" data-game="dara" aria-pressed="false"><span class="game-emoji" aria-hidden="true">◈</span><strong>Dara</strong><small>2 players</small><span class="choice-tagline">Think. Align. Capture.</span></button>
       <button type="button" class="game-choice" data-game="yote" aria-pressed="false"><span class="game-emoji" aria-hidden="true">◆</span><strong>Yoté</strong><small>2 players</small><span class="choice-tagline">Risk. Leap. Capture.</span></button>
-      <button type="button" class="game-choice" data-game="dominoes" aria-pressed="false"><span class="game-emoji" aria-hidden="true">🇯🇲</span><strong>Jamaican Dominoes</strong><small>4 players · teams</small><span class="choice-tagline">Partner up. Six Love.</span></button>
+      <button type="button" class="game-choice" data-game="dominoes" aria-pressed="false"><span class="game-emoji"><svg viewBox="0 0 60 40" width="52" height="35" role="img" aria-label="Jamaican flag" style="vertical-align:middle;border-radius:3px"><rect width="60" height="40" fill="#009B3A"/><path d="M0 0L60 40M60 0L0 40" stroke="#FED100" stroke-width="12"/><path d="M0 0L30 20L0 40Z M60 0L30 20L60 40Z" fill="#111"/></svg></span><strong>Jamaican Dominoes</strong><small>4 players · teams</small><span class="choice-tagline">Partner up. Six Love.</span></button>
     </div>
   </section>
   <div class="panel">
@@ -1317,7 +1317,7 @@ select option { color:var(--cream);background:var(--surface); }
 <!-- =================================================== JAMAICAN DOMINOES -->
 <section id="screen-dominoes" class="shell hidden">
   <div class="domino-top"><div class="room-chip">ROOM <b id="domino-room"></b></div>
-    <strong>DOMINOES 🇯🇲</strong><button id="domino-refresh" class="icon-btn" type="button" aria-label="Refresh dominoes">↻</button></div>
+    <strong>DOMINOES <svg viewBox="0 0 60 40" width="52" height="35" role="img" aria-label="Jamaican flag" style="vertical-align:middle;border-radius:3px"><rect width="60" height="40" fill="#009B3A"/><path d="M0 0L60 40M60 0L0 40" stroke="#FED100" stroke-width="12"/><path d="M0 0L30 20L0 40Z M60 0L30 20L60 40Z" fill="#111"/></svg></strong><button id="domino-refresh" class="icon-btn" type="button" aria-label="Refresh dominoes">↻</button></div>
   <div id="domino-mode-label" class="domino-score">Partner · 2 vs 2</div>
   <div id="domino-score" class="domino-score"></div>
   <div id="domino-turn" class="domino-turn" aria-live="polite">Waiting for four players…</div>
@@ -1326,7 +1326,7 @@ select option { color:var(--cream);background:var(--surface); }
     <div class="btn-row"><button id="domino-restart" class="btn btn-primary" type="button">Restart</button>
     <button id="domino-finish" class="btn btn-ghost" type="button">Finish current</button></div></div>
   <div class="domino-table"><div id="domino-chain" class="domino-chain" aria-label="Dominoes on the table"></div><div id="domino-ends" class="domino-ends"></div></div>
-  <h2 class="seat-heading">Your seven dominoes</h2>
+  <h2 class="seat-heading">Your dominoes <span id="domino-hand-total"></span></h2>
   <div id="domino-hand" class="domino-hand" aria-label="Your private dominoes"></div>
   <p id="domino-event" role="status" aria-live="polite"></p>
   <div id="domino-reactions"></div>

@@ -15,10 +15,10 @@ function renderDara(g){
     ?g.winner===null?"Draw":(snap.players[g.winner]?.name||"Player")+" wins Dara!"
     :mine?(g.pending_capture?"Your capture — remove an opposing piece":g.stage==="PLACE"?"Your turn — place a piece":"Your turn — move a piece")
     :(snap.players[g.actor]?.name||"Player")+"'s turn";
-  el("dara-progress").textContent=(snap.players[0]?.name||"Player 1")+": "+g.cells.filter(v=>v===1).length+
-      " pieces · "+(snap.players[1]?.name||"Player 2")+": "+g.cells.filter(v=>v===2).length+
-      " pieces · "+(g.stage==="PLACE"?"Placement":"Movement");
-  el("dara-event").textContent=event;
+  el("dara-progress").textContent=(snap.players[0]?.name||"Player 1")+" (gold): "+g.cells.filter(v=>v===1).length+
+      " "+(g.cells.filter(v=>v===1).length===1?"piece":"pieces")+" · "+(snap.players[1]?.name||"Player 2")+" (crimson): "+g.cells.filter(v=>v===2).length+
+      " "+(g.cells.filter(v=>v===2).length===1?"piece":"pieces")+" · "+(g.stage==="PLACE"?"Placement":"Movement");
+  el("dara-event").textContent=namedGameEvent(event);
   const legalSources=new Set(legal.moves.map(m=>m[0]));
   const legalTargets=new Set(legal.moves.filter(m=>m[0]===daraSelected).map(m=>m[1]));
   if(daraSelected>=0&&!legalSources.has(daraSelected))daraSelected=-1;

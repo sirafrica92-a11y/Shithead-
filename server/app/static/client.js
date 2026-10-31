@@ -23,6 +23,12 @@ const REACTIONS = ["😂", "😏", "😭", "👀", "🔥", "💀"];
 
 const roomCode = value => (value || "").trim().toUpperCase();
 function status(message) { el("status").textContent = message; }
+function namedGameEvent(message) {
+  // UI-only: authoritative engine events and hidden state remain unchanged.
+  return String(message || "").replace(/Player ([1-6])\b/g, (original, seat) =>
+    snap?.players?.[Number(seat)-1]?.name || original);
+}
+
 function tableStatus(message) {
   el("table-status").textContent = message;
   el("ludo-status").textContent = message;
@@ -182,6 +188,10 @@ function render(x) {
     li.append(av, nm, pill);
     ul.appendChild(li);
   });
+  if (isDominoes && x.domino_mode !== "cutthroat") {
+    const teamText = [0,1].map(t => "Team "+(t+1)+": "+[t,t+2].map(i=>x.players[i]?.name||"Waiting for partner").join(" & ")).join("  |  ");
+    el("lobby-game-label").textContent = "Jamaican Dominoes · "+teamText;
+  }
   el("phase").textContent = x.all_ready
     ? "All players ready"
     : x.players.length + " of " + x.capacity + " seated";
