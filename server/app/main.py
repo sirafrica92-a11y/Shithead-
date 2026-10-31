@@ -291,6 +291,26 @@ def create_app(
             "rooms_in_memory": len(rooms),
             "room_limit": store.max_rooms,
         }
+        # Billing fields are optional owner-entered data, not live invoices.
+        due = os.getenv("SHITHEAD_RAILWAY_NEXT_DUE_DATE", "").strip()
+        if not (len(due) == 10 and due[4] == "-" and due[7] == "-"
+                and due[:4].isdigit() and due[5:7].isdigit() and due[8:].isdigit()):
+            due = None
+        def billing_amount(key):
+            raw = os.getenv(key, "").strip()
+            try:
+                value = float(raw)
+                return round(value, 2) if 0 <= value < 1000000 and value == value else None
+            except ValueError:
+                return None
+        report["billing"] = {
+            "next_due_date": due,
+            "estimated_usage_usd": billing_amount("SHITHEAD_RAILWAY_USAGE_USD"),
+            "monthly_budget_usd": billing_amount("SHITHEAD_RAILWAY_BUDGET_USD"),
+            "source": "manual",
+            "last_updated_note": "Owner-entered values; not automatically synced to Railway billing.",
+            "billing_link": "https://railway.com/workspace/usage",
+        }
         return Response(
             content=json.dumps(report), media_type="application/json",
             headers=ADMIN_HEADERS,
