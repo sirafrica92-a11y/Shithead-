@@ -2,6 +2,36 @@
 const el=id=>document.getElementById(id);
 let session=null,busy=false;
 function showError(msg){el("error").textContent=msg;}
+let displayFrame=null;
+let skippingCpu=false;
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function showComputerTurns(result){
+ const steps=result.computer_actions||[];
+ const log=el("cpu-log");
+ log.replaceChildren();
+ if(!steps.length)return;
+ const skip=el("skip-cpu");
+ skippingCpu=false;
+ skip.classList.remove("hidden");
+ const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+ try {
+  for(const step of steps){
+   const item=document.createElement("li");
+   item.textContent=step.message;
+   log.append(item);
+   displayFrame=step.game;
+   render();
+   el("event").textContent=step.message;
+   if(!reduced&&!skippingCpu)await sleep(950);
+  }
+ } finally {
+  skip.classList.add("hidden");
+  displayFrame=null;
+  render();
+ }
+}
+el("skip-cpu").onclick=()=>{skippingCpu=true;};
+
 async function api(url,opts={}){
  const response=await fetch(url,{cache:"no-store",...opts});
  let json;try{json=await response.json();}catch{throw Error("Server response unavailable");}
@@ -13,7 +43,7 @@ function remember(){try{if(session)sessionStorage.setItem("shithead-solo-awale",
 function forget(){try{sessionStorage.removeItem("shithead-solo-awale");}catch{}}
 function render(){
  if(!session)return;
- const g=session.game,over=g.phase==="FINISHED",mine=g.actor===0;
+ const g=displayFrame||session.game,over=g.phase==="FINISHED",mine=g.actor===0;
  el("score-you").textContent=g.captured[0];el("score-computer").textContent=g.captured[1];
  el("turn").textContent=over?(g.winner===null?"Awalé ends in a draw":g.winner===0?"You win!":"Computer wins!"):(mine?"Your turn · choose a house":"Computer's turn");
  el("event").textContent=g.event||"";
@@ -50,7 +80,7 @@ async function start(){
        session=await api("/api/solo/awale",{method:"POST"});
      }
    }else session=await api("/api/solo/awale",{method:"POST"});
-   remember();
+   remember();await showComputerTurns(session);
  }catch(e){showError(e.message);}
  finally{busy=false;el("new").disabled=false;render();}
 }
@@ -63,7 +93,7 @@ async function sow(index){
  if(!session||busy)return;busy=true;showError("");render();
  try{
    const update=await api("/api/solo/awale/"+encodeURIComponent(session.id),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:session.token,version:session.version,pit:index})});
-   session={...session,...update};remember();
+   session={...session,...update};remember();await showComputerTurns(update);
  }catch(e){
    showError(e.message);
    if(e.status===409){try{await refresh();}catch(err){showError("Could not refresh the board. "+err.message);}}

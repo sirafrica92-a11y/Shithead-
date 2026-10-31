@@ -28,6 +28,7 @@ class Session:
     token: str
     match: LudoMatch
     version: int = 0
+    action_trace: list[dict] = field(default_factory=list)
     last_active: float = field(default_factory=time.monotonic)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -55,6 +56,7 @@ def _snapshot(session: Session) -> dict:
         "game": state,
         "players": ["You", "Computer"],
         "solo": True,
+        "computer_actions": list(session.action_trace),
     }
 
 
@@ -80,6 +82,7 @@ def _best_piece(m: LudoMatch) -> int:
 
 
 def _bot_play(session: Session) -> None:
+    session.action_trace = []
     # Bounded loop: sixes and captures can award repeated bonus turns.
     for _ in range(BOT_STEP_LIMIT):
         m = session.match
@@ -87,9 +90,19 @@ def _bot_play(session: Session) -> None:
             return
         if m.stage == "ROLL":
             session.match = apply_ludo_action(m, 1, "roll")
+            description = f"Computer rolled {session.match.last_roll}."
         else:
-            session.match = apply_ludo_action(m, 1, "move", token=_best_piece(m))
+            chosen = _best_piece(m)
+            session.match = apply_ludo_action(m, 1, "move", token=chosen)
+            description = f"Computer moved token {chosen + 1}."
+            sent_home = sum(x == -1 for x in session.match.players[0].tokens) - sum(x == -1 for x in m.players[0].tokens)
+            if sent_home > 0:
+                description += f" Captured {sent_home} opposing token(s)."
+            if session.match.players[1].tokens[chosen] == HOME:
+                description += " Token reached home."
         session.version += 1
+        session.action_trace.append({"message": description, "game": private_ludo_view(session.match, 0)})
+
 
 
 async def _find(key: str, token: str) -> Session:
@@ -138,7 +151,9 @@ async def resume_solo_ludo(key: str, x_solo_token: str | None = Header(default=N
     async with session.lock:
         _bot_play(session)
         session.last_active = time.monotonic()
-        return _snapshot(session)
+        state = _snapshot(session)
+        state["computer_actions"] = []  # Refresh must not replay previous actions.
+        return state
 
 
 @router.post("/api/solo/ludo/{key}/reset")

@@ -15,6 +15,7 @@ on:
       - refactor/safe-game-catalog-20261030
       - fix/four-character-room-code-websocket-20261019
       - fix/room-passwords
+      - feature/social-first-integrated-20261031
       - deploy/railway-shithead-games-staging
       - fix/w4-complete-match-20261019
       - build/w1-turn-seat-selector
@@ -44,6 +45,7 @@ jobs:
       - run: python -m py_compile run_local.py
       - run: node --check server/app/static/client.js
       - run: node --test server/tests/test_reconnect_client.cjs
+      - run: node --test server/tests/test_social_ui_client.cjs
       - run: node --check server/app/static/ludo.js
       - run: node --check server/app/static/awale.js
       - run: node --check server/app/static/dara.js

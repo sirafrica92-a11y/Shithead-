@@ -29,6 +29,6 @@ button:disabled{opacity:.48;cursor:default}.secondary{background:#252a30;color:#
 <div id="board" class="board" aria-label="Ludo board"></div>
 <p id="turn" role="status" aria-live="polite">Select New Game to start.</p>
 <div class="controls"><span id="die" class="die" aria-label="Last dice roll">⚄</span><button id="roll" disabled>Roll Dice</button><button id="again" class="secondary hidden">Play Again</button></div>
-<div id="moves"></div><p id="event" class="small"></p><p id="error" role="alert" class="message"></p></section>
+<div id="moves"></div><p id="event" class="small"></p><section aria-label="Computer move history" style="margin-top:10px;border-top:1px solid #80613f;padding-top:8px"><div style="display:flex;align-items:center;justify-content:space-between;gap:9px"><strong style="font-size:13px;color:#edbc76">Computer's moves</strong><button id="skip-cpu" class="hidden" type="button" style="min-height:36px;padding:5px 10px;border-radius:8px;background:#34302e;color:#f9d5a6;border:1px solid #937454">Show final board</button></div><ol id="cpu-log" aria-label="Computer moves in order" aria-live="polite" style="padding-left:21px;font-size:13px;line-height:1.6;color:#e5d4bb"></ol></section><p id="error" role="alert" class="message"></p></section>
 <p class="small">Solo Play is online. The computer follows the same Ludo rules as you. Your private match is separate from multiplayer rooms.</p>
 </main><script src="/solo/ludo.js" defer></script></body></html>

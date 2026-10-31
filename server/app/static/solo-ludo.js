@@ -6,6 +6,36 @@ const lanes={red:[[7,1],[7,2],[7,3],[7,4],[7,5]],yellow:[[7,13],[7,12],[7,11],[7
 const starts={red:0,yellow:26};
 let session=null,busy=false;
 function put(text){$("error").textContent=text;}
+let displayFrame=null;
+let skippingCpu=false;
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function showComputerTurns(result){
+ const steps=result.computer_actions||[];
+ const log=$("cpu-log");
+ log.replaceChildren();
+ if(!steps.length)return;
+ const skip=$("skip-cpu");
+ skippingCpu=false;
+ skip.classList.remove("hidden");
+ const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+ try {
+  for(const step of steps){
+   const item=document.createElement("li");
+   item.textContent=step.message;
+   log.append(item);
+   displayFrame=step.game;
+   render();
+   $("event").textContent=step.message;
+   if(!reduced&&!skippingCpu)await sleep(950);
+  }
+ } finally {
+  skip.classList.add("hidden");
+  displayFrame=null;
+  render();
+ }
+}
+$("skip-cpu").onclick=()=>{skippingCpu=true;};
+
 async function api(url,options={}){
  const response=await fetch(url,{cache:"no-store",...options});
  let body;try{body=await response.json();}catch{throw Error("Server did not respond correctly");}
@@ -27,7 +57,7 @@ async function start(){
        session=await api("/api/solo/ludo",{method:"POST"});
      }
    }else session=await api("/api/solo/ludo",{method:"POST"});
-   remember();render();
+   remember();await showComputerTurns(session);render();
  }
  catch(e){put(e.message);}finally{busy=false;$("new").disabled=false;}
 }
@@ -67,7 +97,7 @@ function board(g){
 }
 function render(){
  if(!session)return;
- const g=session.game,over=g.phase==="FINISHED",mine=g.actor===0;
+ const g=displayFrame||session.game,over=g.phase==="FINISHED",mine=g.actor===0;
  $("turn").textContent=over?(g.winner===0?"You won! 🎉":"Computer wins!"):(mine?"Your turn":"Computer's turn");
  $("die").textContent=g.die??g.last_roll??"⚄";
  $("event").textContent=g.event;
@@ -89,6 +119,7 @@ async function act(action,piece=null){
      body:JSON.stringify({token:session.token,version:session.version,action,piece})
    });
    session={...session,...updated};
+   await showComputerTurns(updated);
  }catch(e){
    put(e.message);
    if(e.status===409){
