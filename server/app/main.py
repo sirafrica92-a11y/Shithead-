@@ -6,6 +6,7 @@ import asyncio
 import base64
 import binascii
 import hmac
+import html
 import json
 import os
 import secrets
@@ -14,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
@@ -29,6 +31,8 @@ from server.app.yote import make_yote_match, apply_yote_action, IllegalYoteMove
 from server.app.dominoes import make_domino_match, apply_domino_action, IllegalDominoMove
 from server.app.game_catalog import game_spec, capacity_after_switch
 from server.app.analytics import AnalyticsStore, traffic_source
+from server.app.owner_auth import verify_google_token
+from server.app.owner_operations import OperationsStore
 from server.app.rules.ordinary import IllegalPlay
 from server.app.rules.pile_pass import IllegalTransition
 
@@ -86,7 +90,20 @@ def create_app(
     )
     analytics = AnalyticsStore(analytics_location)
     app.state.analytics_store = analytics
+    operations = OperationsStore(Path(db_path).expanduser().with_name('owner_operations.sqlite3') if db_path is not None else None)
+    app.state.owner_operations = operations
     admin_password = os.getenv("SHITHEAD_ADMIN_PASSWORD", "")
+    google_client_id = os.getenv("SHITHEAD_GOOGLE_CLIENT_ID", "").strip()
+    google_owner_email = os.getenv("SHITHEAD_OWNER_EMAIL", "").strip().lower()
+    session_secret = os.getenv("SHITHEAD_ADMIN_SESSION_SECRET", "")
+    google_enabled = bool(google_client_id and google_owner_email and len(session_secret) >= 32)
+    google_origin = os.getenv("SHITHEAD_OWNER_ORIGIN", "https://play.shithead.games").rstrip("/")
+    session_signer = URLSafeTimedSerializer(session_secret, salt="shithead-owner-google-v1") if google_enabled else None
+    session_cookie = "__Host-shithead-owner"
+    login_cookie = "__Host-shithead-login-nonce"
+    admin_session_seconds = 8 * 60 * 60
+    app.state.owner_google_enabled = google_enabled
+
 
     # Rooms are open to anyone holding the code, so a wrong code is the only
     # thing worth throttling. Successful play never touches this limiter.
@@ -116,8 +133,21 @@ def create_app(
         return room
 
     def check_owner(request: Request) -> None:
-        # No owner portal at all until a strong password is configured.
-        # Refuse accidental short credentials on a public internet endpoint.
+        if google_enabled:
+            signed = request.cookies.get(session_cookie, "")
+            if not signed or len(signed) > 2000:
+                raise HTTPException(status_code=401, detail="Owner sign-in required")
+            try:
+                claims = session_signer.loads(signed, max_age=admin_session_seconds)
+            except (BadSignature, SignatureExpired, ValueError):
+                raise HTTPException(status_code=401, detail="Owner sign-in required") from None
+            if (not isinstance(claims, dict)
+                    or not isinstance(claims.get("sub"), str)
+                    or not claims["sub"]
+                    or not hmac.compare_digest(claims.get("email", ""), google_owner_email)):
+                raise HTTPException(status_code=401, detail="Owner sign-in required")
+            return
+        # Legacy Basic fallback is disabled as soon as Google mode is configured.
         if len(admin_password) < 20:
             raise HTTPException(status_code=404, detail="not found")
         provided = request.headers.get("authorization", "")
@@ -141,6 +171,99 @@ def create_app(
                      "Referrer-Policy": "no-referrer",
                      "X-Frame-Options": "DENY"}
 
+    def _owner_post_origin(request: Request) -> None:
+        # Cross-site requests must not mutate authenticated session cookies.
+        if request.headers.get("origin") != google_origin:
+            raise HTTPException(status_code=403, detail="Invalid owner sign-in origin")
+
+    @app.get("/owner/login", include_in_schema=False)
+    async def owner_login(request: Request):
+        if not google_enabled:
+            raise HTTPException(status_code=404, detail="not found")
+        nonce = secrets.token_urlsafe(32)
+        template = (Path(__file__).parent / "static" / "owner-login.html").read_text(encoding="utf-8")
+        body = template.replace("__GOOGLE_CLIENT_ID__", html.escape(google_client_id, quote=True))
+        body = body.replace("__OWNER_NONCE__", html.escape(nonce, quote=True))
+        response = Response(
+            content=body, media_type="text/html",
+            headers={**ADMIN_HEADERS, "Content-Security-Policy":
+                "default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client; "
+                "connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; "
+                "style-src 'unsafe-inline'; img-src 'self' https://*.googleusercontent.com https://accounts.google.com; "
+                "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"},
+        )
+        response.set_cookie(login_cookie, nonce, secure=True, httponly=True,
+                            samesite="strict", path="/", max_age=600)
+        return response
+
+    @app.get("/owner/login.js", include_in_schema=False)
+    async def owner_login_script():
+        if not google_enabled:
+            raise HTTPException(status_code=404, detail="not found")
+        return FileResponse(
+            Path(__file__).parent / "static" / "owner-login.js",
+            media_type="application/javascript", headers=ADMIN_HEADERS,
+        )
+
+    @app.post("/owner/session", include_in_schema=False)
+    async def owner_google_session(request: Request):
+        if not google_enabled:
+            raise HTTPException(status_code=404, detail="not found")
+        _owner_post_origin(request)
+        nonce = request.cookies.get(login_cookie, "")
+        received = request.headers.get("x-owner-login-nonce", "")
+        if (not nonce or len(nonce) < 32 or len(nonce) > 100
+                or not hmac.compare_digest(nonce, received)):
+            raise HTTPException(status_code=403, detail="Invalid or expired sign-in request")
+        try:
+            request_length = int(request.headers.get("content-length", "0") or "0")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid content length") from None
+        if request_length > 15000:
+            raise HTTPException(status_code=413, detail="Sign-in request too large")
+        try:
+            body = await request.json()
+        except (ValueError, UnicodeDecodeError):
+            raise HTTPException(status_code=400, detail="Invalid sign-in request") from None
+        credential = body.get("credential") if isinstance(body, dict) else None
+        if not isinstance(credential, str) or not (30 <= len(credential) <= 12000):
+            raise HTTPException(status_code=400, detail="Invalid sign-in credential")
+        try:
+            claims = await verify_google_token(credential, google_client_id)
+        except Exception:
+            raise HTTPException(status_code=401, detail="Google sign-in could not be verified") from None
+        email = claims.get("email", "")
+        sub = claims.get("sub", "")
+        if (not isinstance(email, str) or not isinstance(sub, str) or not sub
+                or claims.get("email_verified") is not True
+                or not hmac.compare_digest(email.strip().lower(), google_owner_email)
+                or not hmac.compare_digest(str(claims.get("nonce", "")), nonce)):
+            raise HTTPException(status_code=403, detail="This Google account is not authorised")
+        response = Response(content='{"ok":true}', media_type="application/json",
+                            headers=ADMIN_HEADERS)
+        response.set_cookie(
+            session_cookie,
+            session_signer.dumps({"sub": sub, "email": google_owner_email}),
+            secure=True, httponly=True, samesite="strict",
+            max_age=admin_session_seconds, path="/",
+        )
+        response.delete_cookie(login_cookie, path="/", secure=True, httponly=True,
+                               samesite="strict")
+        return response
+
+    @app.post("/owner/logout", include_in_schema=False)
+    async def owner_logout(request: Request):
+        if not google_enabled:
+            raise HTTPException(status_code=404, detail="not found")
+        _owner_post_origin(request)
+        response = Response(content='{"ok":true}', media_type="application/json",
+                            headers=ADMIN_HEADERS)
+        response.delete_cookie(session_cookie, path="/", secure=True, httponly=True,
+                               samesite="strict")
+        response.delete_cookie(login_cookie, path="/", secure=True, httponly=True,
+                               samesite="strict")
+        return response
+
     @app.get("/owner/analytics", include_in_schema=False)
     async def owner_dashboard(request: Request):
         check_owner(request)
@@ -159,6 +282,61 @@ def create_app(
             media_type="application/javascript", headers=ADMIN_HEADERS,
         )
 
+    @app.get("/owner/api/operations", include_in_schema=False)
+    async def owner_operations_list(request: Request):
+        check_owner(request)
+        try:
+            records = operations.list(limit=100)
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Operational log unavailable") from None
+        return Response(content=json.dumps({"records": records}),
+                        media_type="application/json", headers=ADMIN_HEADERS)
+
+    @app.post("/owner/api/operations", include_in_schema=False, status_code=201)
+    async def owner_operations_create(request: Request):
+        check_owner(request)
+        _owner_post_origin(request)
+        try:
+            payload = await request.json()
+        except (ValueError, UnicodeDecodeError):
+            raise HTTPException(status_code=400, detail="Invalid JSON") from None
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="Invalid operation")
+        try:
+            record = operations.create(
+                payload.get("kind"), payload.get("title"), payload.get("description", ""),
+                payload.get("status"),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except (TypeError, AttributeError):
+            raise HTTPException(status_code=422, detail="Invalid record fields") from None
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Operational log unavailable") from None
+        return Response(content=json.dumps(record), media_type="application/json",
+                        status_code=201, headers=ADMIN_HEADERS)
+
+    @app.post("/owner/api/operations/{record_id}/status", include_in_schema=False)
+    async def owner_operations_status(record_id: int, request: Request):
+        check_owner(request)
+        _owner_post_origin(request)
+        try:
+            payload = await request.json()
+        except (ValueError, UnicodeDecodeError):
+            raise HTTPException(status_code=400, detail="Invalid JSON") from None
+        if not isinstance(payload, dict) or not isinstance(payload.get("status"), str):
+            raise HTTPException(status_code=422, detail="Invalid status")
+        try:
+            record = operations.change_status(record_id, payload["status"])
+        except LookupError:
+            raise HTTPException(status_code=404, detail="Record not found") from None
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Operational log unavailable") from None
+        return Response(content=json.dumps(record), media_type="application/json",
+                        headers=ADMIN_HEADERS)
+
     @app.get("/owner/api/analytics", include_in_schema=False)
     async def owner_metrics(request: Request, days: int = 30):
         check_owner(request)
@@ -174,6 +352,26 @@ def create_app(
             "connected_seats": sum(s.socket is not None for room in rooms for s in room.seats),
             "rooms_in_memory": len(rooms),
             "room_limit": store.max_rooms,
+        }
+        # Billing fields are optional owner-entered data, not live invoices.
+        due = os.getenv("SHITHEAD_RAILWAY_NEXT_DUE_DATE", "").strip()
+        if not (len(due) == 10 and due[4] == "-" and due[7] == "-"
+                and due[:4].isdigit() and due[5:7].isdigit() and due[8:].isdigit()):
+            due = None
+        def billing_amount(key):
+            raw = os.getenv(key, "").strip()
+            try:
+                value = float(raw)
+                return round(value, 2) if 0 <= value < 1000000 and value == value else None
+            except ValueError:
+                return None
+        report["billing"] = {
+            "next_due_date": due,
+            "estimated_usage_usd": billing_amount("SHITHEAD_RAILWAY_USAGE_USD"),
+            "monthly_budget_usd": billing_amount("SHITHEAD_RAILWAY_BUDGET_USD"),
+            "source": "manual",
+            "last_updated_note": "Owner-entered values; not automatically synced to Railway billing.",
+            "billing_link": "https://railway.com/workspace/usage",
         }
         return Response(
             content=json.dumps(report), media_type="application/json",

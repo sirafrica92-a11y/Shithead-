@@ -2,6 +2,7 @@ name: Shithead Python tests
 on:
   push:
     branches:
+      - feature/google-owner-login-only-20261031
       - release/owner-analytics-capacity-home-20261031
       - feature/capacity-communication-analytics-20261031
       - feature/owner-analytics-dashboard-20261031
@@ -46,3 +47,4 @@ jobs:
       - run: node --check server/app/static/yote.js
       - run: node --check server/app/static/dominoes.js
       - run: node --check server/app/static/owner.js
+      - run: node --check server/app/static/owner-login.js

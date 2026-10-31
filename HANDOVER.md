@@ -56,6 +56,20 @@ Safety: full six-game CI plus owner.js syntax checks on the exact integrated rel
 
 **DO NOT BUILD:** Fanorona (specifically removed by owner as too complex / not worth learning to validate). Do not sneak it into the backlog. Do not add other complex games including chess to the near-term queue. No new game beyond these selections without explicit owner discussion. Research can cover queued games but **develop and deploy one game at a time**.
 
+
+## Owner-only Google sign-in and Railway billing card — development PR (not deployed)
+- No change to any public player journey: Shithead, Ludo, Awalé, Dara, Yoté and Jamaican Dominoes remain guest-access games. No player registration.
+- Admin-only Google Identity Services sign-in at `/owner/login`, restricted by the verified Google ID-token email and issuer/audience/signature/expiry checks to the owner's account. Never trust an email typed in a form or an unsigned client claim.
+- Google mode requires three Railway service environment variables: `SHITHEAD_GOOGLE_CLIENT_ID` (Google Cloud Web OAuth client ID, a public identifier), `SHITHEAD_OWNER_EMAIL` (the owner's allowlisted Google email), `SHITHEAD_ADMIN_SESSION_SECRET` (private random 32+ character signing key). Use Google's authorised JavaScript origin `https://play.shithead.games`. Configure via Railway secure variables, not GitHub; do not record or commit credentials here.
+- Login nonce and origin check protect sign-in state changes, signed HttpOnly/Secure/SameSite Strict session cookie (8-hour limit). HTTP Basic is NOT a bypass when all three Google settings are enabled. Logout invalidates the browser cookie. This is not a payment processor.
+- Private dashboard includes **next Railway payment/renewal date**, **monthly usage estimate in USD**, **monthly spending budget**, plus the original per-game popularity, match starts, completed matches, traffic sources, and day/game room-creation denials.
+- Billing values are **manual owner-supplied values** from optional variables `SHITHEAD_RAILWAY_NEXT_DUE_DATE` (YYYY-MM-DD), `SHITHEAD_RAILWAY_USAGE_USD`, `SHITHEAD_RAILWAY_BUDGET_USD`. Do not claim automatic Railway invoice access, a guaranteed billing date, or exact current spend. Show Not set when missing; provide official Railway usage link.
+- Google Cloud OAuth web client setup needs the owner's explicit account action (creating OAuth web client and configuring authorised origin). No credentials created in background. Test exact CI at development branch head before merge; no automatic deployment until owner approves.
+
+## Owner IT service-management registers (feature PR #26; not deployed)
+The owner dashboard now includes three adjacent, responsive columns: **Incidents** (restore interrupted service), **Problems** (investigate root causes or recurring incidents), **Changes** (record planned/deployed/rolled-back interventions). Each has a small manual form, reference ID, status and historical owner notes. These entries are persisted in a new `owner_operations.sqlite3` beside the existing databases on `/data`, not in live rooms. No game state, rules, deployment or operational alert is changed when an entry is added.
+Owner-only endpoints: GET/POST `/owner/api/operations`, POST `/owner/api/operations/{id}/status`. Same authentication gate as analytics; mutating requests require the expected origin. No automatic incident detection or integrations are claimed. A 503 is returned when the operations database is unavailable. Run isolated auth/CRUD/persistence tests and the full six-game regression suite before merge.
+ 
 ## NON-NEGOTIABLE ENGINEERING RULES
 - The owner defines gameplay decisions. Protect established Shithead rules and Ludo rules, even where standard variants differ.
 - Reuse already working multiplayer rooms, invitation codes, seat auth/token isolation, session recovery, WebSockets, serialization, rematches, reactions and the gold/cream/crimson design.

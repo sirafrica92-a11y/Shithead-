@@ -2,3 +2,6 @@ fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
 pytest>=8,<10
 httpx>=0.28,<1
+google-auth>=2.30,<3
+requests>=2.31,<3
+itsdangerous>=2.2,<3

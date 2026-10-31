@@ -17,13 +17,54 @@ table{border-collapse:collapse;width:100%;font-size:.87rem}th,td{text-align:left
 footer{color:#8b8176;font-size:.75rem;margin-top:25px;text-align:center}
 @media(max-width:760px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}.card{padding:14px}main{width:calc(100% - 24px)}}
 @media(max-width:380px){.stats{gap:7px}.metric{font-size:1.65rem}.card{padding:12px}}
+.operations-section{margin:24px 0}.operations-section>h2{font-size:1.45rem;margin:0 0 5px}.operations-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.ops-column h3{font-size:1.18rem;margin:0}.ops-column>.caption{min-height:40px}
+.ops-form{display:grid;gap:9px;margin:14px 0 18px}.ops-form label{display:grid;gap:5px;font-size:.82rem;color:#d5b793}
+.ops-form input,.ops-form textarea,.ops-records select{font:inherit;width:100%;background:#100f12;color:#f1e2cc;border:1px solid #6c5440;border-radius:7px;padding:9px}
+.ops-form textarea{resize:vertical}.ops-form button{font-weight:700}
+.ops-records{display:grid;gap:8px}.ops-entry{border-top:1px solid #47392b;padding:10px 0 2px;display:grid;gap:7px;overflow-wrap:anywhere}
+.ops-entry strong{font-size:.92rem}.ops-entry small{color:#c5a77e}.ops-entry p{font-size:.82rem;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.ops-entry label{display:grid;gap:5px;color:#b9ad9e;font-size:.8rem}
+@media(max-width:850px){.operations-grid{grid-template-columns:1fr}.ops-column>.caption{min-height:0}}
 </style>
 <script src="/owner/analytics.js" defer></script></head>
 <body><main><header><div><div class="eyebrow">OWNER ACCESS · PRIVATE</div><h1>SHITHEAD Games</h1><p style="margin:4px 0 0">Traffic and gameplay analytics</p></div>
-<div class="actions"><label for="period">Period</label><select id="period"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option><option value="365">365 days</option><option value="0">All time</option></select><button id="refresh" type="button">Refresh</button><button id="export" type="button">Export CSV</button></div></header>
+<div class="actions"><label for="period">Period</label><select id="period"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option><option value="365">365 days</option><option value="0">All time</option></select><button id="refresh" type="button">Refresh</button><button id="export" type="button">Export CSV</button><button id="logout" type="button" hidden>Sign out</button></div></header>
 <p id="status" role="status" aria-live="polite">Loading aggregated statistics…</p>
 <div class="stats"><div class="card"><div class="metric" id="capacity-rejections">—</div><div class="metric-label">Room creation attempts denied (not unique people)</div></div></div>
 <div class="stats"><div class="card"><div class="metric" id="views">—</div><div class="metric-label">Homepage views</div></div><div class="card"><div class="metric" id="rooms">—</div><div class="metric-label">Rooms created</div></div><div class="card"><div class="metric" id="starts">—</div><div class="metric-label">Matches started</div></div><div class="card"><div class="metric" id="ends">—</div><div class="metric-label">Matches completed</div></div></div>
+<section class="card" aria-labelledby="billing-title">
+<h2 id="billing-title">Railway billing &amp; usage</h2>
+<div class="stats" style="margin:0;grid-template-columns:repeat(3,minmax(0,1fr))">
+<div><div class="metric" id="billing-date" style="font-size:clamp(1.1rem,2vw,1.55rem)">Not set</div><div class="metric-label">Next payment / renewal date</div></div>
+<div><div class="metric" id="billing-usage">Not set</div><div class="metric-label">Usage so far (USD)</div></div>
+<div><div class="metric" id="billing-budget">Not set</div><div class="metric-label">Monthly budget (USD)</div></div>
+</div>
+<p class="caption" id="billing-note">Figures are manually configured; no live Railway billing connection. Check the actual invoice and billing cycle in Railway.</p>
+<p><a href="https://railway.com/workspace/usage" target="_blank" rel="noopener noreferrer">Check actual Railway usage and billing</a></p>
+</section>
+<section aria-labelledby="ops-heading" class="operations-section">
+<h2 id="ops-heading">Service management</h2>
+<p class="caption">Manual owner records. An incident restores service, a problem investigates its underlying cause, and a change documents planned or completed work. These records never alter game behaviour or deploy code.</p>
+<div class="operations-grid">
+<section class="card ops-column" data-ops-kind="incident" aria-labelledby="incident-heading">
+<h3 id="incident-heading">Incidents</h3><p class="caption">Service interruptions and immediate recovery.</p>
+<form class="ops-form" data-ops-form="incident"><label>Summary<input name="title" maxlength="120" required placeholder="e.g. Room creation unavailable"></label><label>Details<textarea name="description" maxlength="1200" rows="2" placeholder="Impact and recovery action"></textarea></label><button type="submit">Record incident</button></form>
+<div id="ops-incident" class="ops-records"></div>
+</section>
+<section class="card ops-column" data-ops-kind="problem" aria-labelledby="problem-heading">
+<h3 id="problem-heading">Problems</h3><p class="caption">Recurring issues and root-cause investigations.</p>
+<form class="ops-form" data-ops-form="problem"><label>Summary<input name="title" maxlength="120" required placeholder="e.g. Repeated room-cap errors"></label><label>Details<textarea name="description" maxlength="1200" rows="2" placeholder="Known causes and investigations"></textarea></label><button type="submit">Record problem</button></form>
+<div id="ops-problem" class="ops-records"></div>
+</section>
+<section class="card ops-column" data-ops-kind="change" aria-labelledby="change-heading">
+<h3 id="change-heading">Changes</h3><p class="caption">Planned releases, approvals and rollbacks.</p>
+<form class="ops-form" data-ops-form="change"><label>Summary<input name="title" maxlength="120" required placeholder="e.g. Deploy capacity notice"></label><label>Details<textarea name="description" maxlength="1200" rows="2" placeholder="Reason, risk and release plan"></textarea></label><button type="submit">Record change</button></form>
+<div id="ops-change" class="ops-records"></div>
+</section>
+</div>
+<p class="caption" id="ops-status" role="status" aria-live="polite">Loading owner service records…</p>
+</section>
 <section class="columns"><div class="stack">
 <div class="card"><h2>Most played games</h2><p class="caption" style="margin:-7px 0 12px">Ranked by confirmed server-side match starts, not clicks</p><div id="ranking"></div><div class="divider"></div><h2>Game breakdown</h2><div class="scroll"><table><thead><tr><th>Game</th><th>Rooms</th><th>Starts</th><th>Completed</th><th>Room requests denied</th></tr></thead><tbody id="game-table"></tbody></table></div></div>
 <div class="card"><h2>Activity by day</h2><div class="scroll"><table><thead><tr><th>Date (UTC)</th><th>Visits</th><th>Rooms</th><th>Starts</th><th>Finished</th><th>Requests denied</th></tr></thead><tbody id="daily-table"></tbody></table></div></div>
