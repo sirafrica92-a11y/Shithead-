@@ -43,7 +43,7 @@ async function start(){
        session=await api("/api/solo/ludo",{method:"POST"});
      }
    }else session=await api("/api/solo/ludo",{method:"POST"});
-   remember();render();
+   remember();await showComputerTurns(session);render();
  }
  catch(e){put(e.message);}finally{busy=false;$("new").disabled=false;}
 }
@@ -105,6 +105,7 @@ async function act(action,piece=null){
      body:JSON.stringify({token:session.token,version:session.version,action,piece})
    });
    session={...session,...updated};
+   await showComputerTurns(updated);
  }catch(e){
    put(e.message);
    if(e.status===409){
