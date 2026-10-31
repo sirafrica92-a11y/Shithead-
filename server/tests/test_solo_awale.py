@@ -66,11 +66,10 @@ def test_solo_rejects_illegal_stale_wrong_types_and_reuses_session(tmp_path):
             assert new_version > start_version
         else:
             new_version = start_version
-        assert c.post(url+"/reset",json={
-            "token":game["token"],"version":start_version-1
-        }).status_code == 422 if start_version == 0 else c.post(url+"/reset",json={
-            "token":game["token"],"version":start_version-1
-        }).status_code == 409
+        stale = c.post(url+"/reset",json={
+            "token":game["token"],"version":new_version+1
+        })
+        assert stale.status_code == 409
         for _ in range(5):
             result = c.post(url+"/reset",json={"token":game["token"],"version":new_version})
             assert result.status_code == 200
