@@ -32,6 +32,12 @@ async function showComputerTurns(result){
 }
 el("skip-cpu").onclick=()=>{skippingCpu=true;};
 
+async function api(url,opts={}){
+ const response=await fetch(url,{cache:"no-store",...opts});
+ let json;try{json=await response.json();}catch{throw Error("Server response unavailable");}
+ if(!response.ok){const err=new Error(typeof json.detail==="string"?json.detail:"Request rejected");err.status=response.status;throw err;}
+ return json;
+}
 function saved(){try{const x=JSON.parse(sessionStorage.getItem("shithead-solo-awale"));return x?.id&&x?.token?x:null;}catch{return null;}}
 function remember(){try{if(session)sessionStorage.setItem("shithead-solo-awale",JSON.stringify({id:session.id,token:session.token}));}catch{}}
 function forget(){try{sessionStorage.removeItem("shithead-solo-awale");}catch{}}
